@@ -1,0 +1,3790 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "This is the API documentation for the project ASI8x.",
+    "title": "ASI Config API",
+    "termsOfService": "http://swagger.io/terms/",
+    "contact": {
+      "name": "API Support",
+      "url": "http://fountane.com/asi8x/support",
+      "email": "info@fountane.com"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "1.0"
+  },
+  "host": "localhost:8080",
+  "basePath": "/v1/auth",
+  "paths": {
+    "/admin/impersonate": {
+      "post": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Super admins with Impersonation CREATE permission can impersonate users belonging to a property. Returns an impersonation token (30-min TTL).",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Start impersonating a user",
+        "parameters": [
+          {
+            "description": "Impersonation request",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.ImpersonateRequestDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.ImpersonateResponseDTO"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.ForbiddenError"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.NotFoundError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/admin/impersonate/stop": {
+      "post": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Ends the active impersonation session and returns a new admin token. Requires impersonation token in X-token header or token cookie.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Stop impersonating and return to admin session",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.StopImpersonationResponseDTO"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/admin/impersonation/active": {
+      "get": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Returns the current impersonation session if the token is an impersonation token, otherwise null.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get active impersonation session",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.ImpersonationSessionResponseDTO"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/admin/invite": {
+      "post": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Only super admins can invite other super admins. Requires authentication.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Invite a new super admin",
+        "parameters": [
+          {
+            "description": "Invite payload",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.InviteSuperAdminDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.ForbiddenError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Paginated super admins with optional search, status filter, sort. Requires super admin and System User Management READ.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List super admin users",
+        "parameters": [
+          {
+            "type": "integer",
+            "default": 1,
+            "description": "Page",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "default": 10,
+            "description": "Page size",
+            "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "default": "fullName",
+            "description": "Sort field: fullName, username, email, title, status, lastLogin",
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "default": "desc",
+            "description": "Sort direction: asc or desc",
+            "name": "orderBy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Substring match on full name, username, or email",
+            "name": "searchKey",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "One value or comma-separated: active, deactivated, invitation expired, pending activation",
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SuperAdminListResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.ForbiddenError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{id}": {
+      "get": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Returns profile and account fields for a super admin. Requires super admin and System User Management READ.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get super admin by user ID",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "User ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SuperAdminDetailResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.ForbiddenError"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.NotFoundError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Only the primary super admin may remove invited super admins. Soft-deletes the user (IsDeleted), invalidates pending SA invites, and clears global UserRoles. Login and invite links no longer work for that account.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Remove an invited super admin",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "User ID to remove",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.ForbiddenError"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.NotFoundError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/resend-invite": {
+      "post": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Any super admin may resend the invite for an invited super admin in Pending Activation (invalidates the previous token) or Invitation Expired. Not allowed for active, deactivated, or primary super admin accounts.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Resend super admin invitation",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "User ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.ForbiddenError"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.NotFoundError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/admin/{id}/activate": {
+      "post": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Only users with global UserRoles PropertyRoleID 1 (primary super admin) may call this. Target must be an inactive user with global super admin assignment and super admin role.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Activate a deactivated super admin",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "User ID to activate",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.ForbiddenError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/admin/{id}/deactivate": {
+      "post": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Only users with global UserRoles PropertyRoleID 1 (primary super admin) may call this. Target must have PropertyRoleID 2 (invited super admin).",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Deactivate an invited super admin",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "User ID to deactivate",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.ForbiddenError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/currentUser": {
+      "get": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Responds with 200",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "returns logged in user details",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.CurrentUserDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/device-details": {
+      "get": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Returns a list of user sessions for the authenticated user.",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get user sessions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/dto.UserSessionsDTO"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/forget-password": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Auth"
+        ],
+        "parameters": [
+          {
+            "description": "Forget password Payload",
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.ForgetPasswordInputDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.ForgetPasswordOutputDTO"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/invite/set-password": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Auth"
+        ],
+        "parameters": [
+          {
+            "description": "Invited user password payload",
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.InvitedUserSignUpDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.AuthenticatedResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/invite/{token}": {
+      "get": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Auth"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Token parameter",
+            "name": "token",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.InviteTokenResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/logout": {
+      "post": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Responds with 200",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "returns access token",
+        "parameters": [
+          {
+            "type": "boolean",
+            "description": "(optional)",
+            "name": "all",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "(optional)",
+            "name": "sessionId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SuccessDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/modules": {
+      "get": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Get all modules list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.GetModules"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/permissions": {
+      "get": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "Returns a list of user sessions for the authenticated user.",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get user sessions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/dto.UserSessionsDTO"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/properties/{id}/roles": {
+      "put": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Create Property Roles for given propertyID",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "Property ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.UserPaginationResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.DefaultErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/properties/{id}/users": {
+      "get": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Returns a User for the property id",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "Property ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "collectionFormat": "csv",
+            "description": "Array of User IDs",
+            "name": "ids",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "page offset",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "page limit",
+            "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "enum": [
+              "fullName",
+              "userName",
+              "email",
+              "role",
+              "title",
+              "status",
+              "lastLogin"
+            ],
+            "type": "string",
+            "description": "sort by key",
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string",
+            "description": "order direction",
+            "name": "orderBy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "search key",
+            "name": "searchKey",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "search by (optional)",
+            "name": "searchBy",
+            "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "collectionFormat": "multi",
+            "description": "filter by property role",
+            "name": "propertyRoleId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.UserPaginationResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.DefaultErrorResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Validate Updated Members",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "Property ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.DefaultErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.DefaultErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/properties/{id}/users-validate": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Validate Updated Members",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "Property ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "Request Body",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.PropertyMemberValidate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.DefaultErrorResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.DefaultErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/properties/{id}/users/{userId}": {
+      "delete": {
+        "description": "Remove access for user from property",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Properties"
+        ],
+        "summary": "Remove user access from property",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "Property ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "User ID",
+            "name": "userId",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SuccessDTO"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/rbac": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "RBAC"
+        ],
+        "summary": "Validate user access",
+        "parameters": [
+          {
+            "description": "RBAC payload",
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.RBAC"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/reset-password": {
+      "post": {
+        "description": "Responds with 200",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "returns logged in user details",
+        "parameters": [
+          {
+            "description": "Password reset request",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.ResetPasswordRequestDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SuccessDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/roles": {
+      "get": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Returns a roles entry by property id",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "PropertyID",
+            "name": "propertyId",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "page offset",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "page limit",
+            "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "enum": [
+              "title",
+              "role",
+              "user_count",
+              "description",
+              "isActive"
+            ],
+            "type": "string",
+            "description": "sort by key",
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string",
+            "description": "order direction",
+            "name": "orderBy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "search key",
+            "name": "searchKey",
+            "in": "query"
+          },
+          {
+            "enum": [
+              "SystemRole"
+            ],
+            "type": "string",
+            "description": "search by",
+            "name": "searchBy",
+            "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "collectionFormat": "csv",
+            "description": "default roles",
+            "name": "defaultRoles",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/dto.PropertyRoleDTO"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.DefaultErrorResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Update a role",
+        "parameters": [
+          {
+            "description": "Create Role payload",
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.CreateRole"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/roles/default": {
+      "get": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Get preset roles for a given property",
+        "parameters": [
+          {
+            "enum": [
+              "modules"
+            ],
+            "type": "string",
+            "description": "which extra field to include",
+            "name": "includes",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.PreSetRoles"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/roles/properties": {
+      "get": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Reassign a new role to user",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "UserID",
+            "name": "userId",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "system defined role",
+            "name": "systemRole",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/roles/reassign": {
+      "put": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Reassign a new role to user",
+        "parameters": [
+          {
+            "description": "Reassign Role payload",
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.ReassignUserRolesRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.ReassignUserRolesResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/roles/system/by-name": {
+      "get": {
+        "description": "Responds with 200 and { \"data\": { \"roleId\": 10 } }",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Returns a system role ID by name",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Role name (e.g. Super Admin)",
+            "name": "name",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "data.roleId",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "name required",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "404": {
+            "description": "role not found",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "500": {
+            "description": "internal error",
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "/roles/{id}": {
+      "get": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Returns a role entry by ID",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "property role ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "Property ID",
+            "name": "propertyId",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.PropertyRoleDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.DefaultErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Update a role",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Unique role ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "Property Id",
+            "name": "propertyId",
+            "in": "query",
+            "required": true
+          },
+          {
+            "description": "update property Role payload",
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.UpdatePropertyRole"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SuccessDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/roles/{id}/activate": {
+      "patch": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Update a role",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "property role ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "Role Patch payload",
+            "name": "payload",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.PropertyIdDTO"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/roles/{id}/deactivate": {
+      "patch": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Update a role",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "property role ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "Role Patch payload",
+            "name": "payload",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.PropertyIdDTO"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/roles/{roleId}": {
+      "delete": {
+        "description": "Deletes a role with the specified ID",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Delete a role",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Unique role ID",
+            "name": "roleId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "Property ID",
+            "name": "propertyId",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SuccessDTO"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/roles/{roleId}/reset": {
+      "patch": {
+        "description": "Reset a role with the specified ID",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Reset a role",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Unique role ID",
+            "name": "roleId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "Role Patch payload",
+            "name": "payload",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.PropertyIdDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SuccessDTO"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/send-otp": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Auth"
+        ],
+        "parameters": [
+          {
+            "description": "Send otp Payload",
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.SendOtpInputDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SendOtpOutputDTO"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/signIn": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Auth"
+        ],
+        "summary": "returns access token",
+        "parameters": [
+          {
+            "description": "SignIn Payload",
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.SignInDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.AuthenticatedResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/signup": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Auth"
+        ],
+        "summary": "returns newly created User",
+        "parameters": [
+          {
+            "description": "SignUp Payload",
+            "name": "user",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.SignUpDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.AuthenticatedResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/terms": {
+      "get": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "TermsAndCondition"
+        ],
+        "summary": "Find and returna a latest terms and codition data",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.Terms"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/terms-consent": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "TermsAndCondition"
+        ],
+        "summary": "Accept terms and condition for a user",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.TermsConsentOutput"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/user": {
+      "get": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "User"
+        ],
+        "summary": "Find and return a user by fieldName and value",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "filter by email",
+            "name": "email",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "filter by id",
+            "name": "id",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "filter by username",
+            "name": "username",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.User"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "User"
+        ],
+        "summary": "Create or Get User for invite",
+        "parameters": [
+          {
+            "description": "CreateUSerFromInvite Payload",
+            "name": "building",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.CreateUSerFromInvite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.User"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      },
+      "patch": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "User"
+        ],
+        "summary": "Update a user by fieldName and value",
+        "parameters": [
+          {
+            "description": "User Payload",
+            "name": "building",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.PatchUserBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SuccessDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/user/check-phone": {
+      "get": {
+        "description": "Returns true if phone number exists, false otherwise",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "User"
+        ],
+        "summary": "Check if phone number exists",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Phone Number",
+            "name": "phone",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ \\\"exists\\\": true }",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "boolean"
+              }
+            }
+          },
+          "400": {
+            "description": "{ \\\"error\\\": \\\"invalid phone number format\\\" }",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "500": {
+            "description": "{ \\\"error\\\": \\\"internal server error\\\" }",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/login-activity": {
+      "get": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "User"
+        ],
+        "summary": "Returns a User Login Activity",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "Page offset",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "Page limit",
+            "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Sort by field name",
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string",
+            "description": "Sort order",
+            "name": "orderBy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Filter from date (YYYY-MM-DD)",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Filter to date (YYYY-MM-DD)",
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.LoginActivityPaginationResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.DefaultErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/user/profile": {
+      "patch": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "User"
+        ],
+        "summary": "Set user password",
+        "parameters": [
+          {
+            "description": "Update User Profile Payload",
+            "name": "building",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.UserProfilePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SuccessDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/user/property-invite": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "User"
+        ],
+        "summary": "Send Property Invite to user",
+        "parameters": [
+          {
+            "description": "Send Property Invite Payload",
+            "name": "building",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.SendPropertyInvite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SuccessDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/user/set-password": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "User"
+        ],
+        "summary": "Set user password",
+        "parameters": [
+          {
+            "description": "Set Password Payload",
+            "name": "building",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.SetUserPasswordInputDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.SetPasswordOutputDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/user/sync": {
+      "post": {
+        "description": "Saves partial data for the user",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "User"
+        ],
+        "summary": "Create a new partial user",
+        "parameters": [
+          {
+            "description": "User Data",
+            "name": "payload",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.CreatePartialUserDTO"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/validate-otp": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Auth"
+        ],
+        "parameters": [
+          {
+            "description": "Validate otp Payload",
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.ValidateOtpInputDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.ValidateOtpOutputDTO"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/verify-2fa": {
+      "post": {
+        "security": [
+          {
+            "ApiKeyAuthCookie": []
+          }
+        ],
+        "description": "return 2fa requirements",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "verify 2FA",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/dto.TwoFAOutputDTO"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/verify-otp": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Auth"
+        ],
+        "parameters": [
+          {
+            "description": "Verify OTP Payload",
+            "name": "group",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.VerifyOTPInputDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.ForgetPasswordOutputDTO"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/custom_errors.BadRequestError"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    },
+    "/verifyCaptcha": {
+      "post": {
+        "description": "Responds with 200",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Recaptcha"
+        ],
+        "summary": "verify captcha token",
+        "parameters": [
+          {
+            "description": "Recaptcha Payload",
+            "name": "token",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/dto.RecaptchaPayloadDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/dto.RecaptchaResponseDTO"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/dto.ErrorDTO"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "custom_errors.BadRequestError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "message": {
+          "type": "string"
+        },
+        "traceId": {
+          "type": "string"
+        }
+      }
+    },
+    "custom_errors.DefaultErrorResponse": {
+      "type": "object"
+    },
+    "custom_errors.ForbiddenError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "traceId": {
+          "type": "string"
+        }
+      }
+    },
+    "custom_errors.NotFoundError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "message": {
+          "type": "string"
+        },
+        "traceId": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.AuthenticatedResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/dto.LoginData"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.CreatePartialUserDTO": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "step": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.CreateRole": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "include": {
+          "type": "string"
+        },
+        "permissionIds": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "propertyId": {
+          "type": "integer"
+        },
+        "roleId": {
+          "type": "integer"
+        },
+        "roleName": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.CreateUSerFromInvite": {
+      "type": "object",
+      "required": [
+        "email"
+      ],
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "isTemporary": {
+          "type": "boolean"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "phoneNumber": {
+          "type": "string"
+        },
+        "propertyId": {
+          "type": "integer"
+        },
+        "roleId": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.CurrentUserDTO": {
+      "type": "object"
+    },
+    "dto.ErrorDTO": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dto.Feature": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "featureId": {
+          "type": "integer"
+        },
+        "featureName": {
+          "type": "string"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dto.Permission"
+          }
+        }
+      }
+    },
+    "dto.ForgetPasswordInputDTO": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.ForgetPasswordOutputDTO": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.GetModules": {
+      "type": "object",
+      "properties": {
+        "modules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dto.Module"
+          }
+        }
+      }
+    },
+    "dto.ImpersonateRequestDTO": {
+      "type": "object",
+      "required": [
+        "propertyId",
+        "targetUserId"
+      ],
+      "properties": {
+        "propertyId": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "targetUserId": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.ImpersonateResponseDTO": {
+      "type": "object",
+      "properties": {
+        "expiresAt": {
+          "type": "string"
+        },
+        "impersonationId": {
+          "type": "integer"
+        },
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.ImpersonationSessionResponseDTO": {
+      "type": "object",
+      "properties": {
+        "adminIp": {
+          "type": "string"
+        },
+        "adminUserId": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "endedAt": {
+          "type": "string"
+        },
+        "impersonationId": {
+          "type": "integer"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "propertyId": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "targetUserId": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.InviteSuperAdminDTO": {
+      "type": "object",
+      "required": [
+        "email"
+      ],
+      "properties": {
+        "email": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.InviteTokenResponse": {
+      "type": "object",
+      "properties": {
+        "isLinkValid": {
+          "type": "boolean"
+        },
+        "isPasswordSet": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "roleType": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.InvitedUserSignUpDTO": {
+      "type": "object",
+      "required": [
+        "firstName",
+        "lastName",
+        "password",
+        "token",
+        "userName"
+      ],
+      "properties": {
+        "Latitude": {
+          "type": "number"
+        },
+        "Longitude": {
+          "type": "number"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string",
+          "minLength": 8
+        },
+        "token": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.LoginActivityPaginationResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/models.UserSessions"
+          }
+        },
+        "next": {
+          "type": "string"
+        },
+        "prev": {
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.LoginData": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/definitions/dto.User"
+        }
+      }
+    },
+    "dto.Module": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dto.Feature"
+          }
+        },
+        "moduleId": {
+          "type": "integer"
+        },
+        "moduleName": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.PatchUserBody": {
+      "type": "object",
+      "properties": {
+        "avatarURL": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "phoneNumber": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "userProfile": {
+          "$ref": "#/definitions/dto.UserProfilePayload"
+        }
+      }
+    },
+    "dto.Permission": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "permissionId": {
+          "type": "integer"
+        },
+        "permissionName": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.PreSetRoles": {
+      "type": "object",
+      "properties": {
+        "roles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dto.PreSetRoles_Role"
+          }
+        }
+      }
+    },
+    "dto.PreSetRoles_Role": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "modules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dto.Module"
+          }
+        },
+        "roleId": {
+          "type": "integer"
+        },
+        "roleName": {
+          "type": "string"
+        },
+        "roleType": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.PropertyIdDTO": {
+      "type": "object",
+      "required": [
+        "propertyId"
+      ],
+      "properties": {
+        "propertyId": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.PropertyMemberValidate": {
+      "type": "object",
+      "required": [
+        "systemRole",
+        "userIds"
+      ],
+      "properties": {
+        "systemRole": {
+          "description": "system defined role",
+          "type": "string"
+        },
+        "userIds": {
+          "description": "User IDs to validate",
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "dto.PropertyRoleDTO": {
+      "type": "object",
+      "properties": {
+        "createdBy": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "isModified": {
+          "type": "boolean"
+        },
+        "modules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dto.Module"
+          }
+        },
+        "propertyRoleId": {
+          "type": "integer"
+        },
+        "roleID": {
+          "type": "integer"
+        },
+        "roleName": {
+          "type": "string"
+        },
+        "roleType": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.PropertyRoleResponseDTO": {
+      "type": "object",
+      "properties": {
+        "createdBy": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "isModified": {
+          "type": "boolean"
+        },
+        "roleId": {
+          "type": "integer"
+        },
+        "roleName": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.RBAC": {
+      "type": "object",
+      "required": [
+        "endpointURL",
+        "method",
+        "userId"
+      ],
+      "properties": {
+        "endpointURL": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "propertyId": {
+          "type": "integer"
+        },
+        "userId": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.ReassignUserRolesRequest": {
+      "type": "object",
+      "properties": {
+        "propertyId": {
+          "type": "integer"
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dto.UserRoleUpdate"
+          }
+        }
+      }
+    },
+    "dto.ReassignUserRolesResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "userCount": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.RecaptchaPayloadDTO": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.RecaptchaResponseDTO": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dto.ResetPasswordRequestDTO": {
+      "type": "object",
+      "required": [
+        "password",
+        "token"
+      ],
+      "properties": {
+        "password": {
+          "type": "string",
+          "minLength": 8
+        },
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.SendOtpInputDTO": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.SendOtpOutputDTO": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.SendPropertyInvite": {
+      "type": "object",
+      "required": [
+        "email"
+      ],
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "pendingInvite": {
+          "type": "boolean"
+        },
+        "propertyId": {
+          "type": "integer"
+        },
+        "propertyName": {
+          "type": "string"
+        },
+        "resend": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dto.SetPasswordOutputDTO": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.SetUserPasswordInputDTO": {
+      "type": "object",
+      "required": [
+        "password"
+      ],
+      "properties": {
+        "password": {
+          "type": "string",
+          "minLength": 4
+        }
+      }
+    },
+    "dto.SignInDTO": {
+      "type": "object",
+      "properties": {
+        "Latitude": {
+          "type": "number"
+        },
+        "Longitude": {
+          "type": "number"
+        },
+        "fingerPrintId": {
+          "type": "string"
+        },
+        "loginIdentifier": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.SignUpDTO": {
+      "type": "object",
+      "properties": {
+        "Latitude": {
+          "type": "number"
+        },
+        "Longitude": {
+          "type": "number"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.StopImpersonationResponseDTO": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.SuccessDTO": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "success": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dto.SuperAdminDetailResponse": {
+      "type": "object",
+      "properties": {
+        "avatarURL": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "isTemporary": {
+          "type": "boolean"
+        },
+        "lastLogin": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "phoneNumber": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "userProfile": {
+          "$ref": "#/definitions/dto.SuperAdminDetailUserProfile"
+        }
+      }
+    },
+    "dto.SuperAdminDetailUserProfile": {
+      "type": "object",
+      "properties": {
+        "addressLine1": {
+          "type": "string"
+        },
+        "addressLine2": {
+          "type": "string"
+        },
+        "bio": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "userID": {
+          "type": "integer"
+        },
+        "userProfileID": {
+          "type": "integer"
+        },
+        "zip": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.SuperAdminListItem": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "isTemporary": {
+          "type": "boolean"
+        },
+        "lastLogin": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "status": {
+          "description": "Status is one of: Active, Deactivated, Invitation Expired, Pending Activation",
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.SuperAdminListResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dto.SuperAdminListItem"
+          }
+        },
+        "next": {
+          "type": "string"
+        },
+        "prev": {
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.Terms": {
+      "type": "object",
+      "properties": {
+        "bucketUrl": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.TermsConsentOutput": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.TwoFAOutputDTO": {
+      "type": "object",
+      "properties": {
+        "twoFactorRequired": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dto.UpdatePropertyRole": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "permissionIds": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "roleId": {
+          "type": "integer"
+        },
+        "roleName": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.User": {
+      "type": "object",
+      "properties": {
+        "currentActiveLogins": {
+          "type": "integer"
+        },
+        "email": {
+          "description": "Email",
+          "type": "string"
+        },
+        "fingerprintID": {
+          "type": "string"
+        },
+        "firstName": {
+          "description": "First name",
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "ipIncluded": {
+          "type": "boolean"
+        },
+        "isTemporary": {
+          "type": "boolean"
+        },
+        "isTwoFactorValid": {
+          "type": "boolean"
+        },
+        "lastName": {
+          "description": "Last name",
+          "type": "string"
+        },
+        "phoneNumber": {
+          "description": "Phone",
+          "type": "string"
+        },
+        "role": {
+          "type": "integer"
+        },
+        "roleName": {
+          "type": "string"
+        },
+        "termsAccepted": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string"
+        },
+        "userId": {
+          "description": "Primary key, auto-increment",
+          "type": "integer"
+        },
+        "userName": {
+          "description": "Username, nullable",
+          "type": "string"
+        },
+        "userProfile": {
+          "$ref": "#/definitions/dto.UserProfileDTO"
+        }
+      }
+    },
+    "dto.UserPaginationResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/dto.UsersResponse"
+          }
+        },
+        "next": {
+          "type": "string"
+        },
+        "prev": {
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.UserProfileDTO": {
+      "type": "object",
+      "properties": {
+        "addressLine1": {
+          "type": "string"
+        },
+        "addressLine2": {
+          "type": "string"
+        },
+        "bio": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "userID": {
+          "type": "integer"
+        },
+        "userProfileID": {
+          "type": "integer"
+        },
+        "zip": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.UserProfilePayload": {
+      "type": "object",
+      "properties": {
+        "addressLine1": {
+          "type": "string"
+        },
+        "addressLine2": {
+          "type": "string"
+        },
+        "bio": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "zip": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.UserRoleUpdate": {
+      "type": "object",
+      "properties": {
+        "propertyRoleId": {
+          "type": "integer"
+        },
+        "userId": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.UserSessionsDTO": {
+      "type": "object",
+      "properties": {
+        "deviceName": {
+          "type": "string"
+        },
+        "deviceType": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "isCurrentAccount": {
+          "type": "boolean"
+        },
+        "lastLogin": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "integer"
+        },
+        "userSessionId": {
+          "type": "integer"
+        }
+      }
+    },
+    "dto.UsersResponse": {
+      "type": "object",
+      "properties": {
+        "avatarURL": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "isTemporary": {
+          "type": "boolean"
+        },
+        "lastLogin": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "phoneNumber": {
+          "description": "Phone",
+          "type": "string"
+        },
+        "propertyRole": {
+          "$ref": "#/definitions/dto.PropertyRoleResponseDTO"
+        },
+        "status": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "userProfile": {
+          "$ref": "#/definitions/dto.UserProfileDTO"
+        }
+      }
+    },
+    "dto.ValidateOtpInputDTO": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "otp": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.ValidateOtpOutputDTO": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "dto.VerifyOTPInputDTO": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string"
+        },
+        "otp": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "models.UserSessions": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "deviceName": {
+          "type": "string"
+        },
+        "deviceType": {
+          "type": "string"
+        },
+        "isActive": {
+          "type": "boolean"
+        },
+        "lastLogin": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "integer"
+        },
+        "userSessionId": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "ApiKeyAuthCookie": {
+      "type": "apiKey",
+      "name": "Cookie",
+      "in": "header"
+    },
+    "BasicAuth": {
+      "type": "basic"
+    },
+    "OAuth2AccessCode": {
+      "type": "oauth2",
+      "flow": "accessCode",
+      "authorizationUrl": "http://localhost:8080/oauth/authorize",
+      "tokenUrl": "http://localhost:8080/oauth/token"
+    }
+  },
+  "externalDocs": {
+    "description": "OpenAPI",
+    "url": "https://swagger.io/resources/open-api/"
+  }
+}

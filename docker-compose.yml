@@ -1,0 +1,21 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:17-alpine
+    container_name: asi-genie-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-asi_genie}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-asi_genie}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5434}:5432"   # 5433 is taken by another local container
+    volumes:
+      - genie_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-asi_genie} -d ${POSTGRES_DB:-asi_genie}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  genie_postgres_data:

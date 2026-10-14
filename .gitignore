@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+
+.DS_Store
+
+# Go
+bin/
+tmp/
+*.exe
+*.test
+*.out
+vendor/

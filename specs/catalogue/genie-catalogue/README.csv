@@ -1,0 +1,28 @@
+ASI Genie - Use-Case & Scenario Catalogue,,
+"Web + Mobile · Phase 1 (deterministic, read-only) → Phase 2 (actions + audit)",,
+What this workbook is,"A prioritised list of the questions hoteliers actually ask, how ASI Genie handles each one in Phase 1 without touching data, what the user sees, which Roles & Privileges permission gates it, and how the same scenario grows into a Phase 2 action with confirmation and audit.",
+Phase 1 (this release),"→ Deterministic answers, summaries, guidance and navigation.
+→ Genie NEVER performs an action on the user's behalf.
+→ Every answer is filtered by the property's Roles & Privileges matrix (module → feature → READ).
+→ Where the user asks for an action, Genie explains and opens the right screen - often with fields pre-filled - so the user completes it in the existing UI.",
+Phase 2 (next),"Genie performs the action through the same PMS APIs the UI uses, after a Preview → Confirm step (hard-confirm for money / irreversible / security; soft-confirm + Undo for reversible). Every write is logged with actor, requested-by, params (PII-redacted) and result, and appears in the Audit Log. Multi-step tasks (night audit, check-in, booking) become guided workflows.",
+Sheets,"→ Scenarios - the master list (171 scenarios, filterable)
+→ Response Types - the card/answer vocabulary
+→ Phase 1 vs Phase 2 - the contract between the phases
+→ Phase 2 Actions - action catalogue with confirmation tier and audit fields
+→ Role Matrix - which typical role can trigger which scenario
+→ RBAC Reference - real module/feature names
+→ Naming - verbiage alternatives
+→ Summary - counts by module, scope and priority.",
+Roles,"→ Owner · Admin · Manager · Desk Staff · Housekeeping · Custom .
+→ Roles are bundles of permissions; a property can rename or reshape them, so the 'Typical roles' column is a default, not a rule.
+→ The server-side 401 Unauthorized / 403 Forbidden on the PMS API is always the final gate.",
+Priority,"→ P0 = first vertical slice (prove the stack end-to-end)
+→ P1 = complete Phase 1 release
+→ P2 = later Phase 1 iteration or Phase 2-adjacent.",
+Phase 1 scope,"→ In = fully served read-only
+→ Partial = Genie shows context and navigates/prefills; the user performs the write in the UI.",
+Legend (Scenarios),"→ Blue header = identity & question
+→ Green header = Phase 1
+→ Amber header = RBAC
+→ Purple header = Phase 2 extension.",

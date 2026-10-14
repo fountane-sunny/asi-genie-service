@@ -1,0 +1,360 @@
+// Postgres backend, mirroring asi-reservation-service: GORM + gorm.io/driver/postgres
+// (pgx underneath), key=value DSN from POSTGRES_* env, and the schema defined by
+// Go models below and applied with GORM AutoMigrate at startup (no SQL files).
+package store
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	gormLogger "gorm.io/gorm/logger"
+)
+
+// ---- models (schema source of truth) ----
+
+type Conversation struct {
+	ID         string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	SessionID  string    `gorm:"type:text;uniqueIndex;not null"`
+	UserID     *string   `gorm:"type:text;index"`
+	PropertyID *int      `gorm:"index"`
+	Title      string    `gorm:"type:text"`
+	CreatedAt  time.Time `gorm:"not null;default:now()"`
+	UpdatedAt  time.Time `gorm:"not null;default:now()"`
+}
+
+type MessageRow struct {
+	ID             string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ConversationID string    `gorm:"type:uuid;index;not null"`
+	Role           string    `gorm:"type:text;not null"`
+	Content        string    `gorm:"type:text"`
+	ToolCalls      []byte    `gorm:"type:jsonb"`
+	DurationMs     *int64    `gorm:""` // assistant replies: server time to answer
+	CreatedAt      time.Time `gorm:"not null;default:now();index"`
+}
+
+// GenieTurn: one analytics row per /chat turn (exported via GET /analytics/turns).
+type GenieTurn struct {
+	ID           string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	CreatedAt    time.Time `gorm:"not null;default:now();index:idx_genie_turns_prop_created,priority:2;index"`
+	SessionID    string    `gorm:"type:text;index"`
+	PropertyID   int       `gorm:"index:idx_genie_turns_prop_created,priority:1"`
+	UserID       *string   `gorm:"type:text;index"`
+	UserName     *string   `gorm:"type:text"`
+	UserEmail    *string   `gorm:"type:text"`
+	Message      string    `gorm:"type:text"` // PAN-masked
+	Reply        string    `gorm:"type:text"`
+	Cards        []byte    `gorm:"type:jsonb"`
+	Intent       *string   `gorm:"type:text;index"`
+	ScenarioID   *string   `gorm:"type:text"`
+	Source       *string   `gorm:"type:text"`
+	Confidence   float64   `gorm:""`
+	Slots        []byte    `gorm:"type:jsonb"`
+	Tools        []byte    `gorm:"type:jsonb"`
+	LLMModel     *string   `gorm:"type:text"`
+	LLMFailed    bool      `gorm:"not null;default:false"`
+	DurationMs   int64     `gorm:""`
+	ErrorCode    *string   `gorm:"type:text;index"`
+	ErrorMessage *string   `gorm:"type:text"`
+	Feedback     *string   `gorm:"type:text"` // nullable, for later
+}
+
+func (MessageRow) TableName() string { return "messages" }
+
+type ToolExecutionRow struct {
+	ID             string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ConversationID *string   `gorm:"type:uuid;index"`
+	ToolName       string    `gorm:"type:text;not null"`
+	Method         string    `gorm:"type:text"`
+	Path           string    `gorm:"type:text"`
+	Args           []byte    `gorm:"type:jsonb"`
+	Status         string    `gorm:"type:text;not null"`
+	Result         []byte    `gorm:"type:jsonb"`
+	CreatedAt      time.Time `gorm:"not null;default:now()"`
+}
+
+func (ToolExecutionRow) TableName() string { return "tool_executions" }
+
+type GenieEvent struct {
+	ID         string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	SessionID  *string   `gorm:"type:text"`
+	Kind       string    `gorm:"type:text;not null;index:idx_genie_events_kind_created,priority:1"`
+	Intent     *string   `gorm:"type:text"`
+	ScenarioID *string   `gorm:"type:text"`
+	PropertyID *int      `gorm:""`
+	Message    *string   `gorm:"type:text"`
+	Detail     []byte    `gorm:"type:jsonb"`
+	CreatedAt  time.Time `gorm:"not null;default:now();index:idx_genie_events_kind_created,priority:2"`
+}
+
+// Models lists everything AutoMigrate manages.
+var Models = []any{&Conversation{}, &MessageRow{}, &ToolExecutionRow{}, &GenieEvent{}, &GenieTurn{}}
+
+type pg struct{ db *gorm.DB }
+
+// NewPostgres opens the DB and auto-migrates the models.
+func NewPostgres(dsn string) (Store, error) {
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: gormLogger.Default.LogMode(gormLogger.Silent)})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to postgres database: %w", err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
+	}
+	sqlDB.SetMaxOpenConns(10)
+	sqlDB.SetMaxIdleConns(5)
+	sqlDB.SetConnMaxLifetime(30 * time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := sqlDB.PingContext(ctx); err != nil {
+		sqlDB.Close()
+		return nil, err
+	}
+	if err := db.AutoMigrate(Models...); err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("auto-migrate: %w", err)
+	}
+	return &pg{db: db}, nil
+}
+
+func strPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func intPtr(n int) *int {
+	if n == 0 {
+		return nil
+	}
+	return &n
+}
+
+// conversation returns the id of sessionID's conversation for propertyID. A
+// conversation is bound to one property: if the session's existing row is for
+// another property, that row is archived (propertyID 0 = any; used by tool logs) (session_id gets a "~p<old>-<unix>"
+// suffix) and a new conversation is started under sessionID.
+func (p *pg) conversation(ctx context.Context, sessionID, userID string, propertyID int) (string, error) {
+	db := p.db.WithContext(ctx)
+	var cur Conversation
+	err := db.Where("session_id = ?", sessionID).Limit(1).Find(&cur).Error
+	if err != nil {
+		return "", err
+	}
+	if cur.ID != "" {
+		if propertyID <= 0 || cur.PropertyID == nil || *cur.PropertyID == propertyID {
+			if cur.PropertyID == nil && propertyID > 0 {
+				err = db.Model(&cur).Updates(map[string]any{"property_id": propertyID, "updated_at": gorm.Expr("NOW()")}).Error
+			} else {
+				err = db.Model(&cur).Update("updated_at", gorm.Expr("NOW()")).Error
+			}
+			return cur.ID, err
+		}
+		archived := fmt.Sprintf("%s~p%d-%d", sessionID, *cur.PropertyID, time.Now().Unix())
+		if err := db.Model(&cur).Update("session_id", archived).Error; err != nil {
+			return "", err
+		}
+	}
+	c := Conversation{SessionID: sessionID, UserID: strPtr(userID), PropertyID: intPtr(propertyID)}
+	err = db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "session_id"}},
+		DoUpdates: clause.Assignments(map[string]any{"updated_at": gorm.Expr("NOW()")}),
+	}).Create(&c).Error
+	if err != nil {
+		return "", err
+	}
+	if c.ID == "" {
+		err = db.Model(&Conversation{}).Where("session_id = ?", sessionID).Pluck("id", &c.ID).Error
+	}
+	return c.ID, err
+}
+
+func (p *pg) AppendMessages(ctx context.Context, sessionID, userID string, propertyID int, msgs ...Message) error {
+	convID, err := p.conversation(ctx, sessionID, userID, propertyID)
+	if err != nil {
+		return err
+	}
+	rows := make([]MessageRow, 0, len(msgs))
+	now := time.Now().UTC()
+	for i, m := range msgs {
+		ts := m.CreatedAt
+		if ts.IsZero() {
+			ts = now.Add(time.Duration(i) * time.Microsecond) // keep order within a turn
+		}
+		row := MessageRow{ConversationID: convID, Role: m.Role, Content: m.Content, ToolCalls: nilIfEmpty(m.ToolCalls), CreatedAt: ts}
+		if m.DurationMs > 0 {
+			d := m.DurationMs
+			row.DurationMs = &d
+		}
+		rows = append(rows, row)
+	}
+	return p.db.WithContext(ctx).Create(&rows).Error
+}
+
+func nilIfEmpty(b []byte) []byte {
+	if len(b) == 0 {
+		return nil
+	}
+	return b
+}
+
+func (p *pg) History(ctx context.Context, sessionID string, limit int) ([]Message, error) {
+	if limit <= 0 {
+		limit = 1000
+	}
+	var conv Conversation
+	err := p.db.WithContext(ctx).Where("session_id = ?", sessionID).Take(&conv).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var rows []MessageRow
+	if err := p.db.WithContext(ctx).Where("conversation_id = ?", conv.ID).Order("created_at DESC").Limit(limit).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make([]Message, 0, len(rows))
+	for i := len(rows) - 1; i >= 0; i-- {
+		r := rows[i]
+		m := Message{Role: r.Role, Content: r.Content, ToolCalls: r.ToolCalls, CreatedAt: r.CreatedAt}
+		if r.DurationMs != nil {
+			m.DurationMs = *r.DurationMs
+		}
+		out = append(out, m)
+	}
+	return out, nil
+}
+
+func (p *pg) LogToolExecution(ctx context.Context, e ToolExecution) error {
+	row := ToolExecutionRow{ToolName: e.ToolName, Method: e.Method, Path: e.Path, Args: nilIfEmpty(e.Args), Status: e.Status, Result: nilIfEmpty(e.Result)}
+	if e.SessionID != "" {
+		id, err := p.conversation(ctx, e.SessionID, "", 0)
+		if err != nil {
+			return err
+		}
+		row.ConversationID = &id
+	}
+	return p.db.WithContext(ctx).Create(&row).Error
+}
+
+func (p *pg) LogEvent(ctx context.Context, e Event) error {
+	row := GenieEvent{SessionID: strPtr(e.SessionID), Kind: e.Kind, Intent: strPtr(e.Intent), ScenarioID: strPtr(e.ScenarioID),
+		PropertyID: intPtr(e.PropertyID), Message: strPtr(e.Message), Detail: nilIfEmpty(e.Detail)}
+	return p.db.WithContext(ctx).Create(&row).Error
+}
+
+func (p *pg) Events(ctx context.Context, kind string, limit int) ([]Event, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	q := p.db.WithContext(ctx).Order("created_at DESC").Limit(limit)
+	if kind != "" {
+		q = q.Where("kind = ?", kind)
+	}
+	var rows []GenieEvent
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make([]Event, 0, len(rows))
+	deref := func(s *string) string {
+		if s == nil {
+			return ""
+		}
+		return *s
+	}
+	for i := len(rows) - 1; i >= 0; i-- {
+		r := rows[i]
+		ev := Event{SessionID: deref(r.SessionID), Kind: r.Kind, Intent: deref(r.Intent), ScenarioID: deref(r.ScenarioID), Message: deref(r.Message), Detail: r.Detail, CreatedAt: r.CreatedAt}
+		if r.PropertyID != nil {
+			ev.PropertyID = *r.PropertyID
+		}
+		out = append(out, ev)
+	}
+	return out, nil
+}
+
+func (p *pg) LogTurn(ctx context.Context, t Turn) (string, error) {
+	row := GenieTurn{SessionID: t.SessionID, PropertyID: t.PropertyID, UserID: strPtr(t.UserID), UserName: strPtr(t.UserName),
+		UserEmail: strPtr(t.UserEmail), Message: t.Message, Reply: t.Reply, Cards: nilIfEmpty(t.Cards), Intent: strPtr(t.Intent),
+		ScenarioID: strPtr(t.ScenarioID), Source: strPtr(t.Source), Confidence: t.Confidence, Slots: nilIfEmpty(t.Slots),
+		Tools: nilIfEmpty(t.Tools), LLMModel: strPtr(t.LLMModel), LLMFailed: t.LLMFailed, DurationMs: t.DurationMs,
+		ErrorCode: strPtr(t.ErrorCode), ErrorMessage: strPtr(t.ErrorMessage), Feedback: t.Feedback}
+	if !t.CreatedAt.IsZero() {
+		row.CreatedAt = t.CreatedAt
+	}
+	if err := p.db.WithContext(ctx).Create(&row).Error; err != nil {
+		return "", err
+	}
+	return row.ID, nil
+}
+
+func (p *pg) UpdateTurnFeedback(ctx context.Context, turnID, sessionID, feedback string) error {
+	if turnID == "" {
+		return fmt.Errorf("turnId is required")
+	}
+	q := p.db.WithContext(ctx).Model(&GenieTurn{}).Where("id = ?", turnID)
+	if sessionID != "" {
+		q = q.Where("session_id = ?", sessionID)
+	}
+	res := q.Update("feedback", feedback)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (p *pg) Turns(ctx context.Context, f TurnFilter) ([]Turn, error) {
+	q := p.db.WithContext(ctx).Model(&GenieTurn{})
+	if !f.From.IsZero() {
+		q = q.Where("created_at >= ?", f.From)
+	}
+	if !f.To.IsZero() {
+		q = q.Where("created_at < ?", f.To)
+	}
+	if f.PropertyID > 0 {
+		q = q.Where("property_id = ?", f.PropertyID)
+	}
+	if f.SessionID != "" {
+		q = q.Where("session_id = ?", f.SessionID)
+	}
+	if f.Limit <= 0 || f.Limit > 10000 {
+		f.Limit = 10000
+	}
+	var rows []GenieTurn
+	if err := q.Order("created_at").Limit(f.Limit).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	s := func(p *string) string {
+		if p == nil {
+			return ""
+		}
+		return *p
+	}
+	out := make([]Turn, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, Turn{ID: r.ID, CreatedAt: r.CreatedAt, SessionID: r.SessionID, PropertyID: r.PropertyID,
+			UserID: s(r.UserID), UserName: s(r.UserName), UserEmail: s(r.UserEmail), Message: r.Message, Reply: r.Reply,
+			Cards: r.Cards, Intent: s(r.Intent), ScenarioID: s(r.ScenarioID), Source: s(r.Source), Confidence: r.Confidence,
+			Slots: r.Slots, Tools: r.Tools, LLMModel: s(r.LLMModel), LLMFailed: r.LLMFailed, DurationMs: r.DurationMs,
+			ErrorCode: s(r.ErrorCode), ErrorMessage: s(r.ErrorMessage), Feedback: r.Feedback})
+	}
+	return out, nil
+}
+
+func (p *pg) Close() error {
+	sqlDB, err := p.db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
+}
