@@ -139,6 +139,39 @@ func findListDepth(v any, depth int) []map[string]any {
 	return nil
 }
 
+// explicitTotal is a pagination total the API actually sent.
+func explicitTotal(v any) (int, bool) {
+	m := obj(v)
+	for _, cand := range []map[string]any{m, obj(path(v, "data")), obj(path(v, "pagination")), obj(path(v, "meta")), obj(path(v, "pageInfo"))} {
+		if n, ok := num(cand, "total", "totalCount", "totalRecords", "totalItems", "count"); ok {
+			return int(n), true
+		}
+	}
+	return 0, false
+}
+
+// pageCount distinguishes a real total from a full page. known is false when
+// the API sent no total and the page is full, so listLen must not be shown as
+// the complete count. note is set when the card shows only the first rows.
+func pageCount(v any, listLen, pageSize, shown int) (total int, known bool, note string) {
+	if shown > listLen {
+		shown = listLen
+	}
+	if n, ok := explicitTotal(v); ok {
+		if n < listLen {
+			n = listLen
+		}
+		if shown < n {
+			return n, true, fmt.Sprintf("showing the first %d", shown)
+		}
+		return n, true, ""
+	}
+	if pageSize > 0 && listLen >= pageSize {
+		return listLen, false, fmt.Sprintf("showing the first %d", shown)
+	}
+	return listLen, true, ""
+}
+
 // findTotal returns a total count from common pagination shapes, or fallback.
 func findTotal(v any, fallback int) int {
 	m := obj(v)

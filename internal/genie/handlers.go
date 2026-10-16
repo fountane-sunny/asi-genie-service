@@ -285,10 +285,19 @@ func hArrivals(rc *reqCtx, it intents.Intent, s Slots) error {
 		return err
 	}
 	list := findList(v)
-	total := findTotal(v, len(list))
+	items := rc.reservationItems(list, 10, nil)
+	total, known, note := pageCount(v, len(list), 50, len(items))
+	title := fmt.Sprintf("Arrivals %s", d)
+	if known {
+		title = fmt.Sprintf("Arrivals %s (%d)", d, total)
+	}
 	link := cards.Link{Label: "Open arrivals", Route: p(rc.pid, "/reservation"), Params: map[string]string{"checkInDateStart": d, "checkInDateEnd": d}}
-	rc.add(cards.Card{Type: cards.TypeList, Intent: it.ID, Title: fmt.Sprintf("Arrivals %s (%d)", d, total), Items: rc.reservationItems(list, 10, nil), Total: total, Link: &link})
-	rc.text(fmt.Sprintf("%d arrivals on %s.", total, d))
+	rc.add(cards.Card{Type: cards.TypeList, Intent: it.ID, Title: title, Subtitle: note, Items: items, Total: shownTotal(total, known), Link: &link})
+	if known {
+		rc.text(fmt.Sprintf("%d arrivals on %s.", total, d))
+	} else {
+		rc.text("Arrivals on " + d + ".")
+	}
 	rc.chips("Who's departing today?", "Any VIPs arriving?")
 	return nil
 }
@@ -300,7 +309,6 @@ func hDepartures(rc *reqCtx, it intents.Intent, s Slots) error {
 		return err
 	}
 	list := findList(v)
-	total := findTotal(v, len(list))
 	still := 0
 	for _, m := range list {
 		if isInHouse(m) {
@@ -313,9 +321,23 @@ func hDepartures(rc *reqCtx, it intents.Intent, s Slots) error {
 		}
 		return ""
 	}
+	items := rc.reservationItems(list, 10, flag)
+	total, known, note := pageCount(v, len(list), 50, len(items))
+	title := fmt.Sprintf("Departures %s", d)
+	if known {
+		title = fmt.Sprintf("Departures %s (%d)", d, total)
+	}
+	sub := fmt.Sprintf("%d still checked in", still)
+	if note != "" {
+		sub = sub + " · " + note
+	}
 	link := cards.Link{Label: "Open departures", Route: p(rc.pid, "/reservation"), Params: map[string]string{"checkoutDateStart": d, "checkoutDateEnd": d}}
-	rc.add(cards.Card{Type: cards.TypeList, Intent: it.ID, Title: fmt.Sprintf("Departures %s (%d)", d, total), Subtitle: fmt.Sprintf("%d still checked in", still), Items: rc.reservationItems(list, 10, flag), Total: total, Link: &link})
-	rc.text(fmt.Sprintf("%d departures on %s, %d still checked in.", total, d, still))
+	rc.add(cards.Card{Type: cards.TypeList, Intent: it.ID, Title: title, Subtitle: sub, Items: items, Total: shownTotal(total, known), Link: &link})
+	if known {
+		rc.text(fmt.Sprintf("%d departures on %s, %d still checked in.", total, d, still))
+	} else {
+		rc.text(fmt.Sprintf("Departures on %s, %d still checked in on this page.", d, still))
+	}
 	return nil
 }
 
@@ -773,33 +795,62 @@ func hRoomStatusSummary(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
+func hkSeesAll(role string) bool {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "owner", "admin", "manager", "supervisor":
+		return true
+	}
+	return false
+}
+
+func hkAssignmentItems(rows []map[string]any, role, callerID string) (string, []cards.ListItem) {
+	seesAll := hkSeesAll(role)
+	title := "Housekeeping assignments"
+	if !seesAll {
+		title = "My assignments"
+	}
+	var items []cards.ListItem
+	for _, m := range rows {
+		user := obj(path(m, "user"))
+		uid := str(user, "userId", "id")
+		if uid == "" {
+			uid = str(m, "userId", "assigneeId", "housekeeperId")
+		}
+		if !seesAll && (callerID == "" || uid != callerID) {
+			continue
+		}
+		who := personName(user)
+		if who == "" {
+			who = personName(m)
+		}
+		var rooms []string
+		for _, a := range findList(path(m, "assignments")) {
+			if n := str(a, "name"); n != "" {
+				rooms = append(rooms, n)
+			}
+		}
+		items = append(items, cards.ListItem{ID: uid, Title: orDash(who), Subtitle: strings.Join(rooms, ", ")})
+	}
+	return title, items
+}
+
 func hHKAssignments(rc *reqCtx, it intents.Intent, s Slots) error {
 	v, err := rc.get("config_get_properties_id_hk_assignments", map[string]string{"id": rc.pidStr()}, nil)
 	if err != nil {
 		return err
 	}
-	supervisor, me := true, "" // the ASI API returns what this user may see
-	var items []cards.ListItem
-	for _, m := range findList(v) {
-		uid := str(m, "userId", "assigneeId", "housekeeperId")
-		if !supervisor && (me == "" || uid != me) {
-			continue
-		}
-		who := orDash(str(m, "userName", "assigneeName", "housekeeperName", "name", "fullName"))
-		rooms := findList(path(m, "rooms"))
-		sub := str(m, "hkGroupName", "groupName")
-		if len(rooms) > 0 {
-			sub = strings.TrimSpace(fmt.Sprintf("%s %d rooms", sub, len(rooms)))
-		}
-		items = append(items, cards.ListItem{ID: uid, Title: who, Subtitle: sub})
-	}
-	title := "Housekeeping assignments"
-	if !supervisor {
-		title = "My assignments"
-	}
+	u := rc.currentUser()
+	title, items := hkAssignmentItems(findList(v), u.role, u.id)
 	rc.add(cards.Card{Type: cards.TypeList, Intent: it.ID, Title: title, Items: items, Total: len(items), Link: &cards.Link{Label: navigateActionGoThere, Route: p(rc.pid, "/room-space-status-change")}})
 	rc.text(fmt.Sprintf("%d assignments.", len(items)))
 	return nil
+}
+
+func shownTotal(total int, known bool) int {
+	if !known {
+		return 0
+	}
+	return total
 }
 
 func hUpdateRoomStatusNav(rc *reqCtx, it intents.Intent, s Slots) error {
@@ -898,17 +949,27 @@ func (rc *reqCtx) nightAuditChecklist() []cards.CheckItem {
 	// Due-outs still in house (computed from the departures list).
 	{
 		if v, err := rc.get("reservation_get_reservations", nil, q("propertyId", pid, "checkoutDateStart", d, "checkoutDateEnd", d, "pageSize", "200")); err == nil {
+			rows := findList(v)
 			n := 0
-			for _, m := range findList(v) {
+			for _, m := range rows {
 				if isInHouse(m) {
 					n++
+				}
+			}
+			_, known, note := pageCount(v, len(rows), 200, len(rows))
+			detail := strconv.Itoa(n)
+			if note != "" {
+				if known {
+					detail = fmt.Sprintf("%d · %s", n, note)
+				} else {
+					detail = note
 				}
 			}
 			st := cards.CheckOK
 			if n > 0 {
 				st = cards.CheckWarn
 			}
-			list = append(list, cards.CheckItem{Label: "Due-outs still in house", Status: st, Detail: strconv.Itoa(n), Link: manage})
+			list = append(list, cards.CheckItem{Label: "Due-outs still in house", Status: st, Detail: detail, Link: manage})
 		} else {
 			detail := "Couldn't read"
 			if isAuthErr(err) {

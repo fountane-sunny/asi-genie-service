@@ -178,9 +178,9 @@ func (e *Engine) session(id string, pid int) *session {
 // ---- analytics turn ----
 
 type userInfo struct {
-	id, name, email string
-	propertyIDs     []int
-	at              time.Time
+	id, name, email, role string
+	propertyIDs           []int
+	at                    time.Time
 }
 
 func (u userInfo) allows(propertyID int) bool {
@@ -220,6 +220,7 @@ func (rc *reqCtx) loadCaller() (userInfo, error) {
 	u = userInfo{at: time.Now()}
 	u.id = deepStr(v, "id", "userId")
 	u.email = deepStr(v, "email")
+	u.role = deepStr(v, "roleName")
 	u.name = strings.TrimSpace(deepStr(v, "firstName") + " " + deepStr(v, "lastName"))
 	if u.name == "" {
 		u.name = deepStr(v, "name", "fullName")

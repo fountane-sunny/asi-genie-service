@@ -148,6 +148,7 @@ func (e *Engine) genericReadFromTool(rc *reqCtx, it intents.Intent, slots Slots,
 		return gerr
 	}
 	data := decode(b)
+	rc.attachSessionNames(t.Name, data)
 	used := t.Description
 	c := cards.Card{Intent: it.ID, Title: used, Link: &link}
 	list := findList(data)
@@ -167,7 +168,9 @@ func (e *Engine) genericReadFromTool(rc *reqCtx, it intents.Intent, slots Slots,
 			}
 			c.Items = append(c.Items, cards.ListItem{ID: recordID(m), Title: orDash(title), Subtitle: strings.Join(sub, " · ")})
 		}
-		c.Total = findTotal(data, len(list))
+		total, known, note := pageCount(data, len(list), 10, len(c.Items))
+		c.Total = shownTotal(total, known)
+		c.Subtitle = note
 	} else {
 		c.Type = cards.TypeData
 		m := obj(data)
@@ -194,6 +197,49 @@ func (e *Engine) guideFallback(rc *reqCtx, it intents.Intent) error {
 	rc.add(cards.NotSupported(it.ID, "answer how-to questions", &link))
 	e.logEvent(rc, "unsupported", it.ID, it.ScenarioID, truncateStr(rc.req.Message, 500))
 	return nil
+}
+
+func (rc *reqCtx) attachSessionNames(tool string, data any) {
+	if tool != "auth_get_device_details" && tool != "auth_get_user_login_activity" {
+		return
+	}
+	rows := findList(data)
+	if len(rows) == 0 {
+		return
+	}
+	me := rc.currentUser()
+	var lookup []map[string]any
+	for _, row := range rows {
+		id := str(row, "userId")
+		if id != "" && id != me.id {
+			if v, err := rc.get("config_get_properties_id_users_lookup", map[string]string{"id": rc.pidStr()}, nil); err == nil {
+				lookup = findList(v)
+			}
+			break
+		}
+	}
+	applySessionNames(rows, me.id, me.name, lookup)
+}
+
+func applySessionNames(rows []map[string]any, callerID, callerName string, lookup []map[string]any) {
+	names := map[string]string{}
+	if callerID != "" && callerName != "" {
+		names[callerID] = callerName
+	}
+	for _, u := range lookup {
+		id := str(u, "userId", "id")
+		if id == "" || names[id] != "" {
+			continue
+		}
+		if n := personName(u); n != "" {
+			names[id] = n
+		}
+	}
+	for _, row := range rows {
+		if n := names[str(row, "userId")]; n != "" {
+			row["name"] = n
+		}
+	}
 }
 
 // clarifyReportDates asks for a range instead of letting a report API default one.

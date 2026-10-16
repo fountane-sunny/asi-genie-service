@@ -214,7 +214,12 @@ func toLLMTool(t generated.ToolMeta) genillm.Tool {
 	if len(required) > 0 {
 		params["required"] = required
 	}
-	desc := fmt.Sprintf("[%s] %s %s — %s", t.Service, t.Method, t.Path, t.Description)
+	descText := t.Description
+	if t.Name == "auth_get_permissions" {
+		// The generated summary was copied from device-details ("Get user sessions").
+		descText = "Returns the caller's permission rows for each property."
+	}
+	desc := fmt.Sprintf("[%s] %s %s — %s", t.Service, t.Method, t.Path, descText)
 	return genillm.Tool{Name: t.Name, Description: desc, Parameters: params}
 }
 
