@@ -67,7 +67,7 @@ func (e *Engine) genericRead(rc *reqCtx, it intents.Intent, s Slots) error {
 		sel := e.Selector.Select(rc.req.Message+" "+it.ID+" "+it.Handling, 1)
 		if len(sel) > 0 {
 			raw, _ := json.Marshal(map[string]any{"query": map[string]string{"propertyId": rc.pidStr()}})
-			if err := e.genericReadFromTool(rc, it, link, sel[0], raw); err == nil {
+			if err := e.genericReadFromTool(rc, it, s, link, sel[0], raw); err == nil {
 				return nil
 			} else if !isAuthErr(err) {
 				return err
@@ -104,7 +104,7 @@ Use path parameter "id" = propertyId when the path is /properties/{id}/... .`, i
 		if !ok || !allowed[tc.Name] {
 			continue
 		}
-		if err := e.genericReadFromTool(rc, it, link, t, tc.Arguments); err == nil {
+		if err := e.genericReadFromTool(rc, it, s, link, t, tc.Arguments); err == nil {
 			return nil
 		} else if !isAuthErr(err) {
 			return err
@@ -115,7 +115,7 @@ Use path parameter "id" = propertyId when the path is /properties/{id}/... .`, i
 }
 
 // genericReadFromTool executes one read tool and renders a list/data card for the intent.
-func (e *Engine) genericReadFromTool(rc *reqCtx, it intents.Intent, link cards.Link, t generated.ToolMeta, argsJSON json.RawMessage) error {
+func (e *Engine) genericReadFromTool(rc *reqCtx, it intents.Intent, slots Slots, link cards.Link, t generated.ToolMeta, argsJSON json.RawMessage) error {
 	argsJSON = forceProperty(t.Path, argsJSON, rc.pidStr())
 	args, perr := parseArgs(t, argsJSON)
 	if perr != nil {
@@ -126,6 +126,15 @@ func (e *Engine) genericReadFromTool(rc *reqCtx, it intents.Intent, link cards.L
 	}
 	if args.query.Has("propertyId") {
 		args.query.Set("propertyId", rc.pidStr())
+	}
+	start, end, report, ok := explicitReportDates(t.Path, slots, args.query.Get("startDate"), args.query.Get("endDate"))
+	if report && !ok {
+		rc.clarifyReportDates(it)
+		return nil
+	}
+	if report {
+		args.query.Set("startDate", start)
+		args.query.Set("endDate", end)
 	}
 	t0 := time.Now()
 	b, gerr := e.execTool(rc.ctx, rc.req.SessionID, rc.token, t, args.path, args.query, argsJSON)
@@ -185,6 +194,19 @@ func (e *Engine) guideFallback(rc *reqCtx, it intents.Intent) error {
 	rc.add(cards.NotSupported(it.ID, "answer how-to questions", &link))
 	e.logEvent(rc, "unsupported", it.ID, it.ScenarioID, truncateStr(rc.req.Message, 500))
 	return nil
+}
+
+// clarifyReportDates asks for a range instead of letting a report API default one.
+func (rc *reqCtx) clarifyReportDates(it intents.Intent) {
+	biz := rc.bizDate
+	if len(biz) != 10 {
+		biz = time.Now().Format("2006-01-02")
+	}
+	monthStart := biz[:8] + "01"
+	rc.add(cards.Clarify(it.ID, "Which dates should this report cover? I need a start and an end.",
+		cards.Option{Label: "That day (" + biz + ")", Value: biz, Message: "Report for " + biz},
+		cards.Option{Label: "Month to date (" + monthStart + " to " + biz + ")", Value: monthStart + ".." + biz, Message: "Report from " + monthStart + " to " + biz},
+	))
 }
 
 // forceProperty pins property path and query params to the property the user

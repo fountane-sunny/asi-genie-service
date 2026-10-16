@@ -971,14 +971,7 @@ func hViewReport(rc *reqCtx, it intents.Intent, s Slots) error {
 }
 
 func hRevenue(rc *reqCtx, it intents.Intent, s Slots) error {
-	from, to := s.StartDate, s.EndDate
-	if from == "" {
-		d := rc.dayOr(s)
-		from, to = d, d
-		if len(d) == 10 {
-			from = d[:8] + "01" // month to date
-		}
-	}
+	from, to := revenueWindow(s, rc.bizDate)
 	v, err := rc.get("reservation_get_api_v1_reports_sales_and_revenue", nil, q("propertyId", rc.pidStr(), "startDate", from, "endDate", to))
 	if err != nil {
 		return err

@@ -323,6 +323,9 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 	}
 	rc.pid = req.PropertyID
 	rc.resp.PropertyID = rc.pid
+	// Working date before routing so "today" is the night-audit date, not the server clock.
+	rc.bizDate = e.businessDate(rc)
+	rc.resp.BusinessDate = rc.bizDate
 
 	// 4) Understand: intent + slots.
 	it, info, slots := e.classify(rc)
@@ -331,8 +334,6 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 			it, info = it2, IntentInfo{ID: it2.ID, ScenarioID: it2.ScenarioID, ResponseType: it2.ResponseType, Handler: "dedicated", Source: "rule", Confidence: 1}
 		}
 	}
-	rc.bizDate = e.businessDate(rc)
-	rc.resp.BusinessDate = rc.bizDate
 	rc.resolveSlotDates(&slots)
 	rc.applyContext(&slots)
 	it, info, slots = e.resolveFollowUpIntent(rc, it, info, slots)

@@ -85,8 +85,8 @@ func routeToolDef() genillm.Tool {
 }
 
 func (e *Engine) classifierSystem(rc *reqCtx) string {
-	today := rc.req.BusinessDate
-	if today == "" {
+	today := rc.bizDate
+	if len(today) != 10 {
 		today = time.Now().Format("2006-01-02")
 	}
 	return fmt.Sprintf(`You are the intent router for ASI Genie (hotel PMS assistant), Phase 1: read-only answers, guides and navigation.
@@ -215,6 +215,48 @@ func (rc *reqCtx) applyContext(s *Slots) {
 	case "room":
 		s.Room = ent.ID
 	}
+}
+
+// revenueWindow is the sales-and-revenue range. A stated date is that day.
+// Month-to-date is only the fallback when the user gave no date.
+func revenueWindow(s Slots, workingDate string) (from, to string) {
+	if s.StartDate != "" || s.EndDate != "" {
+		from, to = s.StartDate, s.EndDate
+		if from == "" {
+			from = to
+		}
+		if to == "" {
+			to = from
+		}
+		return from, to
+	}
+	if s.Date != "" {
+		return s.Date, s.Date
+	}
+	if len(workingDate) == 10 {
+		return workingDate[:8] + "01", workingDate
+	}
+	return workingDate, workingDate
+}
+
+// explicitReportDates requires both ends of a report range. Slots win over the
+// model's query. A single slots.date is that day. ok is false when the path is
+// a report and either date is still missing.
+func explicitReportDates(path string, slots Slots, queryStart, queryEnd string) (start, end string, report bool, ok bool) {
+	if !strings.Contains(path, "/reports/") {
+		return "", "", false, true
+	}
+	start, end = slots.StartDate, slots.EndDate
+	if start == "" && end == "" && slots.Date != "" {
+		start, end = slots.Date, slots.Date
+	}
+	if start == "" {
+		start = queryStart
+	}
+	if end == "" {
+		end = queryEnd
+	}
+	return start, end, true, start != "" && end != ""
 }
 
 // dayOr returns s.Date, else the business date.
