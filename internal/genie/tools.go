@@ -276,7 +276,33 @@ func asJSON(b []byte) json.RawMessage {
 	return j
 }
 
-// IsReadTool reports whether t is a GET, read-only tool (Phase 1 allow-list).
+// IsReadTool reports whether t is a GET, read-only tool.
 func IsReadTool(t generated.ToolMeta) bool { return t.Method == http.MethodGet && t.ReadOnly }
+
+// blockedReadFragments are GET tools Genie must not offer the model.
+// Matched against the tool name and path, lowercased.
+var blockedReadFragments = []string{
+	"admin",
+	"impersonat",
+	"invite",
+	"/internal/",
+	"audit-log",
+	"export",
+}
+
+// IsAllowedReadTool is the chat allow-list: a read-only GET whose name and path
+// are outside admin, impersonation, invite, internal, audit-log, and export.
+func IsAllowedReadTool(t generated.ToolMeta) bool {
+	if !IsReadTool(t) {
+		return false
+	}
+	blob := strings.ToLower(t.Name + " " + t.Path)
+	for _, frag := range blockedReadFragments {
+		if strings.Contains(blob, frag) {
+			return false
+		}
+	}
+	return true
+}
 
 const MaxResultBytes = 8000

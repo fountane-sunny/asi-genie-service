@@ -104,7 +104,6 @@ Use path parameter "id" = propertyId when the path is /properties/{id}/... .`, i
 		if !ok || !allowed[tc.Name] {
 			continue
 		}
-		tc.Arguments = forceProperty(t.Path, tc.Arguments, rc.pidStr())
 		if err := e.genericReadFromTool(rc, it, link, t, tc.Arguments); err == nil {
 			return nil
 		} else if !isAuthErr(err) {
@@ -117,6 +116,7 @@ Use path parameter "id" = propertyId when the path is /properties/{id}/... .`, i
 
 // genericReadFromTool executes one read tool and renders a list/data card for the intent.
 func (e *Engine) genericReadFromTool(rc *reqCtx, it intents.Intent, link cards.Link, t generated.ToolMeta, argsJSON json.RawMessage) error {
+	argsJSON = forceProperty(t.Path, argsJSON, rc.pidStr())
 	args, perr := parseArgs(t, argsJSON)
 	if perr != nil {
 		return perr
@@ -187,8 +187,9 @@ func (e *Engine) guideFallback(rc *reqCtx, it intents.Intent) error {
 	return nil
 }
 
-// forceProperty pins {propertyId}/{property_id} path params to the property
-// the user is on (ASI takes the property as a path/query param, not a header).
+// forceProperty pins property path and query params to the property the user
+// is on. {id} is the property only on /properties/{id}/...; a reservation or
+// guest {id} is left as the model sent it.
 func forceProperty(path string, raw json.RawMessage, pid string) json.RawMessage {
 	m := map[string]any{}
 	_ = json.Unmarshal(raw, &m)
@@ -198,6 +199,19 @@ func forceProperty(path string, raw json.RawMessage, pid string) json.RawMessage
 			m[k] = pid
 			changed = true
 		}
+	}
+	if strings.Contains(path, "/properties/{id}") {
+		m["id"] = pid
+		changed = true
+	}
+	if q, ok := m["query"].(map[string]any); ok {
+		for _, k := range []string{"propertyId", "property_id", "propertyIds"} {
+			if _, exists := q[k]; exists {
+				q[k] = pid
+				changed = true
+			}
+		}
+		m["query"] = q
 	}
 	if !changed {
 		return raw

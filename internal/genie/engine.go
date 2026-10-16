@@ -119,12 +119,13 @@ type dateEntry struct {
 	at   time.Time
 }
 
-// New builds an engine; non-GET tools are dropped and can never be called.
+// New builds an engine. Writes and sensitive GETs (admin, impersonation,
+// invite, internal, audit-log, export) are dropped and can never be called.
 func New(client genillm.LLMClient, st store.Store) *Engine {
 	read := []generated.ToolMeta{}
 	by := map[string]generated.ToolMeta{}
 	for _, t := range generated.AllTools() {
-		if IsReadTool(t) {
+		if IsAllowedReadTool(t) {
 			read = append(read, t)
 			by[t.Name] = t
 		}
