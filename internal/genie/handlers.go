@@ -3,6 +3,7 @@ package genie
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 	"strings"
@@ -1032,27 +1033,187 @@ func hViewReport(rc *reqCtx, it intents.Intent, s Slots) error {
 }
 
 func hRevenue(rc *reqCtx, it intents.Intent, s Slots) error {
-	from, to := revenueWindow(s, rc.bizDate)
+	from, to, ok := revenueWindow(s)
+	if !ok {
+		rc.clarifyReportDates(it)
+		return nil
+	}
 	v, err := rc.get("reservation_get_api_v1_reports_sales_and_revenue", nil, q("propertyId", rc.pidStr(), "startDate", from, "endDate", to))
 	if err != nil {
 		return err
 	}
-	src := obj(v)
-	for _, k := range []string{"totals", "summary", "total", "grandTotal"} {
-		if t := obj(path(v, k)); t != nil {
-			src = t
-			break
-		}
-		if t := obj(path(v, "data", k)); t != nil {
-			src = t
-			break
+	label := revenueDateLabel(from, to)
+	rows, empty := revenueFacts(v, from, to)
+	card := cards.Card{Type: cards.TypeData, Intent: it.ID, Title: "Revenue", Subtitle: label, Rows: rows,
+		Link: &cards.Link{Label: "Open Sales and Revenue Report", Route: p(rc.pid, "/reports"), Params: map[string]string{"report": "sales-and-revenue", "startDate": from, "endDate": to}}}
+	if empty {
+		card.Message = "No revenue recorded for " + label + "."
+		rc.add(card)
+		rc.text(card.Message)
+		return nil
+	}
+	rc.add(card)
+	parts := make([]string, 0, len(rows))
+	for _, row := range rows {
+		parts = append(parts, row.Label+": "+row.Value)
+	}
+	rc.text("Revenue for " + label + ": " + strings.Join(parts, ", ") + ".")
+	return nil
+}
+
+type revenueMetric struct {
+	key   string
+	label string
+	avg   bool
+}
+
+// revenueFacts reads summaryRows dailyValues for the requested dates.
+// Missing keys are omitted. A present zero is kept only when some other
+// metric for the range is non-zero. All zeros or all absent is an empty result.
+func revenueFacts(payload any, from, to string) ([]cards.Field, bool) {
+	rowsByKey := map[string]map[string]any{}
+	for _, row := range summaryRowList(payload) {
+		if k := str(row, "key"); k != "" {
+			rowsByKey[k] = row
 		}
 	}
-	rows := scalarRows(src, 12)
-	rc.add(cards.Card{Type: cards.TypeData, Intent: it.ID, Title: "Sales & revenue", Subtitle: from + " → " + to, Rows: rows,
-		Link: &cards.Link{Label: "Open Sales and Revenue Report", Route: p(rc.pid, "/reports"), Params: map[string]string{"report": "sales-and-revenue", "startDate": from, "endDate": to}}})
-	rc.text(fmt.Sprintf("Sales and revenue for %s to %s.", from, to))
+	specs := []revenueMetric{
+		{key: "totals", label: "Total revenue"},
+		{key: "revenue_count", label: "Revenue count"},
+		{key: "adr", label: "ADR", avg: true},
+		{key: "occupancy_per_day", label: "Occupancy", avg: true},
+	}
+	type got struct {
+		spec    revenueMetric
+		value   float64
+		present bool
+	}
+	found := make([]got, 0, len(specs))
+	anyValue := false
+	for _, spec := range specs {
+		value, present := aggregateDaily(rowsByKey[spec.key], from, to, spec.avg)
+		if present && value != 0 {
+			anyValue = true
+		}
+		found = append(found, got{spec: spec, value: value, present: present})
+	}
+	if !anyValue {
+		return nil, true
+	}
+	out := make([]cards.Field, 0, len(found))
+	for _, item := range found {
+		if !item.present {
+			continue
+		}
+		out = append(out, cards.Field{Label: item.spec.label, Value: formatRevenueValue(item.spec, item.value)})
+	}
+	return out, false
+}
+
+func summaryRowList(payload any) []map[string]any {
+	for _, candidate := range []any{path(payload, "summaryRows"), path(payload, "data", "summaryRows")} {
+		arr, ok := candidate.([]any)
+		if !ok {
+			continue
+		}
+		out := make([]map[string]any, 0, len(arr))
+		for _, item := range arr {
+			if m := obj(item); m != nil {
+				out = append(out, m)
+			}
+		}
+		if len(out) > 0 {
+			return out
+		}
+	}
 	return nil
+}
+
+func aggregateDaily(row map[string]any, from, to string, avg bool) (float64, bool) {
+	if row == nil {
+		return 0, false
+	}
+	var sum float64
+	var n int
+	for _, day := range datesInRange(from, to) {
+		value, ok := dailyNumber(row, day)
+		if !ok {
+			continue
+		}
+		sum += value
+		n++
+	}
+	if n == 0 {
+		return 0, false
+	}
+	if avg {
+		return sum / float64(n), true
+	}
+	return sum, true
+}
+
+func dailyNumber(row map[string]any, date string) (float64, bool) {
+	values, ok := lookup(row, "dailyValues")
+	if !ok {
+		return 0, false
+	}
+	m, ok := values.(map[string]any)
+	if !ok {
+		return 0, false
+	}
+	raw, ok := m[date]
+	if !ok || raw == nil {
+		return 0, false
+	}
+	switch n := raw.(type) {
+	case float64:
+		return n, true
+	case string:
+		f, err := strconv.ParseFloat(strings.TrimSpace(n), 64)
+		if err != nil {
+			return 0, false
+		}
+		return f, true
+	default:
+		return 0, false
+	}
+}
+
+func datesInRange(from, to string) []string {
+	start, err1 := time.Parse("2006-01-02", from)
+	end, err2 := time.Parse("2006-01-02", to)
+	if err1 != nil || err2 != nil {
+		return nil
+	}
+	if end.Before(start) {
+		start, end = end, start
+	}
+	var days []string
+	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
+		days = append(days, d.Format("2006-01-02"))
+	}
+	return days
+}
+
+func revenueDateLabel(from, to string) string {
+	if from == to {
+		return from
+	}
+	return from + " to " + to
+}
+
+func formatRevenueValue(spec revenueMetric, value float64) string {
+	switch spec.key {
+	case "totals", "adr":
+		return money(value, "")
+	case "occupancy_per_day":
+		return strconv.FormatFloat(value, 'f', 1, 64) + "%"
+	default:
+		if value == math.Trunc(value) {
+			return strconv.FormatInt(int64(value), 10)
+		}
+		return strconv.FormatFloat(value, 'f', 0, 64)
+	}
 }
 
 // ---- Policies / guides ----

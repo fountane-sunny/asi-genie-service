@@ -125,20 +125,16 @@ func (e *Engine) classify(rc *reqCtx) (intents.Intent, IntentInfo, Slots) {
 			if tc.Name != routeTool {
 				continue
 			}
-			var out struct {
-				Intent     string  `json:"intent"`
-				Confidence float64 `json:"confidence"`
-				Slots      Slots   `json:"slots"`
-			}
-			if json.Unmarshal(tc.Arguments, &out) != nil {
+			intentID, confidence, parsed, ok := parseRouteIntent(tc.Arguments)
+			if !ok {
 				break
 			}
-			slots = out.Slots
-			if out.Intent == intents.UnsupportedID || out.Intent == intents.SmallTalkID {
-				return intents.Intent{ID: out.Intent, Module: "Genie"}, IntentInfo{ID: out.Intent, Handler: "fallback", Confidence: out.Confidence, Source: "llm"}, slots
+			slots = parsed
+			if intentID == intents.UnsupportedID || intentID == intents.SmallTalkID {
+				return intents.Intent{ID: intentID, Module: "Genie"}, IntentInfo{ID: intentID, Handler: "fallback", Confidence: confidence, Source: "llm"}, slots
 			}
-			if it, ok := intents.Get(out.Intent); ok {
-				return it, IntentInfo{ID: it.ID, ScenarioID: it.ScenarioID, ResponseType: it.ResponseType, Confidence: out.Confidence, Source: "llm"}, slots
+			if it, ok := intents.Get(intentID); ok {
+				return it, IntentInfo{ID: it.ID, ScenarioID: it.ScenarioID, ResponseType: it.ResponseType, Confidence: confidence, Source: "llm"}, slots
 			}
 		}
 	}
@@ -217,26 +213,90 @@ func (rc *reqCtx) applyContext(s *Slots) {
 	}
 }
 
-// revenueWindow is the sales-and-revenue range. A stated date is that day.
-// Month-to-date is only the fallback when the user gave no date.
-func revenueWindow(s Slots, workingDate string) (from, to string) {
-	if s.StartDate != "" || s.EndDate != "" {
-		from, to = s.StartDate, s.EndDate
-		if from == "" {
-			from = to
+// parseRouteIntent reads a route_intent call. The model sometimes puts date
+// (and the other slot fields) next to intent instead of under slots. Nested
+// slots win when both are present. An empty date here is not filled in.
+func parseRouteIntent(raw json.RawMessage) (intentID string, confidence float64, slots Slots, ok bool) {
+	var head struct {
+		Intent     string  `json:"intent"`
+		Confidence float64 `json:"confidence"`
+		Slots      Slots   `json:"slots"`
+	}
+	if json.Unmarshal(raw, &head) != nil || strings.TrimSpace(head.Intent) == "" {
+		return "", 0, Slots{}, false
+	}
+	var flat Slots
+	_ = json.Unmarshal(raw, &flat)
+	return head.Intent, head.Confidence, mergeSlots(head.Slots, flat), true
+}
+
+func mergeSlots(primary, fallback Slots) Slots {
+	if primary.Date == "" {
+		primary.Date = fallback.Date
+	}
+	if primary.StartDate == "" {
+		primary.StartDate = fallback.StartDate
+	}
+	if primary.EndDate == "" {
+		primary.EndDate = fallback.EndDate
+	}
+	if primary.CompareStart == "" {
+		primary.CompareStart = fallback.CompareStart
+	}
+	if primary.CompareEnd == "" {
+		primary.CompareEnd = fallback.CompareEnd
+	}
+	if primary.GuestName == "" {
+		primary.GuestName = fallback.GuestName
+	}
+	if primary.Confirmation == "" {
+		primary.Confirmation = fallback.Confirmation
+	}
+	if primary.Room == "" {
+		primary.Room = fallback.Room
+	}
+	if primary.RoomType == "" {
+		primary.RoomType = fallback.RoomType
+	}
+	if primary.Report == "" {
+		primary.Report = fallback.Report
+	}
+	if primary.Destination == "" {
+		primary.Destination = fallback.Destination
+	}
+	if primary.Metric == "" {
+		primary.Metric = fallback.Metric
+	}
+	if primary.Topic == "" {
+		primary.Topic = fallback.Topic
+	}
+	if primary.Unsupported == "" {
+		primary.Unsupported = fallback.Unsupported
+	}
+	if !primary.UsesContext {
+		primary.UsesContext = fallback.UsesContext
+	}
+	return primary
+}
+
+// revenueWindow is the sales-and-revenue range. A single date is that day and
+// is never widened. ok is false when the user gave no date, so the handler
+// asks instead of calling the report with a default window.
+func revenueWindow(s Slots) (from, to string, ok bool) {
+	from, to = s.StartDate, s.EndDate
+	if from == "" && to == "" {
+		if s.Date == "" {
+			return "", "", false
 		}
-		if to == "" {
-			to = from
-		}
-		return from, to
+		return s.Date, s.Date, true
 	}
-	if s.Date != "" {
-		return s.Date, s.Date
+	if from == "" {
+		from = to
 	}
-	if len(workingDate) == 10 {
-		return workingDate[:8] + "01", workingDate
+	if to == "" {
+		to = from
 	}
-	return workingDate, workingDate
+	return from, to, true
 }
 
 // explicitReportDates requires both ends of a report range. Slots win over the
