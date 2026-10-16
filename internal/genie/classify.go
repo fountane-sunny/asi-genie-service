@@ -153,7 +153,8 @@ func (e *Engine) classify(rc *reqCtx) (intents.Intent, IntentInfo, Slots) {
 func (rc *reqCtx) recentTurns() []genillm.Message {
 	var out []genillm.Message
 	if rc.req.SessionID != "" {
-		hist, err := rc.e.Store.History(rc.ctx, rc.req.SessionID, contextTurns)
+		u := rc.currentUser()
+		hist, err := rc.e.Store.History(rc.ctx, rc.req.SessionID, u.id, rc.pid, contextTurns)
 		if err == nil {
 			for _, m := range hist {
 				if (m.Role == genillm.RoleUser || m.Role == genillm.RoleAssistant) && m.Content != "" {

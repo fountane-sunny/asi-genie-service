@@ -178,35 +178,63 @@ func (e *Engine) session(id string, pid int) *session {
 
 type userInfo struct {
 	id, name, email string
+	propertyIDs     []int
 	at              time.Time
 }
 
-// currentUser returns the caller (auth current-user with their token), cached 10 min per token.
+func (u userInfo) allows(propertyID int) bool {
+	for _, id := range u.propertyIDs {
+		if id == propertyID {
+			return true
+		}
+	}
+	return false
+}
+
+// currentUser returns the caller, cached 10 min per token. Errors are ignored;
+// Authorize uses loadCaller when a failure must be returned to the client.
 func (rc *reqCtx) currentUser() userInfo {
-	if rc.token == "" {
-		return userInfo{}
+	u, _ := rc.loadCaller()
+	return u
+}
+
+// loadCaller reads auth current-user and the property ids on GET /permissions.
+// A successful result is cached for 10 minutes. Failures are not cached.
+func (rc *reqCtx) loadCaller() (userInfo, error) {
+	if strings.TrimSpace(rc.token) == "" {
+		return userInfo{}, ErrUnauthenticated
 	}
 	h := sha256.Sum256([]byte(rc.token))
 	key := hex.EncodeToString(h[:8])
 	rc.e.mu.Lock()
 	u, ok := rc.e.users[key]
 	rc.e.mu.Unlock()
-	if ok && time.Since(u.at) < 10*time.Minute {
-		return u
+	if ok && u.id != "" && time.Since(u.at) < 10*time.Minute {
+		return u, nil
+	}
+	v, err := rc.get("auth_get_current_user", nil, nil)
+	if err != nil {
+		return userInfo{}, err
 	}
 	u = userInfo{at: time.Now()}
-	if v, err := rc.get("auth_get_current_user", nil, nil); err == nil {
-		u.id = deepStr(v, "id", "userId")
-		u.email = deepStr(v, "email")
-		u.name = strings.TrimSpace(deepStr(v, "firstName") + " " + deepStr(v, "lastName"))
-		if u.name == "" {
-			u.name = deepStr(v, "name", "fullName")
-		}
+	u.id = deepStr(v, "id", "userId")
+	u.email = deepStr(v, "email")
+	u.name = strings.TrimSpace(deepStr(v, "firstName") + " " + deepStr(v, "lastName"))
+	if u.name == "" {
+		u.name = deepStr(v, "name", "fullName")
 	}
+	if u.id == "" {
+		return userInfo{}, ErrUnauthenticated
+	}
+	perms, err := rc.get("auth_get_permissions", nil, nil)
+	if err != nil {
+		return userInfo{}, err
+	}
+	u.propertyIDs = propertyIDsOf(perms)
 	rc.e.mu.Lock()
 	rc.e.users[key] = u
 	rc.e.mu.Unlock()
-	return u
+	return u, nil
 }
 
 func newSessionID(propertyID int) string {
@@ -522,16 +550,16 @@ func (e *Engine) persist(rc *reqCtx) {
 	var meta json.RawMessage
 	if turnID != "" || rc.resp.Intent != nil || len(rc.resp.Cards) > 0 || rc.resp.Notice != "" || len(rc.resp.Citations) > 0 || len(rc.resp.Chips) > 0 {
 		meta, _ = json.Marshal(map[string]any{
-			"turnId":     turnID,
-			"intent":     rc.resp.Intent,
-			"cards":      rc.resp.Cards,
-			"toolCalls":  rc.resp.ToolCalls,
-			"notice":     rc.resp.Notice,
-			"citations":  rc.resp.Citations,
-			"chips":      rc.resp.Chips,
+			"turnId":    turnID,
+			"intent":    rc.resp.Intent,
+			"cards":     rc.resp.Cards,
+			"toolCalls": rc.resp.ToolCalls,
+			"notice":    rc.resp.Notice,
+			"citations": rc.resp.Citations,
+			"chips":     rc.resp.Chips,
 		})
 	}
-	err := e.Store.AppendMessages(context.WithoutCancel(rc.ctx), rc.req.SessionID, "", rc.pid,
+	err := e.Store.AppendMessages(context.WithoutCancel(rc.ctx), rc.req.SessionID, rc.currentUser().id, rc.pid,
 		store.Message{Role: genillm.RoleUser, Content: rc.req.Message, CreatedAt: rc.start.UTC()},
 		store.Message{Role: genillm.RoleAssistant, Content: rc.resp.Text, ToolCalls: meta, CreatedAt: rc.resp.CreatedAt, DurationMs: rc.resp.DurationMs},
 	)

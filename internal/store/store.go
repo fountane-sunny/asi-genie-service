@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -48,11 +49,25 @@ type Turn struct {
 }
 
 // TurnFilter selects turns for export.
+// PropertyID and UserID are both required. A zero property id is not "all properties".
 type TurnFilter struct {
-	From, To    time.Time // zero = open
-	PropertyID  int       // 0 = all
-	SessionID   string    // optional
-	Limit       int
+	From, To   time.Time // zero = open
+	PropertyID int       // required, > 0
+	UserID     string    // required
+	SessionID  string    // optional
+	Limit      int
+}
+
+// ValidateScope rejects a missing user or a missing/zero property.
+// Callers must not treat property id 0 as every property.
+func ValidateScope(propertyID int, userID string) error {
+	if propertyID <= 0 {
+		return fmt.Errorf("propertyId is required")
+	}
+	if strings.TrimSpace(userID) == "" {
+		return fmt.Errorf("userId is required")
+	}
+	return nil
 }
 
 // ToolExecution is an audit row for a tool call.
@@ -84,16 +99,19 @@ type Store interface {
 	// AppendMessages appends msgs to sessionID's conversation, which is bound to
 	// propertyID: a new conversation is started if the property differs.
 	AppendMessages(ctx context.Context, sessionID, userID string, propertyID int, msgs ...Message) error
-	// History returns the last limit messages (oldest first); limit<=0 means all.
-	History(ctx context.Context, sessionID string, limit int) ([]Message, error)
+	// History returns the last limit messages (oldest first) for this user and property.
+	// A conversation with a null or different user_id is not returned.
+	// limit<=0 means all. Missing or unowned conversation returns an error.
+	History(ctx context.Context, sessionID, userID string, propertyID, limit int) ([]Message, error)
 	LogToolExecution(ctx context.Context, e ToolExecution) error
 	LogEvent(ctx context.Context, e Event) error
-	// Events returns the most recent events of a kind ("" = all), newest last.
-	Events(ctx context.Context, kind string, limit int) ([]Event, error)
+	// Events returns recent events of a kind ("" = all), newest last, for this
+	// user's sessions at this property. Events with an empty session id are omitted.
+	Events(ctx context.Context, kind, userID string, propertyID, limit int) ([]Event, error)
 	// LogTurn stores one analytics row per chat turn and returns the new turn id.
 	LogTurn(ctx context.Context, t Turn) (turnID string, err error)
-	// UpdateTurnFeedback sets genie_turns.feedback for a turn (must match sessionId when provided).
-	UpdateTurnFeedback(ctx context.Context, turnID, sessionID, feedback string) error
+	// UpdateTurnFeedback sets feedback when the turn belongs to this user and property.
+	UpdateTurnFeedback(ctx context.Context, turnID, sessionID, userID string, propertyID int, feedback string) error
 	// Turns returns turns matching f, oldest first.
 	Turns(ctx context.Context, f TurnFilter) ([]Turn, error)
 	Close() error

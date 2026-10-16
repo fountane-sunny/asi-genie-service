@@ -93,7 +93,8 @@ func (rc *reqCtx) pendingClarifyIntentFromHistory() string {
 	if rc.req.SessionID == "" {
 		return ""
 	}
-	msgs, err := rc.e.Store.History(rc.ctx, rc.req.SessionID, 6)
+	u := rc.currentUser()
+	msgs, err := rc.e.Store.History(rc.ctx, rc.req.SessionID, u.id, rc.pid, 6)
 	if err != nil || len(msgs) == 0 {
 		return ""
 	}

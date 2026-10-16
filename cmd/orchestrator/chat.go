@@ -40,6 +40,52 @@ func userToken(r *http.Request) string {
 	return ""
 }
 
+// requestPropertyID reads the property the caller claims to be asking about.
+// Zero means it was omitted. It is never treated as "every property".
+func requestPropertyID(r *http.Request) int {
+	if v, err := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("propertyId"))); err == nil && v > 0 {
+		return v
+	}
+	if v, err := strconv.Atoi(strings.TrimSpace(r.Header.Get("X-Property-Id"))); err == nil && v > 0 {
+		return v
+	}
+	return 0
+}
+
+func authFailure(err error) (int, string) {
+	switch {
+	case errors.Is(err, genie.ErrUnauthenticated):
+		return http.StatusUnauthorized, "Sign in to use Genie."
+	case errors.Is(err, genie.ErrForbidden):
+		return http.StatusForbidden, "You don't have access to this property."
+	case errors.Is(err, genie.ErrPropertyRequired):
+		return http.StatusBadRequest, "propertyId is required."
+	default:
+		log.Printf("authorize: %v", err)
+		return http.StatusBadGateway, "Genie couldn't verify your sign-in."
+	}
+}
+
+// gate requires a JWT and a property id, then checks that the token's user
+// belongs to that property. ok is false when a response was already written.
+func (a *api) gate(w http.ResponseWriter, r *http.Request, propertyID int) (genie.Caller, bool) {
+	if userToken(r) == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Sign in to use Genie."})
+		return genie.Caller{}, false
+	}
+	if propertyID <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "propertyId is required."})
+		return genie.Caller{}, false
+	}
+	caller, err := a.engine.Authorize(r.Context(), userToken(r), propertyID)
+	if err != nil {
+		status, msg := authFailure(err)
+		writeJSON(w, status, map[string]string{"error": msg})
+		return genie.Caller{}, false
+	}
+	return caller, true
+}
+
 type api struct {
 	engine *genie.Engine
 	store  store.Store
@@ -62,6 +108,10 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 			req.PropertyID = v
 		}
 	}
+	if userToken(r) == "" {
+		fail(http.StatusUnauthorized, "Sign in to use Genie.")
+		return
+	}
 	// Genie is property-specific: no group chat, no chat without a property.
 	if req.GroupID != 0 || r.Header.Get("X-Group-Id") != "" {
 		fail(http.StatusBadRequest, "Genie works per property. Open a property to chat - group chat isn't supported.")
@@ -73,6 +123,11 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), chatTimeout)
 	defer cancel()
+	if _, err := a.engine.Authorize(ctx, userToken(r), req.PropertyID); err != nil {
+		status, msg := authFailure(err)
+		fail(status, msg)
+		return
+	}
 	resp, err := a.engine.Handle(ctx, userToken(r), req)
 	if err != nil {
 		log.Printf("chat: %v", err)
@@ -119,6 +174,11 @@ func logChat(r *http.Request, req genie.Request, status int, resp *genie.Respons
 // GET /analytics/turns?from=2026-10-01&to=2026-10-13&propertyId=12&limit=1000&format=csv
 // from/to: RFC 3339 or YYYY-MM-DD (to is exclusive). JSON by default, CSV with format=csv.
 func (a *api) turns(w http.ResponseWriter, r *http.Request) {
+	pid := requestPropertyID(r)
+	caller, ok := a.gate(w, r, pid)
+	if !ok {
+		return
+	}
 	q := r.URL.Query()
 	parse := func(k string) (time.Time, error) {
 		v := q.Get(k)
@@ -136,9 +196,8 @@ func (a *api) turns(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "from/to must be YYYY-MM-DD or RFC 3339"})
 		return
 	}
-	pid, _ := strconv.Atoi(q.Get("propertyId"))
 	limit, _ := strconv.Atoi(q.Get("limit"))
-	turns, err := a.store.Turns(r.Context(), store.TurnFilter{From: from, To: to, PropertyID: pid, Limit: limit})
+	turns, err := a.store.Turns(r.Context(), store.TurnFilter{From: from, To: to, PropertyID: pid, UserID: caller.UserID, Limit: limit})
 	if err != nil {
 		log.Printf("analytics: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "couldn't read analytics"})
@@ -177,6 +236,11 @@ func (a *api) feedback(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
 	}
+	pid := requestPropertyID(r)
+	caller, ok := a.gate(w, r, pid)
+	if !ok {
+		return
+	}
 	var body feedbackRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
@@ -199,7 +263,7 @@ func (a *api) feedback(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "rating must be thumbs_up or thumbs_down"})
 		return
 	}
-	if err := a.store.UpdateTurnFeedback(r.Context(), body.TurnID, body.SessionID, feedback); err != nil {
+	if err := a.store.UpdateTurnFeedback(r.Context(), body.TurnID, body.SessionID, caller.UserID, pid, feedback); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "turn not found"})
 			return
@@ -213,17 +277,26 @@ func (a *api) feedback(w http.ResponseWriter, r *http.Request) {
 
 // GET /conversations/{sessionId}
 func (a *api) history(w http.ResponseWriter, r *http.Request) {
+	pid := requestPropertyID(r)
+	caller, ok := a.gate(w, r, pid)
+	if !ok {
+		return
+	}
 	id := r.PathValue("sessionId")
-	msgs, err := a.store.History(r.Context(), id, 0)
+	msgs, err := a.store.History(r.Context(), id, caller.UserID, pid, 0)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "conversation not found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "couldn't read conversation"})
 		return
 	}
 	if msgs == nil {
 		msgs = []store.Message{}
 	}
 	feedbackByTurn := map[string]string{}
-	if turns, err := a.store.Turns(r.Context(), store.TurnFilter{SessionID: id, Limit: 500}); err == nil {
+	if turns, err := a.store.Turns(r.Context(), store.TurnFilter{SessionID: id, PropertyID: pid, UserID: caller.UserID, Limit: 500}); err == nil {
 		for _, t := range turns {
 			if t.Feedback != nil && *t.Feedback != "" {
 				feedbackByTurn[t.ID] = *t.Feedback
@@ -240,10 +313,15 @@ func (a *api) listIntents(w http.ResponseWriter, r *http.Request) {
 
 // GET /events?kind=unsupported&limit=100 - captured requests / denials (redacted analytics).
 func (a *api) events(w http.ResponseWriter, r *http.Request) {
+	pid := requestPropertyID(r)
+	caller, ok := a.gate(w, r, pid)
+	if !ok {
+		return
+	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	ev, err := a.store.Events(r.Context(), r.URL.Query().Get("kind"), limit)
+	ev, err := a.store.Events(r.Context(), r.URL.Query().Get("kind"), caller.UserID, pid, limit)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "couldn't read events"})
 		return
 	}
 	if ev == nil {

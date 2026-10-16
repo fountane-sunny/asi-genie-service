@@ -148,15 +148,22 @@ func (p *pg) conversation(ctx context.Context, sessionID, userID string, propert
 		return "", err
 	}
 	if cur.ID != "" {
-		if propertyID <= 0 || cur.PropertyID == nil || *cur.PropertyID == propertyID {
-			if cur.PropertyID == nil && propertyID > 0 {
-				err = db.Model(&cur).Updates(map[string]any{"property_id": propertyID, "updated_at": gorm.Expr("NOW()")}).Error
-			} else {
-				err = db.Model(&cur).Update("updated_at", gorm.Expr("NOW()")).Error
-			}
+		// Tool logs look up the session without a property (propertyID 0).
+		if propertyID <= 0 {
+			err = db.Model(&cur).Update("updated_at", gorm.Expr("NOW()")).Error
 			return cur.ID, err
 		}
-		archived := fmt.Sprintf("%s~p%d-%d", sessionID, *cur.PropertyID, time.Now().Unix())
+		// Reuse only a row already owned by this user at this property.
+		// A null user_id is not adopted: that would claim an orphaned chat.
+		if cur.UserID != nil && *cur.UserID == userID && cur.PropertyID != nil && *cur.PropertyID == propertyID {
+			err = db.Model(&cur).Update("updated_at", gorm.Expr("NOW()")).Error
+			return cur.ID, err
+		}
+		oldProp := 0
+		if cur.PropertyID != nil {
+			oldProp = *cur.PropertyID
+		}
+		archived := fmt.Sprintf("%s~p%d-%d", sessionID, oldProp, time.Now().Unix())
 		if err := db.Model(&cur).Update("session_id", archived).Error; err != nil {
 			return "", err
 		}
@@ -204,14 +211,19 @@ func nilIfEmpty(b []byte) []byte {
 	return b
 }
 
-func (p *pg) History(ctx context.Context, sessionID string, limit int) ([]Message, error) {
+func (p *pg) History(ctx context.Context, sessionID, userID string, propertyID, limit int) ([]Message, error) {
+	if err := ValidateScope(propertyID, userID); err != nil {
+		return nil, err
+	}
 	if limit <= 0 {
 		limit = 1000
 	}
 	var conv Conversation
-	err := p.db.WithContext(ctx).Where("session_id = ?", sessionID).Take(&conv).Error
+	err := p.db.WithContext(ctx).
+		Where("session_id = ? AND user_id = ? AND property_id = ?", sessionID, userID, propertyID).
+		Take(&conv).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
+		return nil, err
 	}
 	if err != nil {
 		return nil, err
@@ -250,11 +262,26 @@ func (p *pg) LogEvent(ctx context.Context, e Event) error {
 	return p.db.WithContext(ctx).Create(&row).Error
 }
 
-func (p *pg) Events(ctx context.Context, kind string, limit int) ([]Event, error) {
+func (p *pg) Events(ctx context.Context, kind, userID string, propertyID, limit int) ([]Event, error) {
+	if err := ValidateScope(propertyID, userID); err != nil {
+		return nil, err
+	}
 	if limit <= 0 {
 		limit = 100
 	}
-	q := p.db.WithContext(ctx).Order("created_at DESC").Limit(limit)
+	var sessionIDs []string
+	err := p.db.WithContext(ctx).Model(&Conversation{}).
+		Where("user_id = ? AND property_id = ? AND session_id <> ''", userID, propertyID).
+		Pluck("session_id", &sessionIDs).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(sessionIDs) == 0 {
+		return []Event{}, nil
+	}
+	q := p.db.WithContext(ctx).
+		Where("property_id = ? AND session_id IN ? AND session_id <> ''", propertyID, sessionIDs).
+		Order("created_at DESC").Limit(limit)
 	if kind != "" {
 		q = q.Where("kind = ?", kind)
 	}
@@ -295,11 +322,15 @@ func (p *pg) LogTurn(ctx context.Context, t Turn) (string, error) {
 	return row.ID, nil
 }
 
-func (p *pg) UpdateTurnFeedback(ctx context.Context, turnID, sessionID, feedback string) error {
+func (p *pg) UpdateTurnFeedback(ctx context.Context, turnID, sessionID, userID string, propertyID int, feedback string) error {
 	if turnID == "" {
 		return fmt.Errorf("turnId is required")
 	}
-	q := p.db.WithContext(ctx).Model(&GenieTurn{}).Where("id = ?", turnID)
+	if err := ValidateScope(propertyID, userID); err != nil {
+		return err
+	}
+	q := p.db.WithContext(ctx).Model(&GenieTurn{}).
+		Where("id = ? AND user_id = ? AND property_id = ?", turnID, userID, propertyID)
 	if sessionID != "" {
 		q = q.Where("session_id = ?", sessionID)
 	}
@@ -314,15 +345,16 @@ func (p *pg) UpdateTurnFeedback(ctx context.Context, turnID, sessionID, feedback
 }
 
 func (p *pg) Turns(ctx context.Context, f TurnFilter) ([]Turn, error) {
-	q := p.db.WithContext(ctx).Model(&GenieTurn{})
+	if err := ValidateScope(f.PropertyID, f.UserID); err != nil {
+		return nil, err
+	}
+	q := p.db.WithContext(ctx).Model(&GenieTurn{}).
+		Where("property_id = ? AND user_id = ?", f.PropertyID, f.UserID)
 	if !f.From.IsZero() {
 		q = q.Where("created_at >= ?", f.From)
 	}
 	if !f.To.IsZero() {
 		q = q.Where("created_at < ?", f.To)
-	}
-	if f.PropertyID > 0 {
-		q = q.Where("property_id = ?", f.PropertyID)
 	}
 	if f.SessionID != "" {
 		q = q.Where("session_id = ?", f.SessionID)
