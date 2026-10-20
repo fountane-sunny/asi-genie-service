@@ -11,11 +11,42 @@ Schema is defined in Go (`internal/store/store_postgres.go`) and applied with **
 | `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_SSLMODE` | Built into a key=value DSN (same pattern as asi-reservation-service) |
 | `DATABASE_URL` | Used when `POSTGRES_HOST` is empty |
 
-Local Docker: see [local-development.md](./local-development.md). Default host port **5434** (`POSTGRES_HOST_PORT` in compose).
+Local Docker: see [developer-guide.md](./developer-guide.md#6-run-it-locally). Default host port **5434** (`POSTGRES_HOST_PORT` in compose).
 
 ## Tables
 
-GORM model names map to these table names:
+```mermaid
+erDiagram
+  conversations ||--o{ messages : "has"
+  conversations ||--o{ tool_executions : "logs"
+  conversations {
+    uuid id
+    text session_id
+    int property_id
+  }
+  messages {
+    uuid conversation_id
+    text role
+    text content
+  }
+  tool_executions {
+    uuid conversation_id
+    text tool_name
+    text status
+  }
+  genie_turns {
+    text session_id
+    int property_id
+    jsonb cards
+    text feedback
+  }
+  genie_events {
+    text session_id
+    text kind
+  }
+```
+
+`genie_turns` and `genie_events` are linked by `session_id` (no foreign key). GORM model names map to these table names:
 
 | Table | Model | Purpose |
 |-------|--------|---------|

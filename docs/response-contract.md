@@ -5,12 +5,28 @@ One contract serves the web panel, ⌘K bar and mobile sheet. Phase 1 is read-on
 
 ## `POST /chat`
 
-Headers: `X-Token` (or `Authorization: Bearer`, or `token` cookie) — the user's own ASI token, forwarded to every ASI read. `X-Property-Id` (same as body `propertyId`; one of them is required).
+Headers: `X-Token` (or `Authorization: Bearer`, or `token` cookie) — the user's own ASI token, forwarded to every ASI read. **Required**: missing → `401 {"error":"Sign in to use Genie."}`. `X-Property-Id` (same as body `propertyId`; one of them is required).
 
 ```json
-{ "sessionId": "web-…", "message": "Who arrives today?", "propertyId": 12, "businessDate": "2026-10-12", "screen": "/property/12/dashboard" }
+{ "sessionId": "web-…", "message": "Who arrives today?", "propertyId": 12, "businessDate": "2026-10-12", "localHour": 9, "screen": "/property/12/dashboard" }
 ```
-`propertyId` is **required** (Genie is property-specific; no group chat). Missing → `400 {"error":"propertyId is required. Open a property to chat with Genie."}`; `groupId`/`X-Group-Id` → `400` too. A session is bound to its property: a different property starts a new conversation. `businessDate`, `screen` are optional; without a business date Genie reads the night-audit working date. The frontend scopes `sessionId` per property (`web-p<propertyId>-…`) and shows the chat only on `/property/<id>/…` pages.
+`propertyId` is **required** (Genie is property-specific; no group chat). Missing → `400 {"error":"propertyId is required. Open a property to chat with Genie."}`; `groupId`/`X-Group-Id` → `400` too. Before the turn runs, Genie checks the property is in the user's auth `/permissions`: auth rejects the token → `401`, property not in the list → `403 {"error":"You don't have access to this property."}`. A session is bound to its property: a different property starts a new conversation. Optional: `businessDate` (without it Genie reads the night-audit working date), `localHour` (0–23 on the user's clock, used for the greeting's time of day), `screen`. The frontend scopes `sessionId` per property (`web-p<propertyId>-…`) and shows the chat only on `/property/<id>/…` pages.
+
+## `POST /chat/stream`
+
+Same body, headers, auth checks and engine as `/chat`. The finished turn is sent as Server-Sent Events, in this order:
+
+| Event | Data |
+|-------|------|
+| `tool_start` | `{ id, name, label }` per ASI read (label e.g. "Checking revenue") |
+| `tool_end` | `{ id, status, ms }` |
+| `text_delta` | `{ text }` |
+| `card` | one `Card` per event |
+| `chips` | `Chip[]` (only when there are chips) |
+| `done` | `{ turnId, sessionId }` |
+| `error` | `{ error }` — auth/validation failure (with the same HTTP status as `/chat`) or engine failure |
+
+The web client calls `/chat/stream` first and falls back to `/chat` only when no SSE event arrives.
 
 ### Response
 ```json
@@ -27,7 +43,7 @@ Headers: `X-Token` (or `Authorization: Bearer`, or `token` cookie) — the user'
   "turnId": "uuid-of-genie_turns-row"
 }
 ```
-Also on every response: `createdAt` (ISO 8601, UTC), `durationMs` (server time to answer), optional `notice` (e.g. "The AI is busy right now, so I used quick matching…" when the LLM failed and keywords were used). `toolCalls[].error` is an error **code** only, and each tool call has `durationMs`. Saved messages (`GET /conversations/{id}`) carry `createdAt` and, for replies, `durationMs`.
+Also on every response: `createdAt` (ISO 8601, UTC), `durationMs` (server time to answer), optional `notice` ("The assistant is busy right now. Try again in a moment if this answer looks off." when an LLM call failed and the fallback router answered). `toolCalls[].error` is an error **code** only, and each tool call has `durationMs`. Saved messages (`GET /conversations/{id}`) carry `createdAt` and, for replies, `durationMs`.
 
 `handler`: `planner` (model-planned reads) | `dedicated` | `generic` | `navigate` | `fallback`. `source`: `llm` | `keyword` (LLM unavailable) | `rule` (PCI / property scope / verified create screen). Planner turns use `intent.id` `agent` for a data answer, `unsupported` for a refusal, `smalltalk` for a reply with no read.
 
@@ -83,4 +99,6 @@ Chip      { label: string; message: string }
 | `GET /analytics/turns?from=&to=&propertyId=&limit=&format=csv` | one row per chat turn (Postgres `genie_turns`): createdAt, sessionId, propertyId, user id/name/email (auth current-user, cached 10 min per token), PAN-masked message, reply, cards, intent, scenarioId, source (llm/keyword/rule), confidence, slots, tools (name/status/error code/durationMs), llmModel, llmFailed, durationMs, errorCode/errorMessage (masked), feedback (null for now). JSON by default; `format=csv` downloads a CSV. `from`/`to` are YYYY-MM-DD or RFC 3339 (`to` exclusive) |
 | `GET /events?kind=unsupported\|denied\|intent\|pci_block&limit=100` | redacted analytics: captured unsupported asks, denials |
 
-Errors: `400 {"error":"message is required"}`, `400` for a missing propertyId or a group; handler failures never surface raw errors — they become a `navigate` card ("I couldn't load that right now").
+All endpoints except health require a user token (`401` without one).
+
+Errors: `400 {"error":"message is required"}`, `400` for a missing propertyId or a group, `401` no/invalid token, `403` property not in the user's permissions, `502` when the engine fails. Inside a turn, failures never surface raw errors: they become an `error` card (codes above). When every planned read fails because ASI is down, the reply is one `error` card ("I couldn't reach ASI just now. Please try again in a moment.") instead of a model-written answer.
