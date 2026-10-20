@@ -262,13 +262,6 @@ func parseArgs(t generated.ToolMeta, raw json.RawMessage) (toolArgs, error) {
 	return out, nil
 }
 
-func truncate(b []byte) string {
-	if len(b) > MaxResultBytes {
-		return string(b[:MaxResultBytes]) + "…(truncated)"
-	}
-	return string(b)
-}
-
 // asJSON returns b if it is valid JSON, otherwise b encoded as a JSON string.
 func asJSON(b []byte) json.RawMessage {
 	if len(b) == 0 {

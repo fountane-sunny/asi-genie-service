@@ -60,9 +60,6 @@ func isTTY() bool {
 	return err == nil && fi.Mode()&os.ModeCharDevice != 0
 }
 
-// Bodies reports whether request/response bodies are logged.
-func Bodies() bool { setup(); return bodies }
-
 // ---- masking ----
 
 func luhn(d string) bool {
