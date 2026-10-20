@@ -1678,4 +1678,22 @@ var Catalog = []Intent{
 		RBAC:         "Users & Roles → Users → CREATE",
 		Requirements: []Requirement{{Module: "Users & Roles", Feature: "Users", Permission: "CREATE", Optional: false}},
 	},
+	{
+		ScenarioID: "G-242", ID: "download_folio", Module: "Reservation", Category: "Action (read)",
+		Examples:     []string{"Download the folio for Smith", "Download the registration form for room 204", "Print the detailed folio for booking #4471"},
+		Handling:     "Resolve the reservation (name, room, or confirmation number) and infer the document type from the message (folio, detailed, other charges, registration, payment receipt, group status report). Document generation is non-mutating, so Phase 1 returns the existing Print Folio endpoint directly as a download.",
+		UserSees:     "Reservation resolved → 'Here's your download' card with the PDF + 'Open reservation'.",
+		ResponseType: "Data card", Scope: "In", Priority: "P1",
+		RBAC:         "Reservation → Reservation → READ",
+		Requirements: []Requirement{{Module: "Reservation", Feature: "Reservation", Permission: "READ", Optional: false}},
+	},
+	{
+		ScenarioID: "G-243", ID: "email_folio", Module: "Reservation", Category: "Action (confirmed write)",
+		Examples:     []string{"Email the folio for Smith", "Email the registration form for room 204 to the guest"},
+		Handling:     "Resolve the reservation and document type exactly like download_folio, then resolve the recipient (the reservation POC unless the user names another address). Returns a confirm card naming the recipient before sending anything. Only on an explicit 'yes/send it' reply does Genie call the existing Email Folio endpoint with the signed-in user's token; the server's own RBAC and validation are the real gate.",
+		UserSees:     "Confirm card ('Email the folio for Smith to the POC on file — send it?') → on Yes, an 'Email sent' card; on No or silence, nothing is sent.",
+		ResponseType: "Data card", Scope: "In (guarded write)", Priority: "P1",
+		RBAC:         "Reservation → Reservation → UPDATE",
+		Requirements: []Requirement{{Module: "Reservation", Feature: "Reservation", Permission: "UPDATE", Optional: false}},
+	},
 }

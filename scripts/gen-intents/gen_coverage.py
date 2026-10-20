@@ -42,6 +42,8 @@ TOOLS = {
  "clarify_slot": "none - deterministic date check vs business date; valid date continues to config_get_room_types_summary",
  "late_checkout_fee_tier": "same reads as late_checkout_quote + tier clarify (quotes only, never posts)",
  "property_scope_missing": "none - unreachable as a question: propertyId is required on /chat (400 otherwise); replies with the current property",
+ "download_folio": "search → reservation_get_reservations_id → reservation_get_folio_id (download card; same non-mutating endpoint as the Print Folio menu)",
+ "email_folio": "search → reservation_get_reservations_id; confirm card; on explicit yes, reservation_post_folio_id_email (Genie's one write tool, never offered to the planner)",
 }
 GAPS = {
  "reservation_policy_check": "Fee amount not computed: cancellation-policy rule schema (fee tiers/deadlines) not yet mapped; card shows the policy rules + days to arrival.",

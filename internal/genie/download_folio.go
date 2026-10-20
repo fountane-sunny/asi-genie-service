@@ -1,0 +1,183 @@
+package genie
+
+import (
+	"fmt"
+	"strings"
+
+	"asi-genie-poc/internal/cards"
+	"asi-genie-poc/internal/intents"
+)
+
+// folioActionVerbs are the verbs that, together with a folio document word,
+// mark a message as a reservation-document action (download_folio /
+// email_folio) rather than a generic question or a report export.
+var folioActionVerbs = []string{"download", "export", "print", "email", "mail", "send"}
+
+// folioDocWords name the reservation documents /folio/{id} can generate (see
+// asi-frontend DocumentType in apps/web/app/apis/reservations.ts). Checked in
+// order: more specific phrases must come before "folio" itself.
+var folioDocWords = []string{
+	"registration form", "registration card", "reg card", "reg form", "registration",
+	"other charge", "other-charge",
+	"payment receipt",
+	"group status",
+	"detailed folio", "detailed",
+	"folio",
+}
+
+// folioDocTypes maps a matched folioDocWords entry to the doc_type value the
+// GET /folio/{id} endpoint expects.
+var folioDocTypeByWord = map[string]string{
+	"registration form": "registration", "registration card": "registration", "reg card": "registration",
+	"reg form": "registration", "registration": "registration",
+	"other charge": "other-charges", "other-charge": "other-charges",
+	"payment receipt": "payment-receipt",
+	"group status":    "group-status-report",
+	"detailed folio":  "detailed",
+	"detailed":        "detailed",
+	"folio":           "folio",
+}
+
+// messageWantsFolioAction reports whether message is asking Genie to produce
+// (download/print) or send (email) a reservation document.
+func messageWantsFolioAction(message string) bool {
+	lower := strings.ToLower(message)
+	hasVerb := false
+	for _, v := range folioActionVerbs {
+		if strings.Contains(lower, v) {
+			hasVerb = true
+			break
+		}
+	}
+	if !hasVerb {
+		return false
+	}
+	for _, w := range folioDocWords {
+		if strings.Contains(lower, w) {
+			return true
+		}
+	}
+	return false
+}
+
+// folioDocType infers the /folio/{id} doc_type query param from the message.
+// Defaults to "folio" when the message names no specific document.
+func folioDocType(message string) string {
+	lower := strings.ToLower(message)
+	for _, w := range folioDocWords {
+		if strings.Contains(lower, w) {
+			return folioDocTypeByWord[w]
+		}
+	}
+	return "folio"
+}
+
+// folioDocLabel is the human-facing name for a doc_type, matching the labels
+// asi-frontend shows on the Print Folio / Email Folio menus.
+func folioDocLabel(docType string) string {
+	switch docType {
+	case "detailed":
+		return "Detailed Folio"
+	case "other-charges":
+		return "Other Charges Folio"
+	case "registration":
+		return "Registration Form"
+	case "payment-receipt":
+		return "Payment Receipt"
+	case "group-status-report":
+		return "Group Status Report"
+	default:
+		return "Folio"
+	}
+}
+
+// folioReservationType mirrors asi-frontend's getReservationTypeFromTableData
+// (apps/web/app/utils/folioPDF.ts): a group parent reports type "GROUP", a
+// reservation with a groupReservationId is a child of one, everything else is
+// an individual reservation.
+func folioReservationType(m map[string]any) string {
+	if strings.EqualFold(str(m, "type", "reservationType"), "GROUP") {
+		return "group"
+	}
+	if str(m, "groupReservationId") != "" {
+		return "child"
+	}
+	return "individual"
+}
+
+// folioFileName is the suggested download filename; the frontend corrects the
+// extension from the response Content-Type, so only the stem matters here.
+func folioFileName(docType string, m map[string]any) string {
+	name := reservationNumber(m)
+	if name == "" {
+		name = personName(m)
+	}
+	if name == "" {
+		name = "reservation"
+	}
+	return fmt.Sprintf("%s - %s.pdf", folioDocLabel(docType), name)
+}
+
+// folioPOCEmail is the recipient the Email Folio endpoint defaults to when no
+// custom address is given.
+func folioPOCEmail(m map[string]any) string {
+	return str(m, "pocEmail", "contactEmail", "guestEmail", "email")
+}
+
+// hDownloadFolio (G-242): resolve the reservation, infer which document the
+// user wants, and hand the frontend the same non-mutating GET /folio/{id}
+// endpoint the Print Folio menu uses — Genie never renders or stores the PDF.
+func hDownloadFolio(rc *reqCtx, it intents.Intent, s Slots) error {
+	m, err := rc.resolveReservation(s)
+	if err != nil || m == nil {
+		return err
+	}
+	id := recordID(m)
+	open := reservationLink(rc.pid, id)
+	if id == "" {
+		rc.text("I found the reservation but couldn't read its ID.")
+		return nil
+	}
+	tool, ok := rc.e.Tools["reservation_get_folio_id"]
+	if !ok {
+		if open != nil {
+			rc.add(navigateScreen(it.ID, "Reservation", navigateActionOpenReservation, *open))
+		}
+		rc.text("I can't download that from here. Open the reservation and use Print Folio.")
+		return nil
+	}
+	service, path := clientExportPath(tool)
+	if service == "" || path == "" {
+		if open != nil {
+			rc.add(navigateScreen(it.ID, "Reservation", navigateActionOpenReservation, *open))
+		}
+		rc.text("I can't download that from here. Open the reservation and use Print Folio.")
+		return nil
+	}
+	docType := folioDocType(rc.req.Message)
+	download := cards.Download{
+		Label:    "Download PDF",
+		FileName: folioFileName(docType, m),
+		Service:  service,
+		Path:     strings.ReplaceAll(path, "{id}", id),
+		Query: map[string]string{
+			"doc_type":         docType,
+			"reservation_type": folioReservationType(m),
+		},
+	}
+	card := cards.Card{
+		Type:      cards.TypeData,
+		Intent:    it.ID,
+		Title:     folioDocLabel(docType),
+		Subtitle:  personName(m),
+		Message:   "Here's your download.",
+		Downloads: []cards.Download{download},
+	}
+	if open != nil {
+		open.Label = navigateActionOpenReservation
+		card.Link = open
+	}
+	rc.add(card)
+	rc.text(fmt.Sprintf("Here's the %s for %s.", strings.ToLower(folioDocLabel(docType)), personName(m)))
+	return nil
+}

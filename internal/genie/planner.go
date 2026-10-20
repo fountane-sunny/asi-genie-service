@@ -382,6 +382,12 @@ func (rc *reqCtx) routerOwnsTurn() bool {
 	if _, ok := parseStructuredDownload(m); ok || messageWantsFileExport(m) {
 		return true
 	}
+	// Folio documents (download or email) are a reservation action, not a
+	// generic data read: the planner has no download/confirm card and no
+	// write tool, so these always go to the dedicated handlers.
+	if messageWantsFolioAction(m) {
+		return true
+	}
 	if parseGuestIDFromLookupMessage(m) != "" {
 		return true
 	}

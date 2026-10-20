@@ -304,3 +304,17 @@ func IsAllowedReadTool(t generated.ToolMeta) bool {
 }
 
 const MaxResultBytes = 8000
+
+// allowedWriteTools is the complete, explicit list of non-GET tools Genie may
+// ever call. Every entry must be driven by a dedicated handler that gets the
+// user's explicit confirmation in the same chat turn flow before calling it
+// (see hEmailFolio) — this is never offered to the LLM planner or ToolSelector.
+var allowedWriteTools = map[string]bool{
+	"reservation_post_folio_id_email": true, // email_folio (G-243), confirmed send only
+}
+
+// IsAllowedWriteTool reports whether t is one of the small set of writes
+// Genie is allowed to perform, always behind an explicit confirm step.
+func IsAllowedWriteTool(t generated.ToolMeta) bool {
+	return t.Method == http.MethodPost && !t.ReadOnly && allowedWriteTools[t.Name]
+}

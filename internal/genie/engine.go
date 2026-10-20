@@ -619,6 +619,90 @@ func (e *Engine) execTool(ctx context.Context, sessionID, token string, t genera
 	return body, err
 }
 
+// findTool returns any generated tool by name, read-only or not. Unlike
+// e.Tools (GET read-only tools only — what the LLM planner and ToolSelector
+// see), this also finds the single write tool IsAllowedWriteTool permits.
+func findTool(name string) (generated.ToolMeta, bool) {
+	for _, t := range generated.AllTools() {
+		if t.Name == name {
+			return t, true
+		}
+	}
+	return generated.ToolMeta{}, false
+}
+
+// execWriteTool runs one of the small, explicitly allowlisted write tools
+// (IsAllowedWriteTool) with the caller's token. It is only ever reached from a
+// dedicated handler after the user has explicitly confirmed the action in
+// this chat turn (e.g. hEmailFolio) — never from the generic planner or the
+// tool selector, which only ever see e.Tools (GET, read-only). Logged via
+// store.LogToolExecution exactly like a read, so it shows in the turn's tool
+// history and audit trail.
+func (e *Engine) execWriteTool(ctx context.Context, sessionID, token string, t generated.ToolMeta, p string, body any, args json.RawMessage) ([]byte, error) {
+	if !IsAllowedWriteTool(t) {
+		return nil, fmt.Errorf("%s is not an allowed write tool", t.Name)
+	}
+	svc, ok := services[t.Service]
+	if !ok {
+		return nil, fmt.Errorf("unknown service %s", t.Service)
+	}
+	var headers map[string]string
+	if token != "" {
+		headers = map[string]string{"X-Token": token}
+	}
+	tctx, cancel := context.WithTimeout(logx.WithTool(ctx, t.Name), ToolTimeout)
+	defer cancel()
+	respBody, err := e.HTTP.Do(tctx, svc, t.Method, p, nil, headers, body) // logged by the client (logx)
+	ex := store.ToolExecution{SessionID: sessionID, ToolName: t.Name, Method: t.Method, Path: p, Args: args, Status: "executed"}
+	if err != nil {
+		ex.Status = "error"
+		ex.Result, _ = json.Marshal(map[string]string{"error": err.Error()})
+	} else if len(respBody) <= MaxResultBytes {
+		ex.Result = asJSON(respBody)
+	}
+	if lerr := e.Store.LogToolExecution(context.WithoutCancel(ctx), ex); lerr != nil {
+		log.Printf("store tool execution: %v", lerr)
+	}
+	return respBody, err
+}
+
+// post calls an explicitly allowlisted write tool (IsAllowedWriteTool) with
+// the caller's token. Callers must have already gotten the user's explicit
+// confirmation earlier in this same chat turn flow.
+func (rc *reqCtx) post(toolName string, pathParams map[string]string, body any) (any, error) {
+	t, ok := findTool(toolName)
+	if !ok || !IsAllowedWriteTool(t) {
+		return nil, fmt.Errorf("%s: %w", toolName, errNoTool)
+	}
+	p := t.Path
+	for k, v := range pathParams {
+		p = strings.ReplaceAll(p, "{"+k+"}", url.PathEscape(v))
+	}
+	if strings.Contains(p, "{") {
+		return nil, fmt.Errorf("%s: missing path parameter in %s", toolName, p)
+	}
+	argsJSON, _ := json.Marshal(map[string]any{"path": pathParams})
+	st := ToolCallStatus{Name: toolName, Args: argsJSON}
+	t0 := time.Now()
+	b, err := rc.e.execWriteTool(rc.ctx, rc.req.SessionID, rc.token, t, p, body, argsJSON)
+	st.DurationMs = time.Since(t0).Milliseconds()
+	if err != nil {
+		st.Status, st.Error = "error", errorCode(err)
+		rc.mu.Lock()
+		rc.lastErrService = t.Service
+		rc.mu.Unlock()
+	} else {
+		st.Status = "executed"
+	}
+	rc.mu.Lock()
+	rc.resp.ToolCalls = append(rc.resp.ToolCalls, st)
+	rc.mu.Unlock()
+	if err != nil {
+		return nil, err
+	}
+	return decode(b), nil
+}
+
 // ---- persistence & analytics ----
 
 func (e *Engine) persist(rc *reqCtx) {

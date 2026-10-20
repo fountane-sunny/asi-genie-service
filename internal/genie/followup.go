@@ -64,6 +64,16 @@ func fillFollowUpSlot(pendingIntent, message string, s *Slots) bool {
 	case "download_report":
 		// Keep the report from the previous turn; dates are read from this message.
 		return true
+	case "download_folio":
+		if s.GuestName != "" || s.Confirmation != "" || s.Room != "" {
+			return false
+		}
+		s.GuestName = message
+		return true
+	case "email_folio":
+		// Covers both the "which reservation?" follow-up and the yes/no
+		// confirm reply; hEmailFolio tells them apart via rc.sess.LastEntity.
+		return true
 	default:
 		return false
 	}

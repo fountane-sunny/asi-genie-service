@@ -50,6 +50,12 @@ type downloadCommand struct {
 // instead of a navigation card. A duration chip is a full command, so it does
 // not depend on the previous turn's intent.
 func (e *Engine) applyDownloadIntent(it intents.Intent, info IntentInfo, slots Slots, message string) (intents.Intent, IntentInfo, Slots) {
+	// A folio/registration/other-charges document is a reservation action
+	// (download_folio / email_folio), not a report export: leave classify's
+	// choice (or the follow-up resolver's) alone.
+	if messageWantsFolioAction(message) {
+		return it, info, slots
+	}
 	cmd, structured := parseStructuredDownload(message)
 	if !structured && !messageWantsFileExport(message) {
 		return it, info, slots

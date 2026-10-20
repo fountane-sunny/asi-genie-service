@@ -47,6 +47,8 @@ func (e *Engine) dedicatedHandlers() map[string]handlerFunc {
 		"night_audit_walkthrough":          hNightAuditWalkthrough,
 		"view_report":                      hViewReport,
 		"download_report":                  hDownloadReport,
+		"download_folio":                   hDownloadFolio,
+		"email_folio":                      hEmailFolio,
 		"revenue_query":                    hRevenue,
 		"policy_lookup":                    hPolicyLookup,
 		"capabilities":                     hCapabilities,
