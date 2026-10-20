@@ -148,8 +148,8 @@ func generate(svc service, s *spec) ([]byte, int) {
 				desc = op.Description
 			}
 			ro := strings.EqualFold(m, "get") || strings.EqualFold(m, "head")
-			fmt.Fprintf(&meta, "{Name: %q, Service: %q, Method: %q, Path: %q, ReadOnly: %v, Description: %q},\n",
-				toolName, svc.Name, strings.ToUpper(m), swaggerToolPath(s.BasePath, p), ro, oneLine(desc))
+			fmt.Fprintf(&meta, "{Name: %q, Service: %q, Method: %q, Path: %q, ReadOnly: %v, Description: %q%s},\n",
+				toolName, svc.Name, strings.ToUpper(m), swaggerToolPath(s.BasePath, p), ro, oneLine(desc), queryMeta(op.Parameters))
 			n++
 		}
 	}
@@ -162,6 +162,24 @@ func generate(svc service, s *spec) ([]byte, int) {
 	out.Write(gen.types.Bytes())
 	out.Write(body.Bytes())
 	return out.Bytes(), n
+}
+
+// queryMeta renders the ", Query: ..." ToolMeta field so callers (the planner)
+// know which query params a read takes; empty when it takes none.
+func queryMeta(params []param) string {
+	var parts []string
+	seen := map[string]bool{}
+	for _, pr := range params {
+		if pr.In != "query" || seen[pr.Name] {
+			continue
+		}
+		seen[pr.Name] = true
+		parts = append(parts, fmt.Sprintf("{Name: %q, Required: %v}", pr.Name, pr.Required))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return ", Query: []QueryParam{" + strings.Join(parts, ", ") + "}"
 }
 
 type fileGen struct {
@@ -451,6 +469,13 @@ type ToolMeta struct {
 	Path        string
 	ReadOnly    bool
 	Description string
+	Query       []QueryParam
+}
+
+// QueryParam is one query-string parameter a tool accepts.
+type QueryParam struct {
+	Name     string
+	Required bool
 }
 
 var allTools []ToolMeta

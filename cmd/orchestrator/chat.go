@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -136,6 +137,81 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, resp)
 	logChat(r, req, http.StatusOK, resp, "", time.Since(start))
+}
+
+// POST /chat/stream uses the same authorization and engine path as /chat,
+// then serializes the completed deterministic result as SSE UI events.
+func (a *api) chatStream(w http.ResponseWriter, r *http.Request) {
+	var req genie.Request
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Message) == "" {
+		writeSSEError(w, http.StatusBadRequest, "message is required")
+		return
+	}
+	if req.PropertyID == 0 {
+		req.PropertyID = requestPropertyID(r)
+	}
+	if userToken(r) == "" {
+		writeSSEError(w, http.StatusUnauthorized, "Sign in to use Genie.")
+		return
+	}
+	if req.GroupID != 0 || r.Header.Get("X-Group-Id") != "" || req.PropertyID <= 0 {
+		writeSSEError(w, http.StatusBadRequest, "propertyId is required.")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), chatTimeout)
+	defer cancel()
+	if _, err := a.engine.Authorize(ctx, userToken(r), req.PropertyID); err != nil {
+		status, message := authFailure(err)
+		writeSSEError(w, status, message)
+		return
+	}
+	resp, err := a.engine.Handle(ctx, userToken(r), req)
+	if err != nil {
+		slog.Error("stream chat failed", "err", err)
+		writeSSEError(w, http.StatusBadGateway, "Genie couldn't answer right now.")
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		slog.Error("stream response writer does not support flushing")
+		return
+	}
+	for i, call := range resp.ToolCalls {
+		id := fmt.Sprintf("tool-%d", i+1)
+		writeSSE(w, "tool_start", map[string]any{"id": id, "name": call.Name, "label": toolLabel(call.Name)})
+		writeSSE(w, "tool_end", map[string]any{"id": id, "status": call.Status, "ms": call.DurationMs})
+	}
+	writeSSE(w, "text_delta", map[string]string{"text": resp.Text})
+	for _, card := range resp.Cards {
+		writeSSE(w, "card", card)
+	}
+	if len(resp.Chips) > 0 {
+		writeSSE(w, "chips", resp.Chips)
+	}
+	writeSSE(w, "done", map[string]string{"turnId": resp.TurnID, "sessionId": resp.SessionID})
+	flusher.Flush()
+}
+
+func toolLabel(name string) string { return genie.ToolLabel(name) }
+
+func writeSSE(w http.ResponseWriter, event string, payload any) {
+	b, err := json.Marshal(payload)
+	if err != nil {
+		slog.Warn("SSE event encoding failed", "err", err, "event", event)
+		return
+	}
+	if _, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, b); err != nil {
+		slog.Warn("SSE event write failed", "err", err, "event", event)
+	}
+}
+
+func writeSSEError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.WriteHeader(status)
+	writeSSE(w, "error", map[string]string{"error": message})
 }
 
 // logChat prints the "── CHAT ▶ POST /chat" block.

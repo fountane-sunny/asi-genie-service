@@ -61,6 +61,9 @@ func fillFollowUpSlot(pendingIntent, message string, s *Slots) bool {
 		}
 		s.Report = message
 		return true
+	case "download_report":
+		// Keep the report from the previous turn; dates are read from this message.
+		return true
 	default:
 		return false
 	}
@@ -80,9 +83,49 @@ func looksLikeNewQuestion(message string) bool {
 		"look up", "lookup ", "find ", "search ",
 		"can you", "could you", "please ", "tell me",
 		"night audit", "arrival", "departure", "report",
+		"download ", "export ", "check ", "list ", "compare ",
 	}
 	for _, p := range prefixes {
 		if strings.HasPrefix(lower, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// shouldSendConversationContext is true only for a continuation: a short reply
+// to a clarify, or a message that points at the previous guest/booking ("her",
+// "that room"). A new question is classified on its own so earlier turns are
+// not sent to the model.
+func shouldSendConversationContext(message string) bool {
+	if strings.TrimSpace(message) == "" {
+		return false
+	}
+	if refersToPriorContext(message) {
+		return true
+	}
+	return !looksLikeNewQuestion(message)
+}
+
+func refersToPriorContext(message string) bool {
+	lower := strings.ToLower(message)
+	phrases := []string{
+		"that booking", "that reservation", "that guest", "that room", "that one",
+		"this guest", "this booking", "this room", "this one",
+		"same room", "same guest", "same booking", "same one",
+	}
+	for _, p := range phrases {
+		if strings.Contains(lower, p) {
+			return true
+		}
+	}
+	pronouns := map[string]bool{
+		"her": true, "hers": true, "his": true, "him": true,
+		"she": true, "he": true, "they": true, "them": true, "their": true,
+	}
+	for _, w := range strings.Fields(lower) {
+		w = strings.Trim(w, "?.!,;:'\"")
+		if pronouns[w] {
 			return true
 		}
 	}

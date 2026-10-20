@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/url"
 	"os"
 	"regexp"
@@ -140,6 +141,7 @@ func New(client genillm.LLMClient, st store.Store) *Engine {
 
 // reqCtx carries per-request state.
 type reqCtx struct {
+	mu             sync.Mutex
 	llmDeadline    time.Time // shared LLM budget for this request
 	llmFailed      bool      // classifier LLM failed: don't call the LLM again this request
 	start          time.Time
@@ -324,9 +326,29 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 	}
 	rc.pid = req.PropertyID
 	rc.resp.PropertyID = rc.pid
+	// Keyword refusals only when no model is configured; otherwise the planner
+	// reads the question and writes a reply that fits it.
+	if e.LLM == nil && isReadOnlyRefusal(rc.req.Message) {
+		rc.setIntent(IntentInfo{ID: intents.UnsupportedID, Handler: "fallback", Source: "rule"})
+		rc.add(cards.NotSupported(intents.UnsupportedID, "", nil))
+		rc.text("I only help with this property in ASI — arrivals, rooms, rates, and reports. I can't answer that.")
+		e.persist(rc)
+		return rc.resp, nil
+	}
 	// Working date before routing so "today" is the night-audit date, not the server clock.
 	rc.bizDate = e.businessDate(rc)
 	rc.resp.BusinessDate = rc.bizDate
+
+	// 3) Model-first: the LLM plans the reads and writes the answer. The intent
+	// router below only runs when the planner can't (LLM error, exports, clarify replies).
+	if e.LLM != nil && !rc.routerOwnsTurn() && e.planAndAnswer(rc) {
+		e.mu.Lock()
+		sess.LastIntent = rc.resp.Intent.ID
+		e.mu.Unlock()
+		e.logEvent(rc, "intent", rc.resp.Intent.ID, "", "")
+		e.persist(rc)
+		return rc.resp, nil
+	}
 
 	// 4) Understand: intent + slots.
 	it, info, slots := e.classify(rc)
@@ -338,6 +360,7 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 	rc.resolveSlotDates(&slots)
 	rc.applyContext(&slots)
 	it, info, slots = e.resolveFollowUpIntent(rc, it, info, slots)
+	it, info, slots = e.applyDownloadIntent(it, info, slots, rc.req.Message)
 	rc.intent = it
 	info.Slots = slots
 	rc.setIntent(info)
@@ -358,6 +381,7 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 			e.logEvent(rc, "denied", it.ID, it.ScenarioID, c.Code)
 		}
 	}
+	rc.phraseResponse()
 	if rc.llmFailed {
 		rc.resp.Notice = llmBusyNote
 	}
@@ -367,6 +391,19 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 	e.logEvent(rc, "intent", it.ID, it.ScenarioID, "")
 	e.persist(rc)
 	return rc.resp, nil
+}
+
+func isReadOnlyRefusal(message string) bool {
+	m := strings.ToLower(strings.TrimSpace(message))
+	for _, word := range []string{
+		"python", "pythn", "refund", "refunds", "take payment", "process payment", "charge card", "make payment",
+		"create reservation", "book a room", "cancel reservation", "check in ", "check out ", "mark room", "update room status",
+	} {
+		if strings.Contains(m, word) {
+			return true
+		}
+	}
+	return false
 }
 
 func (rc *reqCtx) setIntent(i IntentInfo) { rc.resp.Intent = &i }
@@ -487,7 +524,9 @@ func (rc *reqCtx) getRaw(toolName string, pathParams map[string]string, q url.Va
 	st := ToolCallStatus{Name: toolName, Args: argsJSON}
 	if !ok {
 		st.Status, st.Error = "skipped", "not_available"
+		rc.mu.Lock()
 		rc.resp.ToolCalls = append(rc.resp.ToolCalls, st)
+		rc.mu.Unlock()
 		return nil, fmt.Errorf("%s: %w", toolName, errNoTool)
 	}
 	p := t.Path
@@ -496,7 +535,9 @@ func (rc *reqCtx) getRaw(toolName string, pathParams map[string]string, q url.Va
 	}
 	if strings.Contains(p, "{") {
 		st.Status, st.Error = "error", "missing_parameter"
+		rc.mu.Lock()
 		rc.resp.ToolCalls = append(rc.resp.ToolCalls, st)
+		rc.mu.Unlock()
 		return nil, fmt.Errorf("%s: missing path parameter in %s", toolName, p)
 	}
 	t0 := time.Now()
@@ -504,12 +545,48 @@ func (rc *reqCtx) getRaw(toolName string, pathParams map[string]string, q url.Va
 	st.DurationMs = time.Since(t0).Milliseconds()
 	if err != nil {
 		st.Status, st.Error = "error", errorCode(err)
+		rc.mu.Lock()
 		rc.lastErrService = t.Service
+		rc.mu.Unlock()
 	} else {
 		st.Status = "executed"
 	}
+	rc.mu.Lock()
 	rc.resp.ToolCalls = append(rc.resp.ToolCalls, st)
+	rc.mu.Unlock()
 	return b, err
+}
+
+// phraseResponse turns deterministic card JSON into a concise lead-in without
+// exposing endpoint schemas or giving the model any tools to call.
+func (rc *reqCtx) phraseResponse() {
+	// A handler that already wrote the sentence keeps it. Replacing it repeats
+	// the card text in the chat bubble.
+	if strings.TrimSpace(rc.resp.Text) != "" {
+		return
+	}
+	if rc.e.LLM == nil || rc.llmFailed || len(toolsForIntent(rc.intent.ID, rc.resp.Intent.Slots)) == 0 || len(rc.resp.Cards) == 0 {
+		return
+	}
+	payload, err := json.Marshal(struct {
+		Cards []cards.Card `json:"cards"`
+	}{Cards: rc.resp.Cards})
+	if err != nil {
+		slog.Warn("genie response phrasing payload failed", "err", err)
+		return
+	}
+	ctx, cancel := rc.llmCtx()
+	res, err := rc.e.LLM.SendMessage(ctx,
+		"Write one short markdown sentence using only the supplied JSON. Copy numbers exactly. Do not add facts.",
+		[]genillm.Message{{Role: genillm.RoleUser, Content: string(payload)}}, nil)
+	cancel()
+	if err != nil {
+		slog.Warn("genie response phrasing failed; retaining deterministic text", "err", err, "intent", rc.intent.ID)
+		return
+	}
+	if text := strings.TrimSpace(res.Text); text != "" {
+		rc.resp.Text = text
+	}
 }
 
 // execTool performs one GET with timeout + token passthrough and logs it.

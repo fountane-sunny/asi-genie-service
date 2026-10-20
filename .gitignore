@@ -7,6 +7,7 @@
 # Go
 bin/
 tmp/
+/orchestrator
 *.exe
 *.test
 *.out

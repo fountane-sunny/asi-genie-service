@@ -100,7 +100,7 @@ One row per successful or failed chat turn (written in `engine.persist`).
 | `slots` | jsonb | Extracted slots |
 | `tools` | jsonb | Tool call summary (name, status, duration) |
 | `llm_model` | text, nullable | |
-| `llm_failed` | bool | Classifier used keyword fallback |
+| `llm_failed` | bool | A planner or classifier LLM call failed; the turn fell back to keyword routing |
 | `duration_ms` | bigint | Total `/chat` duration |
 | `error_code`, `error_message` | text, nullable | When handler failed |
 | `feedback` | text, nullable | `thumbs_up`, `thumbs_down`, or `thumbs_down: comment` via `POST /feedback` |

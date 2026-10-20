@@ -65,3 +65,22 @@ func TestScoreReportPhrase_deterministic(t *testing.T) {
 		t.Fatalf("score=%d min=%d", a, reportMatchMinScore)
 	}
 }
+
+func TestApplyReportNamesReplacesIDsWithCatalogNames(t *testing.T) {
+	t.Parallel()
+	doc := map[string]any{
+		"nightAuditTime":    "00:00",
+		"selectedReportIds": []any{float64(3), float64(10), float64(99)},
+	}
+	applyReportNames(doc, testReportCatalog(), 42)
+	if _, ok := doc["selectedReportIds"]; ok {
+		t.Fatal("selectedReportIds should be removed once names are known")
+	}
+	names, ok := doc["selectedReports"].([]string)
+	if !ok || len(names) != 2 || names[0] != "Guest Arrival Report" || names[1] != "Daily Summary Report" {
+		t.Fatalf("selectedReports = %#v", doc["selectedReports"])
+	}
+	if doc["nightAuditTime"] != "00:00" {
+		t.Fatalf("other fields changed: %#v", doc)
+	}
+}

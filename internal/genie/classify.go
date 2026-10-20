@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -93,8 +94,10 @@ func (e *Engine) classifierSystem(rc *reqCtx) string {
 Always call %s exactly once. Never answer directly. Never compute numbers.
 Today's business date is %s (%s). Resolve relative dates ("tonight", "this weekend", "Friday", "last Tuesday") to YYYY-MM-DD.
 Do NOT invent dates: if availability is asked without any date, leave dates empty (the app will ask).
-Requests to create/change/cancel/charge something map to the matching read/readiness capability if one exists (e.g. "check in Smith" -> quick_checkin, "mark 201 clean" -> update_room_status, "book a room" -> create_reservation); otherwise use "unsupported".
-Use "unsupported" for anything outside the list (F&B orders, weather, etc.) and "smalltalk" for greetings/thanks.
+Read intent, not spelling: a misspelled PMS question routes to the closest capability (the message may already be spell-corrected).
+Use "unsupported" for non-PMS questions (including "what is Python" and "wat is pythn"), and for writes, payments, refunds, or anything outside the list. These must never result in a property API call.
+Hotel terms are in scope, not unsupported: "what is RevPAR", "what is ADR", "what is a folio" route to the closest metric or guide capability.
+Use "smalltalk" only for greetings/thanks.
 Capabilities (id [module; response type]: examples):
 %s`, routeTool, today, mustWeekday(today), e.intentCatalogPrompt())
 }
@@ -111,9 +114,30 @@ func mustWeekday(d string) string {
 // falling back to deterministic keyword matching when the LLM is unavailable.
 func (e *Engine) classify(rc *reqCtx) (intents.Intent, IntentInfo, Slots) {
 	var slots Slots
-	if e.LLM != nil {
-		msgs := rc.recentTurns()
-		msgs = append(msgs, genillm.Message{Role: genillm.RoleUser, Content: rc.req.Message})
+	// Snap misspelled words to catalogue vocabulary before any routing, so
+	// "arivals tday" and "list the roroms" route like the corrected text.
+	// Names and numbers are left alone (see intents.CorrectSpelling).
+	routeText := rc.req.Message
+	if corrected, changed := intents.CorrectSpelling(rc.req.Message); changed {
+		routeText = corrected
+		log.Printf("genie: spelling corrected %q -> %q", rc.req.Message, corrected)
+	}
+	// These questions are not in the catalogue. Without a rule the router
+	// marks them unsupported or sends them to a navigate card.
+	if id, ruleSlots, ok := ruleRoute(routeText); ok {
+		slots = ruleSlots
+		if it, found := intents.Get(id); found {
+			return it, IntentInfo{ID: it.ID, ScenarioID: it.ScenarioID, ResponseType: it.ResponseType, Confidence: 1, Source: "rule"}, slots
+		}
+		return intents.Intent{ID: id, Module: "Genie"}, IntentInfo{ID: id, Handler: "dedicated", Confidence: 1, Source: "rule"}, slots
+	}
+	// Skip when the planner's LLM call already failed this request.
+	if e.LLM != nil && !rc.llmFailed {
+		var prior []genillm.Message
+		if shouldSendConversationContext(rc.req.Message) {
+			prior = rc.recentTurns()
+		}
+		msgs := classifierMessages(routeText, prior)
 		ctx, cancel := rc.llmCtx()
 		res, err := e.LLM.SendMessage(ctx, e.classifierSystem(rc), msgs, []genillm.Tool{routeToolDef()})
 		cancel()
@@ -138,11 +162,93 @@ func (e *Engine) classify(rc *reqCtx) (intents.Intent, IntentInfo, Slots) {
 			}
 		}
 	}
-	if m := intents.KeywordMatch(rc.req.Message, 1); len(m) > 0 && m[0].Score >= 0.2 {
+	if m := intents.KeywordMatch(routeText, 1); len(m) > 0 && m[0].Score >= 0.2 {
 		it := m[0].Intent
 		return it, IntentInfo{ID: it.ID, ScenarioID: it.ScenarioID, ResponseType: it.ResponseType, Confidence: m[0].Score, Source: "keyword"}, slots
 	}
 	return intents.Intent{ID: intents.UnsupportedID, Module: "Genie"}, IntentInfo{ID: intents.UnsupportedID, Handler: "fallback", Source: "keyword"}, slots
+}
+
+var (
+	roomWordRe     = regexp.MustCompile(`\brooms?\b`)
+	roomListVerbRe = regexp.MustCompile(`\b(list|show|all|available|vacant|free)\b`)
+	whoIsRe        = regexp.MustCompile(`(?i)^who(?:'s| is)\s+(.+)$`)
+)
+
+// ruleRoute covers questions the intent catalogue does not name, matching the
+// mobile assistant: the signed-in user, a person on the property, and a room list.
+func ruleRoute(message string) (string, Slots, bool) {
+	lower := strings.ToLower(strings.TrimSpace(message))
+	lower = strings.TrimRight(lower, " ?.!")
+	if isCurrentUserQuestion(lower) {
+		return "current_user", Slots{}, true
+	}
+	if isRoomListQuestion(lower) {
+		var slots Slots
+		if roomListWantsAvailable(lower) {
+			slots.Metric = "available"
+		}
+		return "list_rooms", slots, true
+	}
+	if name, ok := whoIsPerson(message); ok {
+		return "lookup_guest", Slots{GuestName: name}, true
+	}
+	return "", Slots{}, false
+}
+
+func isCurrentUserQuestion(lower string) bool {
+	switch lower {
+	case "who am i", "whoami", "my profile", "what's my name", "what is my name",
+		"who is logged in", "who is signed in", "who am i logged in as":
+		return true
+	}
+	return false
+}
+
+func isRoomListQuestion(lower string) bool {
+	if !roomWordRe.MatchString(lower) {
+		return false
+	}
+	if strings.Contains(lower, "room type") || strings.Contains(lower, "how many") {
+		return false
+	}
+	return roomListVerbRe.MatchString(lower)
+}
+
+func roomListWantsAvailable(lower string) bool {
+	return strings.Contains(lower, "available") || strings.Contains(lower, "vacant") || strings.Contains(lower, "free")
+}
+
+func whoIsPerson(message string) (string, bool) {
+	m := whoIsRe.FindStringSubmatch(strings.TrimSpace(message))
+	if len(m) < 2 {
+		return "", false
+	}
+	name := strings.Trim(strings.TrimSpace(m[1]), `"'?.!`)
+	lower := strings.ToLower(name)
+	switch {
+	case name == "", len(name) < 2:
+		return "", false
+	case strings.HasPrefix(lower, "arriv"), strings.HasPrefix(lower, "depart"),
+		strings.HasPrefix(lower, "check"), strings.HasPrefix(lower, "due"),
+		strings.HasPrefix(lower, "in room"), strings.HasPrefix(lower, "the contact"),
+		strings.HasPrefix(lower, "logged"), strings.HasPrefix(lower, "signed"):
+		return "", false
+	}
+	return name, true
+}
+
+// classifierMessages is the router transcript. Continuations keep the recent
+// turns; a new question is only the current message.
+func classifierMessages(message string, prior []genillm.Message) []genillm.Message {
+	current := genillm.Message{Role: genillm.RoleUser, Content: message}
+	if !shouldSendConversationContext(message) || len(prior) == 0 {
+		return []genillm.Message{current}
+	}
+	out := make([]genillm.Message, len(prior)+1)
+	copy(out, prior)
+	out[len(prior)] = current
+	return out
 }
 
 // recentTurns returns the last contextTurns stored user/assistant messages.
@@ -195,7 +301,11 @@ func (rc *reqCtx) resolveSlotDates(s *Slots) {
 }
 
 // applyContext fills entity slots from the previous turn (G-097).
+// A new question does not reuse that entity.
 func (rc *reqCtx) applyContext(s *Slots) {
+	if !shouldSendConversationContext(rc.req.Message) {
+		return
+	}
 	ent := rc.sess.LastEntity
 	if ent == nil || s.GuestName != "" || s.Confirmation != "" || s.Room != "" {
 		return

@@ -3,6 +3,7 @@ package genie
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"net/url"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 
 	"asi-genie-poc/internal/cards"
 	"asi-genie-poc/internal/intents"
+	"golang.org/x/sync/errgroup"
 )
 
 type handlerFunc func(rc *reqCtx, it intents.Intent, s Slots) error
@@ -21,6 +23,7 @@ func (e *Engine) dedicatedHandlers() map[string]handlerFunc {
 	return map[string]handlerFunc{
 		"property_snapshot":                hPropertySnapshot,
 		"compare_metrics":                  hCompareMetrics,
+		"occupancy_forecast":               hOccupancyForecast,
 		"todays_arrivals":                  hArrivals,
 		"todays_departures":                hDepartures,
 		"check_availability":               hAvailability,
@@ -33,6 +36,8 @@ func (e *Engine) dedicatedHandlers() map[string]handlerFunc {
 		"late_checkout_quote":              hLateCheckout,
 		"guide_query":                      hGuide,
 		"lookup_guest":                     hLookupGuest,
+		"current_user":                     hCurrentUser,
+		"list_rooms":                       hListRooms,
 		"room_status_summary":              hRoomStatusSummary,
 		"hk_assignments_read":              hHKAssignments,
 		"update_room_status":               hUpdateRoomStatusNav,
@@ -41,6 +46,7 @@ func (e *Engine) dedicatedHandlers() map[string]handlerFunc {
 		"night_audit_readiness":            hNightAuditReadiness,
 		"night_audit_walkthrough":          hNightAuditWalkthrough,
 		"view_report":                      hViewReport,
+		"download_report":                  hDownloadReport,
 		"revenue_query":                    hRevenue,
 		"policy_lookup":                    hPolicyLookup,
 		"capabilities":                     hCapabilities,
@@ -108,8 +114,38 @@ func q(kv ...string) url.Values {
 
 func hPropertySnapshot(rc *reqCtx, it intents.Intent, s Slots) error {
 	d := rc.dayOr(s)
-	sum, err := rc.get("reservation_get_dashboard_today_summary", nil, q("propertyId", rc.pidStr(), "date", d))
-	if err != nil {
+	var sum, kpi any
+	var summaryErr, kpiErr error
+	g, _ := errgroup.WithContext(rc.ctx)
+	g.Go(func() error {
+		var err error
+		sum, err = rc.get("reservation_get_dashboard_today_summary", nil, q("propertyId", rc.pidStr(), "date", d))
+		if err != nil {
+			summaryErr = err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		kpi, err = rc.get("reservation_get_dashboard_kpi_overview", nil, q("propertyId", rc.pidStr(), "date", d))
+		kpiErr = err
+		return err
+	})
+	_ = g.Wait()
+	if summaryErr != nil {
+		slog.Error("today summary lookup failed", "err", summaryErr, "propertyId", rc.pid)
+		return summaryErr
+	}
+	if kpiErr != nil {
+		slog.Warn("KPI overview lookup failed; returning summary only", "err", kpiErr, "propertyId", rc.pid)
+	}
+	if kpi == nil {
+		// KPI access is role dependent; the summary remains useful without it.
+		kpi = map[string]any{}
+	}
+	if sum == nil {
+		err := errors.New("today summary unavailable")
+		slog.Error("today summary was empty", "err", err, "propertyId", rc.pid)
 		return err
 	}
 	c := cards.Card{Type: cards.TypeData, Intent: it.ID, Title: "Today at a glance", Subtitle: d}
@@ -121,21 +157,16 @@ func hPropertySnapshot(rc *reqCtx, it intents.Intent, s Slots) error {
 		cards.Field{Label: "Cancelled", Value: metricValue(path(sum, "cancelled"), "reservationCount")},
 		cards.Field{Label: "No-shows", Value: metricValue(path(sum, "noShow"), "reservationCount")},
 	)
-	// KPI tiles: shown when the KPI API answers; a 401/403 from ASI just omits them.
-	{
-		if kpi, err := rc.get("reservation_get_dashboard_kpi_overview", nil, q("propertyId", rc.pidStr(), "date", d)); err == nil {
-			for _, k := range []struct{ key, label string }{{"occupancy", "Occupancy"}, {"adr", "ADR"}, {"revpar", "RevPAR"}} {
-				m := obj(path(kpi, k.key))
-				if m == nil {
-					continue
-				}
-				f := cards.Field{Label: k.label, Value: str(m, "displayValue", "value")}
-				if cp, ok := num(m, "changePercent"); ok {
-					f.Hint = fmt.Sprintf("%+.1f%% vs previous day", cp)
-				}
-				c.Rows = append(c.Rows, f)
-			}
+	for _, k := range []struct{ key, label string }{{"occupancy", "Occupancy"}, {"adr", "ADR"}, {"revpar", "RevPAR"}} {
+		m := obj(path(kpi, k.key))
+		if m == nil {
+			continue
 		}
+		f := cards.Field{Label: k.label, Value: str(m, "displayValue", "value")}
+		if cp, ok := num(m, "changePercent"); ok {
+			f.Hint = fmt.Sprintf("%+.1f%% vs previous day", cp)
+		}
+		c.Rows = append(c.Rows, f)
 	}
 	c.Rows = nonEmptyRows(c.Rows)
 	l := moduleLink("Dashboard", rc.pid)
@@ -380,11 +411,32 @@ func hAvailability(rc *reqCtx, it intents.Intent, s Slots) error {
 		return err
 	}
 	listMaps := findList(v)
+	hasRate := false
+	for _, m := range listMaps {
+		if str(m, "rate", "baseRate", "minRate", "averageRate", "displayRate", "price") != "" {
+			hasRate = true
+			break
+		}
+	}
+	rates := map[string]string{}
+	if !hasRate {
+		rv, err := rc.get("config_get_rate_types", nil, q("propertyId", rc.pidStr(), "pageSize", "50"))
+		if err != nil {
+			slog.Error("rate type lookup failed", "err", err, "propertyId", rc.pid)
+			return err
+		}
+		for _, rate := range findList(rv) {
+			rates[strings.ToLower(str(rate, "roomTypeName", "roomType", "name"))] = str(rate, "baseRate", "rate", "amount", "defaultRate")
+		}
+	}
 	var items []cards.ListItem
 	for _, m := range listMaps {
 		name := str(m, "roomTypeName", "name", "roomType", "title")
 		avail := str(m, "available", "availableRooms", "availableCount", "totalAvailable", "availability")
 		rate := str(m, "rate", "baseRate", "minRate", "averageRate", "displayRate", "price")
+		if rate == "" {
+			rate = rates[strings.ToLower(name)]
+		}
 		sub := orDash(avail) + " available"
 		if rate != "" {
 			sub += " · rate " + rate
@@ -392,8 +444,34 @@ func hAvailability(rc *reqCtx, it intents.Intent, s Slots) error {
 		items = append(items, cards.ListItem{ID: str(m, "roomTypeId", "id"), Title: name, Subtitle: sub})
 	}
 	link := reservationCreateLink(rc, from, to, s.RoomType, listMaps)
-	rc.add(cards.Card{Type: cards.TypeList, Intent: it.ID, Title: fmt.Sprintf("Availability %s → %s", from, to), Items: items, Total: len(items), Link: &link})
+	total, known, note := pageCount(v, len(listMaps), 50, len(items))
+	rc.add(cards.Card{Type: cards.TypeList, Intent: it.ID, Title: fmt.Sprintf("Availability %s → %s", from, to), Subtitle: note, Items: items, Total: shownTotal(total, known), Link: &link})
 	rc.text(fmt.Sprintf("Availability by room type for %s to %s.", from, to))
+	return nil
+}
+
+func hOccupancyForecast(rc *reqCtx, it intents.Intent, s Slots) error {
+	from, to := rc.dayOr(s), s.EndDate
+	if to == "" {
+		to = from
+	}
+	v, err := rc.get("reservation_get_inventory_forecasting", nil, q("propertyId", rc.pidStr(), "startDate", from, "endDate", to))
+	if err != nil {
+		slog.Error("inventory forecast lookup failed", "err", err, "propertyId", rc.pid)
+		return err
+	}
+	if s.RoomType != "" {
+		if _, err := rc.get("reservation_get_inventory_forecasting_inventory_details", nil, q("propertyId", rc.pidStr(), "startDate", from, "endDate", to, "roomType", s.RoomType)); err != nil {
+			slog.Error("inventory forecast detail lookup failed", "err", err, "propertyId", rc.pid)
+			return err
+		}
+	}
+	rows := scalarRows(obj(v), 12)
+	if len(rows) == 0 {
+		rows = scalarRows(obj(path(v, "data")), 12)
+	}
+	rc.add(cards.Card{Type: cards.TypeData, Intent: it.ID, Title: "Occupancy forecast", Subtitle: from + " → " + to, Rows: rows, Link: &cards.Link{Label: "Open dashboard", Route: p(rc.pid, "/dashboard")}})
+	rc.text("Here is the occupancy forecast.")
 	return nil
 }
 
@@ -728,7 +806,15 @@ func hLookupGuest(rc *reqCtx, it intents.Intent, s Slots) error {
 	}
 	list := dedupeGuestRecords(findList(v))
 	if len(list) == 0 {
-		rc.add(cards.Text(fmt.Sprintf("No guest profile matches %q.", name)))
+		// Staff ("Who is Sunny?") are property users, not guest profiles.
+		rendered, uerr := rc.renderPropertyUser(it, name)
+		if uerr != nil {
+			slog.Warn("property user lookup failed", "err", uerr, "propertyId", rc.pid)
+		}
+		if rendered {
+			return nil
+		}
+		rc.text(fmt.Sprintf("No guest or user matches %q.", name))
 		return nil
 	}
 	if len(list) > 1 {

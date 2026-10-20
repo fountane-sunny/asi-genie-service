@@ -21,13 +21,61 @@ const (
 	TypeError          = "error"          // readable failure: title, message, retry hint (never raw errors)
 	TypeDenied         = "denied"         // Denied (RBAC)
 	TypeNotSupported   = "not_supported"  // Not supported (captured)
+	TypeTable          = "table"          // Columnar rows (any read result)
+	TypeChart          = "chart"          // Bar / line / area / pie series
 )
+
+// Chart kinds the panel can draw.
+const (
+	ChartBar  = "bar"
+	ChartLine = "line"
+	ChartArea = "area"
+	ChartPie  = "pie"
+)
+
+// Column is one table column; Key indexes TableData.Rows.
+type Column struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Align string `json:"align,omitempty"` // left | right | center
+}
+
+// TableData is a generic grid: rows are display strings keyed by Column.Key.
+type TableData struct {
+	Columns []Column            `json:"columns"`
+	Rows    []map[string]string `json:"rows"`
+}
+
+// ChartSeries is one plotted value; Key indexes ChartData.Data.
+type ChartSeries struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+}
+
+// ChartData is a categorical chart: Data rows hold XKey (label) plus one number per series.
+type ChartData struct {
+	Kind   string           `json:"kind"`
+	XKey   string           `json:"xKey"`
+	Series []ChartSeries    `json:"series"`
+	Data   []map[string]any `json:"data"`
+	Unit   string           `json:"unit,omitempty"` // e.g. "%", "$"
+}
 
 // Link is a frontend deep link. Route is an asi-frontend path; Params become query params.
 type Link struct {
 	Label  string            `json:"label"`
 	Route  string            `json:"route"`
 	Params map[string]string `json:"params,omitempty"`
+}
+
+// Download is a file export the chat panel fetches from an existing ASI export API.
+// Path is relative to that service's public base URL (reservation /api/v1 or config /v1).
+type Download struct {
+	Label    string            `json:"label"`
+	FileName string            `json:"fileName"`
+	Service  string            `json:"service"`
+	Path     string            `json:"path"`
+	Query    map[string]string `json:"query,omitempty"`
 }
 
 // Field is an ordered label/value pair.
@@ -113,11 +161,14 @@ type Card struct {
 	Steps      []string          `json:"steps,omitempty"`
 	Citations  []Citation        `json:"citations,omitempty"`
 	Link       *Link             `json:"link,omitempty"`
+	Downloads  []Download        `json:"downloads,omitempty"`
 	Captured   bool              `json:"captured,omitempty"`
 	Code       string            `json:"code,omitempty"`  // error: session_expired | forbidden | service_unavailable | service_error | not_found | llm_busy
 	Retry      string            `json:"retry,omitempty"` // error: what the user can do next
 	Fields     map[string]string `json:"fields,omitempty"`
 	Data       any               `json:"data,omitempty"`
+	Table      *TableData        `json:"table,omitempty"`
+	Chart      *ChartData        `json:"chart,omitempty"`
 }
 
 // Chip is a follow-up suggestion; clicking sends Message.

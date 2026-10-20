@@ -2,13 +2,11 @@ package genie
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
 	"asi-genie-poc/internal/cards"
 	"asi-genie-poc/internal/intents"
-	genillm "asi-genie-poc/llm"
 	"asi-genie-poc/toolregistry/generated"
 )
 
@@ -52,65 +50,28 @@ func (e *Engine) generic(rc *reqCtx, it intents.Intent, s Slots) error {
 	return e.genericRead(rc, it, s)
 }
 
-// genericRead lets the LLM pick ONE read endpoint (GET-only, top 12 by the
-// selector) and its parameters; the result is rendered server-side as the
-// intent's card type. The model only phrases a one-line lead-in.
+// genericRead only executes an audited intent binding. Unmapped catalogue
+// entries navigate instead of guessing an endpoint from catalogue prose.
 func (e *Engine) genericRead(rc *reqCtx, it intents.Intent, s Slots) error {
 	link := moduleLink(it.Module, rc.pid)
-	if e.LLM == nil {
+	bound := toolsForIntent(it.ID, s)
+	if len(bound) == 0 {
 		rc.add(navigateFromModuleLink(it.ID, "Here's where to find that.", link))
 		return nil
 	}
-	if rc.llmFailed {
-		// Classifier already failed (quota/timeout): skip a second LLM call; try the top
-		// keyword-selected GET tool with propertyId only.
-		sel := e.Selector.Select(rc.req.Message+" "+it.ID+" "+it.Handling, 1)
-		if len(sel) > 0 {
-			raw, _ := json.Marshal(map[string]any{"query": map[string]string{"propertyId": rc.pidStr()}})
-			if err := e.genericReadFromTool(rc, it, s, link, sel[0], raw); err == nil {
-				return nil
-			} else if !isAuthErr(err) {
-				return err
-			}
-		}
-		rc.add(navigateFromModuleLink(it.ID, "The AI is slow right now, so I couldn't fetch that. Try again in a moment or use the link below.", link))
-		return nil
-	}
-	sel := e.Selector.Select(rc.req.Message+" "+it.ID+" "+it.Handling, 12)
-	if len(sel) == 0 {
-		rc.add(navigateFromModuleLink(it.ID, "Here's where to find that.", link))
-		return nil
-	}
-	tools := make([]genillm.Tool, 0, len(sel))
-	allowed := map[string]bool{}
-	for _, t := range sel {
-		tools = append(tools, toLLMTool(t))
-		allowed[t.Name] = true
-	}
-	slotsJSON, _ := json.Marshal(s)
-	system := fmt.Sprintf(`You fetch data for ASI Genie capability %q (%s).
-How it is handled: %s
-Call exactly ONE of the provided read endpoints with the right parameters. propertyId=%d. Business date=%s. Slots=%s.
-Use path parameter "id" = propertyId when the path is /properties/{id}/... .`, it.ID, it.Module, it.Handling, rc.pid, rc.bizDate, slotsJSON)
-	msgs := []genillm.Message{{Role: genillm.RoleUser, Content: rc.req.Message}}
-	ctx, cancel := rc.llmCtx()
-	res, err := e.LLM.SendMessage(ctx, system, msgs, tools)
-	cancel()
-	if err != nil {
-		return err
-	}
-	for _, tc := range res.ToolCalls {
-		t, ok := e.Tools[tc.Name]
-		if !ok || !allowed[tc.Name] {
+	for _, name := range bound {
+		t, ok := e.Tools[name]
+		if !ok {
 			continue
 		}
-		if err := e.genericReadFromTool(rc, it, s, link, t, tc.Arguments); err == nil {
-			return nil
-		} else if !isAuthErr(err) {
+		raw, _ := json.Marshal(map[string]any{"query": map[string]string{"propertyId": rc.pidStr()}})
+		if err := e.genericReadFromTool(rc, it, s, link, t, raw); err != nil && !isAuthErr(err) {
 			return err
 		}
 	}
-	rc.add(navigateFromModuleLink(it.ID, "Here's where to find that.", link))
+	if len(rc.resp.Cards) == 0 {
+		rc.add(navigateFromModuleLink(it.ID, "Here's where to find that.", link))
+	}
 	return nil
 }
 

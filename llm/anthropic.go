@@ -20,9 +20,13 @@ func newAnthropic(cfg Config, key string) *anthropicClient {
 
 func (a *anthropicClient) SendMessage(ctx context.Context, systemPrompt string, messages []Message, tools []Tool) (Response, error) {
 	params := anthropic.MessageNewParams{
-		Model:       anthropic.Model(a.cfg.Model),
-		MaxTokens:   int64(a.cfg.MaxTokens),
-		Temperature: anthropic.Float(a.cfg.Temperature),
+		Model:     anthropic.Model(a.cfg.Model),
+		MaxTokens: int64(a.cfg.MaxTokens),
+	}
+	// Temperature is deprecated for claude-haiku-5-5 and other newer models
+	// Only set it for older models that still support it
+	if !isTemperatureDeprecated(a.cfg.Model) {
+		params.Temperature = anthropic.Float(a.cfg.Temperature)
 	}
 	if systemPrompt != "" {
 		params.System = []anthropic.TextBlockParam{{Text: systemPrompt}}
@@ -72,4 +76,14 @@ func (a *anthropicClient) SendMessage(ctx context.Context, systemPrompt string, 
 		}
 	}
 	return out, nil
+}
+
+// isTemperatureDeprecated checks if the model has deprecated the temperature parameter.
+// Newer Anthropic models (e.g., claude-haiku-5-5) do not support temperature.
+func isTemperatureDeprecated(model string) bool {
+	// Models that have deprecated temperature parameter
+	deprecatedModels := map[string]bool{
+		"claude-haiku-5-5": true,
+	}
+	return deprecatedModels[model]
 }

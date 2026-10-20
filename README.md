@@ -28,7 +28,7 @@ For live reload: `make dev-air` (requires [Air](https://github.com/air-verse/air
 ## How it works (summary)
 
 1. **Frontend** sends `POST /chat` with `message`, **`propertyId`** (required), optional `sessionId`, `businessDate`, `screen`, and the user JWT (`X-Token`).
-2. **Orchestrator** classifies intent (LLM tool call or keyword fallback), runs **GET-only** tools against config/auth/reporting/reservation, builds **cards** + short **text**.
+2. **Orchestrator** asks the model which allowed reads to run (`plan_reads`), executes those **GETs** with the user's token, then asks the model to shape the JSON into **cards** + short **text** (`present_answer`). Intent classification is the fallback when the planner cannot run (no LLM, export, or a reply to a clarify card).
 3. **Postgres** stores conversation messages, per-turn analytics (`genie_turns`), tool audit rows, and events (denied / unsupported / PCI).
 
 Details: [architecture.md](docs/architecture.md). Data model: [database.md](docs/database.md).
@@ -94,7 +94,7 @@ make gen-registry-local  # from ./specs/*.swagger.json
 make gen-intents         # Scenarios.csv → internal/intents/catalog_gen.go
 ```
 
-Generated tools live in `toolregistry/generated/` (~380 read-only GET operations). Names follow `service_method_path` (e.g. `reservation_get_reservations_id`). Regenerate when Swagger changes.
+Generated tools live in `toolregistry/generated/`. Names follow `service_method_path` (e.g. `reservation_get_reservations_id`). Each `ToolMeta` lists its query params. Chat may call only the GET allow-list (`IsAllowedReadTool`); the planner is shown every name on that list. Regenerate when Swagger changes.
 
 ## Makefile targets
 
@@ -108,7 +108,7 @@ make docker-build  # production image
 
 ## Logging
 
-Structured stderr blocks: **`CHAT`** (request/response), **`LLM`** (classifier), **`ASI`** (tool HTTP). Tokens and card numbers are masked. Default verbosity: `debug` when `APP_ENV=local`, else `info`.
+Structured stderr blocks: **`CHAT`** (request/response), **`LLM`** (planner and classifier), **`ASI`** (tool HTTP). Tokens and card numbers are masked. Default verbosity: `debug` when `APP_ENV=local`, else `info`.
 
 ## Docker
 

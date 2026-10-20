@@ -29,7 +29,7 @@ Headers: `X-Token` (or `Authorization: Bearer`, or `token` cookie) — the user'
 ```
 Also on every response: `createdAt` (ISO 8601, UTC), `durationMs` (server time to answer), optional `notice` (e.g. "The AI is busy right now, so I used quick matching…" when the LLM failed and keywords were used). `toolCalls[].error` is an error **code** only, and each tool call has `durationMs`. Saved messages (`GET /conversations/{id}`) carry `createdAt` and, for replies, `durationMs`.
 
-`handler`: `dedicated` | `generic` | `navigate` | `fallback`. `source`: `llm` | `keyword` (LLM unavailable) | `rule` (PCI / property scope).
+`handler`: `planner` (model-planned reads) | `dedicated` | `generic` | `navigate` | `fallback`. `source`: `llm` | `keyword` (LLM unavailable) | `rule` (PCI / property scope / verified create screen). Planner turns use `intent.id` `agent` for a data answer, `unsupported` for a refusal, `smalltalk` for a reply with no read.
 
 ## Card
 
@@ -50,9 +50,19 @@ Common: `type`, `intent`, `title`, optional `subtitle`, `message`, `link`.
 | Denied (RBAC) | `denied` | `message` only — never data or hints. Emitted when an ASI read returns 401/403 (Genie does no RBAC of its own) |
 | Error (readable failure) | `error` | `code`, `title`, `message`, `retry` (what to do), optional `link`. Codes: `session_expired` (ASI 401: "Your session has expired, please log in again"), `forbidden` (403: "You don't have access to …"), `service_unavailable` (timeout/refused: "Couldn't load today's arrivals - the reservation service didn't respond. Please try again."), `service_error` (5xx), `not_found`, `not_available`, `unexpected`. Never contains stack traces, URLs or tokens |
 | Not supported (captured) | `not_supported` | `message`, `captured: true`, optional `link` (fastest manual path) |
+| Planner table | `table` | `table: { columns: Column[], rows }`, `total` when rows are a subset. Intent `agent_table` |
+| Planner chart | `chart` | `chart: { kind, xKey, series, data, unit? }`. `kind`: `bar` \| `line` \| `area` \| `pie`. Intent `agent_chart` |
+| Planner stats / detail | `data` | `rows: Field[]`. Intent `agent_stats` (headline numbers) or `agent_detail` (one record) |
+| Planner list | `list` | `items`, `total`. Intent `agent_list` |
+
+Planner answers (`present_answer`) may return any combination of those last four, in order stats, chart, table, list, detail. Caps: 8 stats, 8 columns, 50 table rows, 30 list items, 16 detail rows, 4 chart series, 60 points. `text` is the one- or two-sentence summary and does not repeat the table. Create/update refusals for a verified entity (room, space, room type, rate type, amenity, tax, other charge, building/floor, role, reservation, guest, email template, folio notice) are a `navigate` card to that ASI screen.
 
 ```ts
 Link      { label: string; route: string; params?: Record<string,string> }   // route = asi-frontend path, params = query string. Reports: prefer `reportId` (catalog id) + `report` (componentKey); optional `date` or `startDate`/`endDate`
+Column    { key: string; label: string; align?: "left"|"right"|"center" }
+TableData { columns: Column[]; rows: Record<string,string>[] }
+ChartSeries { key: string; label: string }
+ChartData { kind: "bar"|"line"|"area"|"pie"; xKey: string; series: ChartSeries[]; data: Record<string, unknown>[]; unit?: string }
 Field     { label: string; value: string; hint?: string }                     // hint e.g. "+4.0% vs previous day"
 ListItem  { id?: string; title: string; subtitle?: string; badges?: string[]; link?: Link }
 Period    { label: string; value?: number; display: string }

@@ -1,12 +1,18 @@
 package genie
 
 import (
+	"encoding/json"
+	"log/slog"
 	"strconv"
 	"strings"
 
 	"asi-genie-poc/internal/cards"
 	"asi-genie-poc/internal/intents"
 )
+
+// nightAuditSettingsTool is the config read behind the Night Audit settings tab.
+// Its selectedReportIds are catalog ids; the tab shows names, and so does chat.
+const nightAuditSettingsTool = "config_get_properties_id_night_audit_settings"
 
 // reportCatalogItem mirrors reservation GET /reports/catalog (canonical report list).
 type reportCatalogItem struct {
@@ -142,6 +148,78 @@ func matchReportInCatalog(catalog []reportCatalogItem, phrase string) (*reportCa
 		return nil, tied
 	}
 	return &top.item, nil
+}
+
+// nameNightAuditReports swaps selectedReportIds for selectedReports (catalog
+// names) before the answer is written. An id the catalog does not know is
+// dropped, so the chat never prints a bare report number.
+func (rc *reqCtx) nameNightAuditReports(raw json.RawMessage) json.RawMessage {
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		slog.Warn("genie night audit settings were not an object", "err", err, "propertyId", rc.pid)
+		return raw
+	}
+	if intList(doc["selectedReportIds"]) == nil {
+		return raw
+	}
+	catalog, err := rc.loadReportCatalog()
+	if err != nil {
+		slog.Warn("genie report catalog failed; night audit report ids left unresolved", "err", err, "propertyId", rc.pid)
+		return raw
+	}
+	applyReportNames(doc, catalog, rc.pid)
+	out, err := json.Marshal(doc)
+	if err != nil {
+		slog.Warn("genie night audit settings rewrite failed", "err", err, "propertyId", rc.pid)
+		return raw
+	}
+	return out
+}
+
+// applyReportNames replaces selectedReportIds with the catalog names, in the
+// same order. Unknown ids are omitted.
+func applyReportNames(doc map[string]any, catalog []reportCatalogItem, propertyID int) {
+	ids := intList(doc["selectedReportIds"])
+	if ids == nil {
+		return
+	}
+	byID := make(map[int]string, len(catalog))
+	for _, item := range catalog {
+		byID[item.ID] = item.Name
+	}
+	names := make([]string, 0, len(ids))
+	for _, id := range ids {
+		name := byID[id]
+		if name == "" {
+			slog.Warn("genie night audit report id has no catalog name", "reportId", id, "propertyId", propertyID)
+			continue
+		}
+		names = append(names, name)
+	}
+	delete(doc, "selectedReportIds")
+	doc["selectedReports"] = names
+}
+
+func intList(v any) []int {
+	xs, ok := v.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]int, 0, len(xs))
+	for _, x := range xs {
+		switch n := x.(type) {
+		case float64:
+			out = append(out, int(n))
+		case string:
+			i, err := strconv.Atoi(strings.TrimSpace(n))
+			if err != nil {
+				slog.Warn("genie skipped a non-numeric report id", "err", err, "reportId", n)
+				continue
+			}
+			out = append(out, i)
+		}
+	}
+	return out
 }
 
 func reportDeepLinkParams(item reportCatalogItem, rc *reqCtx, s Slots) map[string]string {

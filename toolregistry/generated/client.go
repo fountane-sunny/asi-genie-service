@@ -33,6 +33,13 @@ type ToolMeta struct {
 	Path        string
 	ReadOnly    bool
 	Description string
+	Query       []QueryParam
+}
+
+// QueryParam is one query-string parameter a tool accepts.
+type QueryParam struct {
+	Name     string
+	Required bool
 }
 
 var allTools []ToolMeta
