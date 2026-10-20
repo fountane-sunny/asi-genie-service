@@ -63,13 +63,35 @@ func messageWantsFolioAction(message string) bool {
 // folioDocType infers the /folio/{id} doc_type query param from the message.
 // Defaults to "folio" when the message names no specific document.
 func folioDocType(message string) string {
-	lower := strings.ToLower(message)
-	for _, w := range folioDocWords {
-		if strings.Contains(lower, w) {
-			return folioDocTypeByWord[w]
-		}
+	if docType, ok := folioDocTypeNamed(message); ok {
+		return docType
 	}
 	return "folio"
+}
+
+// folioDocTypeNamed reports whether the message names one document. The word
+// "folio" on its own is the generic request, not a choice of the standard folio.
+func folioDocTypeNamed(message string) (string, bool) {
+	lower := strings.ToLower(message)
+	for _, w := range folioDocWords {
+		if w == "folio" {
+			continue
+		}
+		if strings.Contains(lower, w) {
+			return folioDocTypeByWord[w], true
+		}
+	}
+	return "", false
+}
+
+// folioDocTypesFor is the Print Folio menu that GET /folio/{id} can generate.
+// Split folio and payment receipt need extra choices on the reservation
+// screen, so they are not offered as a single download.
+func folioDocTypesFor(reservationType string) []string {
+	if reservationType == "group" {
+		return []string{"folio", "detailed", "other-charges", "group-status-report"}
+	}
+	return []string{"registration", "folio", "detailed", "other-charges"}
 }
 
 // folioDocLabel is the human-facing name for a doc_type, matching the labels
@@ -154,30 +176,55 @@ func hDownloadFolio(rc *reqCtx, it intents.Intent, s Slots) error {
 		rc.text("I can't download that from here. Open the reservation and use Print Folio.")
 		return nil
 	}
-	docType := folioDocType(rc.req.Message)
-	download := cards.Download{
-		Label:    "Download PDF",
-		FileName: folioFileName(docType, m),
-		Service:  service,
-		Path:     strings.ReplaceAll(path, "{id}", id),
-		Query: map[string]string{
-			"doc_type":         docType,
-			"reservation_type": folioReservationType(m),
-		},
+	resType := folioReservationType(m)
+	docType, named := folioDocTypeNamed(rc.req.Message)
+	docTypes := folioDocTypesFor(resType)
+	if named {
+		docTypes = []string{docType}
+	}
+	downloads := make([]cards.Download, 0, len(docTypes))
+	for _, dt := range docTypes {
+		label := folioDocLabel(dt)
+		if named {
+			label = "Download PDF"
+		}
+		downloads = append(downloads, cards.Download{
+			Label:    label,
+			FileName: folioFileName(dt, m),
+			Service:  service,
+			Path:     strings.ReplaceAll(path, "{id}", id),
+			Query: map[string]string{
+				"propertyId":       rc.pidStr(),
+				"doc_type":         dt,
+				"reservation_type": resType,
+			},
+		})
+	}
+	title := "Folio"
+	message := "Which document do you want?"
+	who := personName(m)
+	if who == "" {
+		who = "this reservation"
+	}
+	lead := fmt.Sprintf("Here are the folios for %s.", who)
+	if named {
+		title = folioDocLabel(docType)
+		message = "Here's your download."
+		lead = fmt.Sprintf("Here's the %s for %s.", strings.ToLower(folioDocLabel(docType)), who)
 	}
 	card := cards.Card{
 		Type:      cards.TypeData,
 		Intent:    it.ID,
-		Title:     folioDocLabel(docType),
+		Title:     title,
 		Subtitle:  personName(m),
-		Message:   "Here's your download.",
-		Downloads: []cards.Download{download},
+		Message:   message,
+		Downloads: downloads,
 	}
 	if open != nil {
 		open.Label = navigateActionOpenReservation
 		card.Link = open
 	}
 	rc.add(card)
-	rc.text(fmt.Sprintf("Here's the %s for %s.", strings.ToLower(folioDocLabel(docType)), personName(m)))
+	rc.text(lead)
 	return nil
 }

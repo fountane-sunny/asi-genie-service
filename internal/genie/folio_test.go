@@ -140,16 +140,41 @@ func TestHDownloadFolioDefaultDocType(t *testing.T) {
 		t.Fatalf("cards = %d, want 1", len(rc.resp.Cards))
 	}
 	card := rc.resp.Cards[0]
-	if card.Title != "Folio" || len(card.Downloads) != 1 {
+	want := []string{"registration", "folio", "detailed", "other-charges"}
+	if card.Title != "Folio" || len(card.Downloads) != len(want) {
 		t.Fatalf("card = %+v", card)
 	}
-	d := card.Downloads[0]
-	if d.Service != "reservation" || d.Path != "/folio/res-1" ||
-		d.Query["doc_type"] != "folio" || d.Query["reservation_type"] != "individual" {
-		t.Fatalf("download = %+v", d)
+	for i, docType := range want {
+		d := card.Downloads[i]
+		if d.Label != folioDocLabel(docType) || d.Service != "reservation" || d.Path != "/folio/res-1" ||
+			d.Query["doc_type"] != docType || d.Query["reservation_type"] != "individual" || d.Query["propertyId"] != "42" {
+			t.Fatalf("download %d = %+v", i, d)
+		}
 	}
 	if card.Link == nil || !strings.Contains(card.Link.Route, "res-1") {
 		t.Fatalf("link = %+v", card.Link)
+	}
+}
+
+func TestHDownloadFolioGroupDocuments(t *testing.T) {
+	t.Parallel()
+	rc := folioFixture(t, `{"id":"res-1","reservationNumber":"4471","guestName":"John Smith","type":"GROUP"}`, nil)
+	rc.req.Message = "download folio reservation 4471"
+	it, _ := intents.Get("download_folio")
+
+	if err := hDownloadFolio(rc, it, Slots{Confirmation: "4471"}); err != nil {
+		t.Fatalf("hDownloadFolio: %v", err)
+	}
+	got := make([]string, 0, len(rc.resp.Cards[0].Downloads))
+	for _, d := range rc.resp.Cards[0].Downloads {
+		if d.Query["reservation_type"] != "group" {
+			t.Fatalf("reservation_type = %q", d.Query["reservation_type"])
+		}
+		got = append(got, d.Query["doc_type"])
+	}
+	want := []string{"folio", "detailed", "other-charges", "group-status-report"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("doc types = %v, want %v", got, want)
 	}
 }
 
@@ -162,9 +187,12 @@ func TestHDownloadFolioDocTypeFromMessage(t *testing.T) {
 	if err := hDownloadFolio(rc, it, Slots{GuestName: "Smith"}); err != nil {
 		t.Fatalf("hDownloadFolio: %v", err)
 	}
+	if len(rc.resp.Cards[0].Downloads) != 1 {
+		t.Fatalf("downloads = %d, want the named document only", len(rc.resp.Cards[0].Downloads))
+	}
 	d := rc.resp.Cards[0].Downloads[0]
-	if d.Query["doc_type"] != "registration" {
-		t.Fatalf("doc_type = %q, want registration", d.Query["doc_type"])
+	if d.Query["doc_type"] != "registration" || d.Label != "Download PDF" {
+		t.Fatalf("download = %+v", d)
 	}
 }
 
