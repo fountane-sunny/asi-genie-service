@@ -10,7 +10,7 @@ import (
 )
 
 // Deep links mirror asi-frontend/apps/web/app/constants.ts ROUTES.
-// Routes marked "assumed" have no ROUTES constant yet (see docs/phase1-coverage.md).
+// Routes marked "assumed" have no ROUTES constant yet.
 
 func p(pid int, suffix string) string { return fmt.Sprintf("/property/%d%s", pid, suffix) }
 

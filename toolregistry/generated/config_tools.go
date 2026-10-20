@@ -318,7 +318,7 @@ var ConfigTools = []ToolMeta{
 	{Name: "config_get_spaces_id", Service: "config", Method: "GET", Path: "/v1/spaces/{id}", ReadOnly: true, Description: "Returns a Space entry by ID", Query: []QueryParam{{Name: "buildingID", Required: true}, {Name: "propertyID", Required: true}}},
 	{Name: "config_patch_spaces_id", Service: "config", Method: "PATCH", Path: "/v1/spaces/{id}", ReadOnly: false, Description: "Edits an existing space"},
 	{Name: "config_get_stay_durations", Service: "config", Method: "GET", Path: "/v1/stay-durations", ReadOnly: true, Description: "Fetch the list of stay duration types"},
-	{Name: "config_post_subgroups", Service: "config", Method: "POST", Path: "/v1/subgroups/", ReadOnly: false, Description: "Create the subgroup and returns it"},
+	{Name: "config_post_subgroups", Service: "config", Method: "POST", Path: "/v1/subgroups", ReadOnly: false, Description: "Create the subgroup and returns it"},
 	{Name: "config_delete_subgroups_id", Service: "config", Method: "DELETE", Path: "/v1/subgroups/{id}", ReadOnly: false, Description: "Deletes a subgroup and moves its properties to the parent"},
 	{Name: "config_get_subgroups_id", Service: "config", Method: "GET", Path: "/v1/subgroups/{id}", ReadOnly: true, Description: "Returns sub group details"},
 	{Name: "config_patch_subgroups_id", Service: "config", Method: "PATCH", Path: "/v1/subgroups/{id}", ReadOnly: false, Description: "Updates the subgroup and returns it"},
@@ -939,20 +939,13 @@ type DtosUpdateReservationSettings struct {
 	AllowReservationReactivation    bool    `json:"allowReservationReactivation,omitempty"`
 	AutoAssignOnExtension           bool    `json:"autoAssignOnExtension,omitempty"`
 	AutoAssignToCRS                 bool    `json:"autoAssignToCRS,omitempty"`
-	CheckoutBufferMinutes           int64   `json:"checkoutBufferMinutes,omitempty"`
-	CheckoutPromptMinutes           int64   `json:"checkoutPromptMinutes,omitempty"`
 	ConsiderVacantAsAvailable       bool    `json:"considerVacantAsAvailable,omitempty"`
 	ConsiderVacantDirtyAsAvailable  bool    `json:"considerVacantDirtyAsAvailable,omitempty"`
 	DoNotAllowAuditPastTransactions bool    `json:"doNotAllowAuditPastTransactions,omitempty"`
-	DurationDisplayUnit             int64   `json:"durationDisplayUnit,omitempty"`
-	EnableHourly                    bool    `json:"enableHourly,omitempty"`
 	FromBalance                     float64 `json:"fromBalance,omitempty"`
 	IncludeUnpostedInventory        bool    `json:"includeUnpostedInventory,omitempty"`
-	MaxDurationMinutes              int64   `json:"maxDurationMinutes,omitempty"`
-	MinDurationMinutes              int64   `json:"minDurationMinutes,omitempty"`
 	MinimumRentalAge                int64   `json:"minimumRentalAge,omitempty"`
 	NewTabForCheckIns               bool    `json:"newTabForCheckIns,omitempty"`
-	NightAuditHourlyAction          int64   `json:"nightAuditHourlyAction,omitempty"`
 	OnlyZeroBalanceCheckOuts        bool    `json:"onlyZeroBalanceCheckOuts,omitempty"`
 	RateChangeConfirmationOptionID  int64   `json:"rateChangeConfirmationOptionID,omitempty"`
 	ReservationExpiry               bool    `json:"reservationExpiry,omitempty"`
@@ -10177,19 +10170,19 @@ func ConfigGetStayDurations(ctx context.Context, c *Client, in ConfigGetStayDura
 	return toolregistry.MapToCard(tool, resp)
 }
 
-// ConfigPostSubgroupsInput is the input for POST /subgroups/.
+// ConfigPostSubgroupsInput is the input for POST /subgroups.
 type ConfigPostSubgroupsInput struct {
 	Body DtosSubGroupCreatePayload `json:"group" in:"body"`
 }
 
-// ConfigPostSubgroups calls POST /v1/subgroups/.
+// ConfigPostSubgroups calls POST /v1/subgroups.
 // Create the subgroup and returns it
 func ConfigPostSubgroups(ctx context.Context, c *Client, in ConfigPostSubgroupsInput) (any, error) {
 	const tool = "config_post_subgroups"
 	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
 		return nil, err
 	}
-	p := "/v1/subgroups/"
+	p := "/v1/subgroups"
 	q := url.Values{}
 	h := map[string]string{}
 	form := url.Values{}

@@ -89,6 +89,26 @@ func plannerFixture(t *testing.T, llm *scriptedLLM) (*reqCtx, *[]*http.Request) 
 	return rc, &seen
 }
 
+func TestPlannerReservationSearchRenamesKeyToSearchKey(t *testing.T) {
+	llm := &scriptedLLM{replies: []genillm.Response{
+		planCall(t, readPlan{Action: planActionRead, Reads: []plannedRead{
+			{Tool: "reservation_get_reservations_search", Query: map[string]string{"key": "F20261015075416"}},
+		}}),
+		{Text: "Found it."},
+	}}
+	rc, seen := plannerFixture(t, llm)
+	if !rc.e.planAndAnswer(rc) {
+		t.Fatal("planner did not handle the turn")
+	}
+	if len(*seen) != 1 || (*seen)[0].URL.Path != "/api/v1/reservations/search" {
+		t.Fatalf("calls = %d", len(*seen))
+	}
+	q := (*seen)[0].URL.Query()
+	if q.Get("searchKey") != "F20261015075416" || q.Get("key") != "" {
+		t.Fatalf("query = %s", q.Encode())
+	}
+}
+
 func TestPlannerIndexToolsAreAllowedReads(t *testing.T) {
 	e := New(nil, logOnlyStore{})
 	for _, pt := range plannerIndex {

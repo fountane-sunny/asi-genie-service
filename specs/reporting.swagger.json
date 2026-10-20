@@ -1,348 +1,371 @@
 {
-  "swagger": "2.0",
-  "info": {
-    "contact": {}
-  },
-  "paths": {
-    "/SendReport": {
-      "post": {
-        "description": "Sends a report with an attachment (up to 1GB)",
-        "consumes": [
-          "multipart/form-data"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "Send Report"
-        ],
-        "summary": "Send Report",
-        "parameters": [
-          {
-            "type": "file",
-            "description": "Report file to send (max 1GB)",
-            "name": "attachment",
-            "in": "formData",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "schema": {
-              "$ref": "#/definitions/controller.ErrorResponse"
-            }
-          },
-          "413": {
-            "description": "Request Entity Too Large",
-            "schema": {
-              "$ref": "#/definitions/controller.ErrorResponse"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/controller.ErrorResponse"
-            }
-          }
-        }
-      }
+    "schemes": [
+        "https"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "API for sending emails, reports, and related notifications.",
+        "title": "ASI Reporting Service API",
+        "contact": {},
+        "version": "1.0"
     },
-    "/email": {
-      "post": {
-        "description": "Responds with 200",
-        "produces": [
-          "text/plain"
-        ],
-        "tags": [
-          "Send Email"
-        ],
-        "summary": "Send Email",
-        "parameters": [
-          {
-            "description": "Email Payload",
-            "name": "email",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/model.SendEmailRequest"
+    "basePath": "/v1/reporting",
+    "paths": {
+        "/SendReport": {
+            "post": {
+                "description": "Sends a report with an attachment (up to 1GB)",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Send Report"
+                ],
+                "summary": "Send Report",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Report file to send (max 1GB)",
+                        "name": "attachment",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    }
+                }
             }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "string"
+        },
+        "/email": {
+            "post": {
+                "description": "Responds with 200",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Send Email"
+                ],
+                "summary": "Send Email",
+                "parameters": [
+                    {
+                        "description": "Email Payload",
+                        "name": "email",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SendEmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/controller.DefaultErrorResponse"
+                        }
+                    }
+                }
             }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/controller.DefaultErrorResponse"
+        },
+        "/email/batch": {
+            "post": {
+                "description": "Send multiple emails in a single API call. Returns 200 OK with partial success support.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Send Email"
+                ],
+                "summary": "Send Batch Emails",
+                "parameters": [
+                    {
+                        "description": "Batch Email Payload",
+                        "name": "batch",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.BatchEmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.BatchEmailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.DefaultErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/controller.DefaultErrorResponse"
+                        }
+                    }
+                }
             }
-          }
+        },
+        "/healthcheck": {
+            "get": {
+                "description": "Responds with 200",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Health Check"
+                ],
+                "summary": "Server Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/controller.DefaultErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sendEmail": {
+            "post": {
+                "description": "Responds with 200",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Send Email"
+                ],
+                "summary": "Send Email",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/controller.DefaultErrorResponse"
+                        }
+                    }
+                }
+            }
         }
-      }
     },
-    "/email/batch": {
-      "post": {
-        "description": "Send multiple emails in a single API call. Returns 200 OK with partial success support.",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "Send Email"
-        ],
-        "summary": "Send Batch Emails",
-        "parameters": [
-          {
-            "description": "Batch Email Payload",
-            "name": "batch",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/model.BatchEmailRequest"
+    "definitions": {
+        "controller.DefaultErrorResponse": {
+            "type": "object"
+        },
+        "controller.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Error message"
+                }
             }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/model.BatchEmailResponse"
+        },
+        "model.BatchEmailRequest": {
+            "type": "object",
+            "properties": {
+                "emails": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.SendEmailRequest"
+                    }
+                }
             }
-          },
-          "400": {
-            "description": "Bad Request",
-            "schema": {
-              "$ref": "#/definitions/controller.DefaultErrorResponse"
+        },
+        "model.BatchEmailResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.EmailError"
+                    }
+                },
+                "failed": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.EmailResult"
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "successful": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
             }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/controller.DefaultErrorResponse"
+        },
+        "model.EmailError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "index": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                }
             }
-          }
+        },
+        "model.EmailResult": {
+            "type": "object",
+            "properties": {
+                "index": {
+                    "type": "integer"
+                },
+                "messageId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.EmailSettingsPayload": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string"
+                },
+                "emailCC": {
+                    "type": "string"
+                },
+                "emailFrom": {
+                    "type": "string"
+                },
+                "emailFromDisplayName": {
+                    "type": "string"
+                },
+                "emailRecipient": {
+                    "type": "string"
+                },
+                "enableSSL": {
+                    "type": "boolean"
+                },
+                "portNumber": {
+                    "type": "integer"
+                },
+                "serverName": {
+                    "type": "string"
+                },
+                "smtpPassword": {
+                    "type": "string"
+                },
+                "smtpUsername": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.SendEmailRequest": {
+            "type": "object",
+            "properties": {
+                "attachmentURL": {
+                    "type": "string"
+                },
+                "attachmentURLs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "bcc": {},
+                "cc": {},
+                "customSubject": {
+                    "type": "string"
+                },
+                "emailSettings": {
+                    "$ref": "#/definitions/model.EmailSettingsPayload"
+                },
+                "emailType": {
+                    "type": "string"
+                },
+                "htmlContent": {
+                    "type": "string"
+                },
+                "metaData": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "to": {}
+            }
         }
-      }
     },
-    "/healthcheck": {
-      "get": {
-        "description": "Responds with 200",
-        "produces": [
-          "text/plain"
-        ],
-        "tags": [
-          "Health Check"
-        ],
-        "summary": "Server Health check",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "string"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/controller.DefaultErrorResponse"
-            }
-          }
+    "securityDefinitions": {
+        "ApiKeyAuthCookie": {
+            "type": "apiKey",
+            "name": "Token",
+            "in": "cookie"
         }
-      }
-    },
-    "/sendEmail": {
-      "post": {
-        "description": "Responds with 200",
-        "produces": [
-          "text/plain"
-        ],
-        "tags": [
-          "Send Email"
-        ],
-        "summary": "Send Email",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "string"
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "schema": {
-              "$ref": "#/definitions/controller.DefaultErrorResponse"
-            }
-          }
-        }
-      }
     }
-  },
-  "definitions": {
-    "controller.DefaultErrorResponse": {
-      "type": "object"
-    },
-    "controller.ErrorResponse": {
-      "type": "object",
-      "properties": {
-        "message": {
-          "type": "string",
-          "example": "Error message"
-        }
-      }
-    },
-    "model.BatchEmailRequest": {
-      "type": "object",
-      "properties": {
-        "emails": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/model.SendEmailRequest"
-          }
-        }
-      }
-    },
-    "model.BatchEmailResponse": {
-      "type": "object",
-      "properties": {
-        "errors": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/model.EmailError"
-          }
-        },
-        "failed": {
-          "type": "integer"
-        },
-        "message": {
-          "type": "string"
-        },
-        "results": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/model.EmailResult"
-          }
-        },
-        "success": {
-          "type": "boolean"
-        },
-        "successful": {
-          "type": "integer"
-        },
-        "total": {
-          "type": "integer"
-        }
-      }
-    },
-    "model.EmailError": {
-      "type": "object",
-      "properties": {
-        "error": {
-          "type": "string"
-        },
-        "index": {
-          "type": "integer"
-        },
-        "status": {
-          "type": "string"
-        },
-        "to": {
-          "type": "string"
-        }
-      }
-    },
-    "model.EmailResult": {
-      "type": "object",
-      "properties": {
-        "index": {
-          "type": "integer"
-        },
-        "messageId": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "to": {
-          "type": "string"
-        }
-      }
-    },
-    "model.EmailSettingsPayload": {
-      "type": "object",
-      "properties": {
-        "domain": {
-          "type": "string"
-        },
-        "emailCC": {
-          "type": "string"
-        },
-        "emailFrom": {
-          "type": "string"
-        },
-        "emailFromDisplayName": {
-          "type": "string"
-        },
-        "emailRecipient": {
-          "type": "string"
-        },
-        "enableSSL": {
-          "type": "boolean"
-        },
-        "portNumber": {
-          "type": "integer"
-        },
-        "serverName": {
-          "type": "string"
-        },
-        "smtpPassword": {
-          "type": "string"
-        },
-        "smtpUsername": {
-          "type": "string"
-        }
-      }
-    },
-    "model.SendEmailRequest": {
-      "type": "object",
-      "properties": {
-        "attachmentURLs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "bcc": {},
-        "cc": {},
-        "emailSettings": {
-          "$ref": "#/definitions/model.EmailSettingsPayload"
-        },
-        "emailType": {
-          "type": "string"
-        },
-        "metaData": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "to": {}
-      }
-    }
-  }
 }

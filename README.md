@@ -12,7 +12,6 @@ Go service behind **ASI Genie**, the chat assistant in the hotel PMS. It reads A
 | [docs/developer-guide.md](docs/developer-guide.md) | Developers & leads | Architecture, flow diagrams, code map, local setup, config, common changes |
 | [docs/response-contract.md](docs/response-contract.md) | Frontend / API consumers | `/chat`, `/chat/stream` and card shapes |
 | [docs/database.md](docs/database.md) | Developers | Postgres tables and what is stored |
-| [docs/phase1-coverage.md](docs/phase1-coverage.md) | Product / leads | Scenario catalogue vs fallback handlers (generated) |
 
 ## Quick start
 

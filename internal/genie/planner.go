@@ -40,7 +40,7 @@ var plannerIndex = []plannerTool{
 	{"config_get_properties_id_housekeeping_tasks", "Checking housekeeping tasks", "housekeeping task definitions"},
 	{"config_get_properties_id_housekeeping_groups", "Checking housekeeping groups", "housekeeping groups and members"},
 	{"reservation_get_reservations", "Checking reservations", "reservation list; query checkInDateStart/checkInDateEnd (arrivals), checkoutDateStart/checkoutDateEnd (departures), entryDate, pageSize. Response has a total"},
-	{"reservation_get_reservations_search", "Searching reservations", "find a reservation; query key=guest name or confirmation number"},
+	{"reservation_get_reservations_search", "Searching reservations", "find a reservation; query searchKey=guest name or confirmation number"},
 	{"reservation_get_reservations_id", "Checking the reservation", "one reservation; path id from a search result"},
 	{"reservation_get_reservations_id_payment_summary", "Checking the folio", "balance and payments for one reservation; path id"},
 	{"reservation_get_guests", "Searching guests", "guest profiles; query searchKey=name, email or phone"},
@@ -523,6 +523,11 @@ func (rc *reqCtx) runRead(r plannedRead) readResult {
 		if strings.TrimSpace(v) != "" {
 			qv.Set(k, v)
 		}
+	}
+	// Swagger names this param "key"; the service binds searchKey and ignores key.
+	if r.Tool == "reservation_get_reservations_search" && qv.Get("searchKey") == "" && qv.Get("key") != "" {
+		qv.Set("searchKey", qv.Get("key"))
+		qv.Del("key")
 	}
 	if t.Service != "auth" || hasQueryParam(t, "propertyId") {
 		qv.Set("propertyId", rc.pidStr())

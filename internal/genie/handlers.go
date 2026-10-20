@@ -499,11 +499,23 @@ func (rc *reqCtx) resolveReservation(s Slots) (map[string]any, error) {
 		rc.add(cards.Clarify(rc.intent.ID, "Which reservation do you mean? Give me a guest name, room or confirmation number."))
 		return nil, nil
 	}
-	v, err := rc.get("reservation_get_reservations_search", nil, q("propertyId", rc.pidStr(), "key", key, "pageSize", "10"))
+	// The search endpoint binds searchKey. Swagger calls that param "key", which
+	// the service ignores — an empty searchKey returns a browse of current stays
+	// and reports, so every confirmation looked ambiguous.
+	v, err := rc.get("reservation_get_reservations_search", nil, q(
+		"propertyId", rc.pidStr(),
+		"searchKey", key,
+		"entryType", "RESERVATION",
+		"pageSize", "10",
+	))
 	if err != nil {
+		slog.Error("reservation search failed", "err", err, "propertyId", rc.pid)
 		return nil, err
 	}
-	list := findList(v)
+	list := reservationChoices(findList(v))
+	if exact := exactReservationChoice(list, key); exact != nil {
+		list = []map[string]any{exact}
+	}
 	switch {
 	case len(list) == 0:
 		rc.add(cards.Text(fmt.Sprintf("No reservation matches %q.", key)))
@@ -511,12 +523,15 @@ func (rc *reqCtx) resolveReservation(s Slots) (map[string]any, error) {
 	case len(list) > 1:
 		var opts []cards.Option
 		for _, m := range list {
-			n := reservationNumber(m)
+			n := reservationChoiceNumber(m)
 			if n == "" {
 				n = recordID(m)
 			}
-			label := strings.TrimSpace(fmt.Sprintf("%s #%s %s→%s", personName(m), n, str(m, "checkIn", "checkInDate", "arrivalDate"), str(m, "checkOut", "checkoutDate", "departureDate")))
-			opts = append(opts, cards.Option{Label: label, Value: n, Message: fmt.Sprintf("%s reservation %s", strings.ReplaceAll(rc.intent.ID, "_", " "), n)})
+			opts = append(opts, cards.Option{
+				Label:   reservationChoiceLabel(m, n),
+				Value:   n,
+				Message: fmt.Sprintf("%s reservation %s", strings.ReplaceAll(rc.intent.ID, "_", " "), n),
+			})
 		}
 		rc.resp.Intent.Handler = "dedicated"
 		rc.add(cards.Card{Type: cards.TypeDisambiguation, Intent: rc.intent.ID, Title: fmt.Sprintf("Several reservations match %q — which one?", key), Options: opts})
@@ -545,6 +560,78 @@ func (rc *reqCtx) resolveReservation(s Slots) (map[string]any, error) {
 	}
 	rc.remember(Entity{Kind: "reservation", ID: n, Label: personName(m)})
 	return m, nil
+}
+
+// reservationChoices drops report rows. Search mixes reports into the same
+// list, and a report has no reservation to open or print.
+func reservationChoices(list []map[string]any) []map[string]any {
+	out := make([]map[string]any, 0, len(list))
+	for _, m := range list {
+		if strings.EqualFold(str(m, "entryType"), "REPORT") {
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+// exactReservationChoice returns the one row whose confirmation equals key.
+// Search is a substring match, so a full confirmation can sit next to other
+// hits; one exact number is the reservation the user named.
+func exactReservationChoice(list []map[string]any, key string) map[string]any {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return nil
+	}
+	var hit map[string]any
+	for _, m := range list {
+		n := reservationChoiceNumber(m)
+		if n == "" || !strings.EqualFold(n, key) {
+			continue
+		}
+		if hit != nil {
+			return nil
+		}
+		hit = m
+	}
+	return hit
+}
+
+func reservationChoiceNumber(m map[string]any) string {
+	if n := reservationNumber(m); n != "" {
+		return n
+	}
+	return str(m, "groupReservationNumber")
+}
+
+func reservationChoiceLabel(m map[string]any, n string) string {
+	name := personName(m)
+	if name == "" {
+		name = str(m, "groupName")
+	}
+	from := shortSearchDate(str(m, "checkIn", "checkInDate", "checkInDateTime", "arrivalDate"))
+	to := shortSearchDate(str(m, "checkOut", "checkoutDate", "checkOutDateTime", "departureDate"))
+	label := strings.TrimSpace(name)
+	if n != "" {
+		if label != "" {
+			label += " "
+		}
+		label += "#" + n
+	}
+	if from != "" || to != "" {
+		label = strings.TrimSpace(label + " " + from + "→" + to)
+	}
+	if label == "" {
+		return n
+	}
+	return label
+}
+
+func shortSearchDate(s string) string {
+	if i := strings.IndexByte(s, 'T'); i > 0 {
+		return s[:i]
+	}
+	return s
 }
 
 func hLookupReservation(rc *reqCtx, it intents.Intent, s Slots) error {

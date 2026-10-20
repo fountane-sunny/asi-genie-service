@@ -22,22 +22,25 @@ var ReportingService = Service{Name: "reporting", EnvVar: "ASI_REPORTING_BASE_UR
 
 // ReportingTools lists metadata for every generated reporting tool.
 var ReportingTools = []ToolMeta{
-	{Name: "reporting_post_send_report", Service: "reporting", Method: "POST", Path: "/SendReport", ReadOnly: false, Description: "Send Report"},
-	{Name: "reporting_post_email", Service: "reporting", Method: "POST", Path: "/email", ReadOnly: false, Description: "Send Email"},
-	{Name: "reporting_post_email_batch", Service: "reporting", Method: "POST", Path: "/email/batch", ReadOnly: false, Description: "Send Batch Emails"},
-	{Name: "reporting_get_healthcheck", Service: "reporting", Method: "GET", Path: "/healthcheck", ReadOnly: true, Description: "Server Health check"},
-	{Name: "reporting_post_send_email", Service: "reporting", Method: "POST", Path: "/sendEmail", ReadOnly: false, Description: "Send Email"},
+	{Name: "reporting_post_send_report", Service: "reporting", Method: "POST", Path: "/v1/reporting/SendReport", ReadOnly: false, Description: "Send Report"},
+	{Name: "reporting_post_email", Service: "reporting", Method: "POST", Path: "/v1/reporting/email", ReadOnly: false, Description: "Send Email"},
+	{Name: "reporting_post_email_batch", Service: "reporting", Method: "POST", Path: "/v1/reporting/email/batch", ReadOnly: false, Description: "Send Batch Emails"},
+	{Name: "reporting_get_healthcheck", Service: "reporting", Method: "GET", Path: "/v1/reporting/healthcheck", ReadOnly: true, Description: "Server Health check"},
+	{Name: "reporting_post_send_email", Service: "reporting", Method: "POST", Path: "/v1/reporting/sendEmail", ReadOnly: false, Description: "Send Email"},
 }
 
 func init() { register(ReportingTools...) }
 
 // ModelSendEmailRequest mirrors definition "model.SendEmailRequest".
 type ModelSendEmailRequest struct {
+	AttachmentURL  string         `json:"attachmentURL,omitempty"`
 	AttachmentURLs []any          `json:"attachmentURLs,omitempty"`
 	Bcc            any            `json:"bcc,omitempty"`
 	Cc             any            `json:"cc,omitempty"`
+	CustomSubject  string         `json:"customSubject,omitempty"`
 	EmailSettings  any            `json:"emailSettings,omitempty"`
 	EmailType      string         `json:"emailType,omitempty"`
+	HtmlContent    string         `json:"htmlContent,omitempty"`
 	MetaData       map[string]any `json:"metaData,omitempty"`
 	To             any            `json:"to,omitempty"`
 }
@@ -52,14 +55,14 @@ type ReportingPostSendReportInput struct {
 	Attachment []byte `json:"attachment" in:"formData"` // file upload: not sent by generated code
 }
 
-// ReportingPostSendReport calls POST /SendReport.
+// ReportingPostSendReport calls POST /v1/reporting/SendReport.
 // Send Report
 func ReportingPostSendReport(ctx context.Context, c *Client, in ReportingPostSendReportInput) (any, error) {
 	const tool = "reporting_post_send_report"
 	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
 		return nil, err
 	}
-	p := "/SendReport"
+	p := "/v1/reporting/SendReport"
 	q := url.Values{}
 	h := map[string]string{}
 	form := url.Values{}
@@ -80,14 +83,14 @@ type ReportingPostEmailInput struct {
 	Body ModelSendEmailRequest `json:"email" in:"body"`
 }
 
-// ReportingPostEmail calls POST /email.
+// ReportingPostEmail calls POST /v1/reporting/email.
 // Send Email
 func ReportingPostEmail(ctx context.Context, c *Client, in ReportingPostEmailInput) (any, error) {
 	const tool = "reporting_post_email"
 	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
 		return nil, err
 	}
-	p := "/email"
+	p := "/v1/reporting/email"
 	q := url.Values{}
 	h := map[string]string{}
 	form := url.Values{}
@@ -106,14 +109,14 @@ type ReportingPostEmailBatchInput struct {
 	Body ModelBatchEmailRequest `json:"batch" in:"body"`
 }
 
-// ReportingPostEmailBatch calls POST /email/batch.
+// ReportingPostEmailBatch calls POST /v1/reporting/email/batch.
 // Send Batch Emails
 func ReportingPostEmailBatch(ctx context.Context, c *Client, in ReportingPostEmailBatchInput) (any, error) {
 	const tool = "reporting_post_email_batch"
 	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
 		return nil, err
 	}
-	p := "/email/batch"
+	p := "/v1/reporting/email/batch"
 	q := url.Values{}
 	h := map[string]string{}
 	form := url.Values{}
@@ -131,14 +134,14 @@ func ReportingPostEmailBatch(ctx context.Context, c *Client, in ReportingPostEma
 type ReportingGetHealthcheckInput struct {
 }
 
-// ReportingGetHealthcheck calls GET /healthcheck.
+// ReportingGetHealthcheck calls GET /v1/reporting/healthcheck.
 // Server Health check
 func ReportingGetHealthcheck(ctx context.Context, c *Client, in ReportingGetHealthcheckInput) (any, error) {
 	const tool = "reporting_get_healthcheck"
 	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
 		return nil, err
 	}
-	p := "/healthcheck"
+	p := "/v1/reporting/healthcheck"
 	q := url.Values{}
 	h := map[string]string{}
 	form := url.Values{}
@@ -155,14 +158,14 @@ func ReportingGetHealthcheck(ctx context.Context, c *Client, in ReportingGetHeal
 type ReportingPostSendEmailInput struct {
 }
 
-// ReportingPostSendEmail calls POST /sendEmail.
+// ReportingPostSendEmail calls POST /v1/reporting/sendEmail.
 // Send Email
 func ReportingPostSendEmail(ctx context.Context, c *Client, in ReportingPostSendEmailInput) (any, error) {
 	const tool = "reporting_post_send_email"
 	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
 		return nil, err
 	}
-	p := "/sendEmail"
+	p := "/v1/reporting/sendEmail"
 	q := url.Values{}
 	h := map[string]string{}
 	form := url.Values{}

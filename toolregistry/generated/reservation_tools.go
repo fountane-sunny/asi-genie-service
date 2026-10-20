@@ -22,71 +22,15 @@ var ReservationService = Service{Name: "reservation", EnvVar: "ASI_RESERVATION_B
 
 // ReservationTools lists metadata for every generated reservation tool.
 var ReservationTools = []ToolMeta{
-	{Name: "reservation_post_api_v1_audit_revenue_posting_post", Service: "reservation", Method: "POST", Path: "/api/v1/audit/revenue-posting/post", ReadOnly: false, Description: "Post no-show/cancel revenue to reports"},
-	{Name: "reservation_post_api_v1_audit_revenue_posting_unpost", Service: "reservation", Method: "POST", Path: "/api/v1/audit/revenue-posting/unpost", ReadOnly: false, Description: "Unpost no-show/cancel revenue from reports"},
-	{Name: "reservation_get_api_v1_booking_rate_types", Service: "reservation", Method: "GET", Path: "/api/v1/booking/rate-types", ReadOnly: true, Description: "Get rate types from Booking.com", Query: []QueryParam{{Name: "property_id", Required: true}}},
-	{Name: "reservation_get_api_v1_booking_room_types", Service: "reservation", Method: "GET", Path: "/api/v1/booking/room-types", ReadOnly: true, Description: "Get room types from Booking.com", Query: []QueryParam{{Name: "property_id", Required: true}}},
-	{Name: "reservation_post_api_v1_ocr_process", Service: "reservation", Method: "POST", Path: "/api/v1/ocr/process", ReadOnly: false, Description: "Process a document from URLs without storing"},
-	{Name: "reservation_get_api_v1_reports_advance_deposit_ledger", Service: "reservation", Method: "GET", Path: "/api/v1/reports/advance-deposit-ledger", ReadOnly: true, Description: "Get advance deposit ledger", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "status", Required: false}, {Name: "reservationType", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_advance_deposit_ledger_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/advance-deposit-ledger/export", ReadOnly: true, Description: "Export advance deposit ledger", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "status", Required: false}, {Name: "reservationType", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_credit_card_activity", Service: "reservation", Method: "GET", Path: "/api/v1/reports/credit-card-activity", ReadOnly: true, Description: "Get credit card activity report", Query: []QueryParam{{Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "status", Required: false, AllValues: []string{"Completed", "Pending", "Failed", "Voided"}}, {Name: "cardType", Required: false}, {Name: "user", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_credit_card_activity_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/credit-card-activity/export", ReadOnly: true, Description: "Export credit card activity report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "transactionType", Required: false}, {Name: "cardType", Required: false}, {Name: "user", Required: false}, {Name: "reservationId", Required: false}, {Name: "status", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_crs_booking_summary", Service: "reservation", Method: "GET", Path: "/api/v1/reports/crs-booking-summary", ReadOnly: true, Description: "Get CRS booking summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "crsEngineIds", Required: false}, {Name: "crsRatePlanIds", Required: false}, {Name: "loyaltyStatus", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_crs_booking_summary_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/crs-booking-summary/export", ReadOnly: true, Description: "Export CRS booking summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "crsEngineIds", Required: false}, {Name: "crsRatePlanIds", Required: false}, {Name: "loyaltyStatus", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "exportType", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_crs_booking_summary_filter_options", Service: "reservation", Method: "GET", Path: "/api/v1/reports/crs-booking-summary/filter-options", ReadOnly: true, Description: "Get CRS booking summary filter options", Query: []QueryParam{{Name: "propertyId", Required: true}}},
-	{Name: "reservation_get_api_v1_reports_daily_collection", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-collection", ReadOnly: true, Description: "Get daily collection report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "paymentMethods", Required: false}, {Name: "status", Required: false}, {Name: "userIds", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_collection_by_payment_type", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-collection-by-payment-type", ReadOnly: true, Description: "Get daily collection by payment type report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "paymentMethods", Required: false, AllValues: []string{"creditCard", "debitCard", "cash", "check", "badDebts", "businessSource"}}, {Name: "status", Required: false, AllValues: []string{"IN_HOUSE", "CHECKED_OUT", "CONFIRMED", "UNCONFIRMED", "TRANSFER_OUT", "CANCELLED", "NO_SHOW"}}, {Name: "userIds", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_collection_by_payment_type_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-collection-by-payment-type/export", ReadOnly: true, Description: "Export daily payment collection report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "paymentMethods", Required: false}, {Name: "status", Required: false}, {Name: "userIds", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_collection_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-collection/export", ReadOnly: true, Description: "Export daily collection report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "paymentMethods", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_collection_users", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-collection/users", ReadOnly: true, Description: "Get daily collection report users", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}}},
-	{Name: "reservation_get_api_v1_reports_daily_credit_card_summary", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-credit-card-summary", ReadOnly: true, Description: "Get daily credit card summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "paymentTypes", Required: false}, {Name: "status", Required: false}, {Name: "cardTypes", Required: false}, {Name: "virtualCard", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_credit_card_summary_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-credit-card-summary/export", ReadOnly: true, Description: "Export daily credit card summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "paymentTypes", Required: false}, {Name: "status", Required: false}, {Name: "cardTypes", Required: false}, {Name: "virtualCard", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "visibleColumns", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_reservations", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-reservations", ReadOnly: true, Description: "Get daily transaction report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "status", Required: false, AllValues: []string{"CANCELLED", "CHECKED_OUT", "CONFIRMED", "NO_SHOW", "TRANSFER_OUT", "UNCONFIRMED", "IN_HOUSE"}}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_reservations_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-reservations/export", ReadOnly: true, Description: "Export daily transaction report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "status", Required: false, AllValues: []string{"CANCELLED", "CHECKED_OUT", "CONFIRMED", "NO_SHOW", "TRANSFER_OUT", "UNCONFIRMED", "IN_HOUSE"}}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "visibleColumns", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_shift", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-shift", ReadOnly: true, Description: "Get daily shift report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "dateType", Required: false}, {Name: "paymentMethods", Required: false}, {Name: "status", Required: false}, {Name: "userIds", Required: false}, {Name: "roomSpaces", Required: false}, {Name: "checkInStart", Required: false}, {Name: "checkInEnd", Required: false}, {Name: "checkOutStart", Required: false}, {Name: "checkOutEnd", Required: false}, {Name: "paymentDateStart", Required: false}, {Name: "paymentDateEnd", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_shift_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-shift/export", ReadOnly: true, Description: "Export daily shift report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "dateType", Required: false}, {Name: "paymentMethods", Required: false}, {Name: "status", Required: false}, {Name: "userIds", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "visibleColumns", Required: false}, {Name: "exportType", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_shift_users", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-shift/users", ReadOnly: true, Description: "Get daily shift report users", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "dateType", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_summary", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-summary", ReadOnly: true, Description: "Get daily summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_daily_summary_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-summary/export", ReadOnly: true, Description: "Export daily summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_deposit_ledger", Service: "reservation", Method: "GET", Path: "/api/v1/reports/deposit-ledger", ReadOnly: true, Description: "Get deposit ledger report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: false}, {Name: "checkInDate", Required: false}, {Name: "checkOutDate", Required: false}, {Name: "status", Required: false, AllValues: []string{"IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "paymentMode", Required: false, AllValues: []string{"creditCard", "debitCard", "cash", "check", "badDebts"}}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_deposit_ledger_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/deposit-ledger/export", ReadOnly: true, Description: "Export deposit ledger report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: false}, {Name: "checkInDate", Required: false}, {Name: "checkOutDate", Required: false}, {Name: "status", Required: false, AllValues: []string{"IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "paymentMode", Required: false, AllValues: []string{"creditCard", "debitCard", "cash", "check", "badDebts"}}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_group_ledger", Service: "reservation", Method: "GET", Path: "/api/v1/reports/group-ledger", ReadOnly: true, Description: "Get group ledger report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_group_ledger_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/group-ledger/export", ReadOnly: true, Description: "Export group ledger report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "visibleColumns", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_guest_arrival_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/guest-arrival/export", ReadOnly: true, Description: "Export guest arrival report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_guest_departure", Service: "reservation", Method: "GET", Path: "/api/v1/reports/guest-departure", ReadOnly: true, Description: "Get guest departure report (paginated list)", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "checkoutDate", Required: false}, {Name: "status", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_guest_departure_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/guest-departure/export", ReadOnly: true, Description: "Export guest departure report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "status", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_guest_ledger_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/guest-ledger/export", ReadOnly: true, Description: "Export guest ledger report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_housekeeping_task_summary", Service: "reservation", Method: "GET", Path: "/api/v1/reports/housekeeping-task-summary", ReadOnly: true, Description: "Get housekeeping task summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "entityTypes", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_housekeeping_task_summary_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/housekeeping-task-summary/export", ReadOnly: true, Description: "Export housekeeping task summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "entityTypes", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_in_house_room_change", Service: "reservation", Method: "GET", Path: "/api/v1/reports/in-house-room-change", ReadOnly: true, Description: "Get in-house room change report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_in_house_room_change_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/in-house-room-change/export", ReadOnly: true, Description: "Export in-house room change report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_maintenance", Service: "reservation", Method: "GET", Path: "/api/v1/reports/maintenance", ReadOnly: true, Description: "Get maintenance report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "buildingIds", Required: false}, {Name: "floorIds", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_maintenance_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/maintenance/export", ReadOnly: true, Description: "Export maintenance report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "buildingIds", Required: false}, {Name: "floorIds", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_noshow_cancellation_revenue_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/noshow-cancellation-revenue/export", ReadOnly: true, Description: "Export no-show/cancellation revenue report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "status", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_revenue_by_room_type", Service: "reservation", Method: "GET", Path: "/api/v1/reports/revenue-by-room-type", ReadOnly: true, Description: "Get revenue by room type report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "searchKey", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_revenue_by_room_type_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/revenue-by-room-type/export", ReadOnly: true, Description: "Export revenue by room type report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "searchKey", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_room_space_type_arrival", Service: "reservation", Method: "GET", Path: "/api/v1/reports/room-space-type-arrival", ReadOnly: true, Description: "Get room/space type arrival report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "buildingIds", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_room_space_type_arrival_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/room-space-type-arrival/export", ReadOnly: true, Description: "Export room/space type arrival report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "buildingIds", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_sales_and_revenue", Service: "reservation", Method: "GET", Path: "/api/v1/reports/sales-and-revenue", ReadOnly: true, Description: "Get sales and revenue report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "roomTypeIds", Required: false}, {Name: "spaceTypeIds", Required: false}, {Name: "rateTypeIds", Required: false}, {Name: "searchKey", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_sales_and_revenue_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/sales-and-revenue/export", ReadOnly: true, Description: "Export sales and revenue report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "roomTypeIds", Required: false}, {Name: "spaceTypeIds", Required: false}, {Name: "rateTypeIds", Required: false}, {Name: "searchKey", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_segmentation", Service: "reservation", Method: "GET", Path: "/api/v1/reports/segmentation", ReadOnly: true, Description: "Get guest segmentation report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "businessSource", Required: false}, {Name: "status", Required: false}, {Name: "roomSpaces", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_segmentation_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/segmentation/export", ReadOnly: true, Description: "Export guest segmentation report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "businessSource", Required: false}, {Name: "status", Required: false}, {Name: "roomSpaces", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_stay_summary", Service: "reservation", Method: "GET", Path: "/api/v1/reports/stay-summary", ReadOnly: true, Description: "Get stay summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "paymentMode", Required: false}, {Name: "guestType", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_stay_summary_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/stay-summary/export", ReadOnly: true, Description: "Export stay summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "paymentMode", Required: false}, {Name: "guestType", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "columns", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_tax_details", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-details", ReadOnly: true, Description: "Get tax details report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "filtersApplied", Required: false}, {Name: "sortBy", Required: false}, {Name: "sortOrder", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_tax_details_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-details/export", ReadOnly: true, Description: "Export tax details report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "sortBy", Required: false}, {Name: "sortOrder", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_tax_exempt_claim", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-exempt-claim", ReadOnly: true, Description: "Get tax exempt claim report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "businessSource", Required: false}, {Name: "status", Required: false, AllValues: []string{"CONFIRMED", "UNCONFIRMED", "IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "checkInDateStart", Required: false}, {Name: "checkInDateEnd", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_tax_exempt_claim_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-exempt-claim/export", ReadOnly: true, Description: "Export tax exempt claim report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "businessSource", Required: false}, {Name: "status", Required: false, AllValues: []string{"CONFIRMED", "UNCONFIRMED", "IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "checkInDateStart", Required: false}, {Name: "checkInDateEnd", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_tax_exemption", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-exemption", ReadOnly: true, Description: "Get tax exemption report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "status", Required: false, AllValues: []string{"CONFIRMED", "UNCONFIRMED", "IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "filtersApplied", Required: false}}},
-	{Name: "reservation_get_api_v1_reports_tax_exemption_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-exemption/export", ReadOnly: true, Description: "Export tax exemption report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "status", Required: false, AllValues: []string{"CONFIRMED", "UNCONFIRMED", "IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "visibleColumns", Required: false}}},
-	{Name: "reservation_get_api_v1_room_status_changes", Service: "reservation", Method: "GET", Path: "/api/v1/room-status-changes", ReadOnly: true, Description: "Get room status change report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_get_api_v1_room_status_changes_export", Service: "reservation", Method: "GET", Path: "/api/v1/room-status-changes/export", ReadOnly: true, Description: "Export room status change report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
-	{Name: "reservation_post_api_v1_tokenized_cards_session", Service: "reservation", Method: "POST", Path: "/api/v1/tokenized-cards/session", ReadOnly: false, Description: "Create a tokenization session for client-side card capture", Query: []QueryParam{{Name: "propertyId", Required: true}}},
 	{Name: "reservation_post_audit_credit_cards_authorize", Service: "reservation", Method: "POST", Path: "/api/v1/audit/credit-cards/authorize", ReadOnly: false, Description: "Authorize credit card payments in bulk", Query: []QueryParam{{Name: "propertyId", Required: true}}},
 	{Name: "reservation_get_audit_credit_cards_release", Service: "reservation", Method: "GET", Path: "/api/v1/audit/credit-cards/release", ReadOnly: true, Description: "Get release authorizations", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "showAllTransactions", Required: false}, {Name: "checkInDate", Required: false}, {Name: "paymentDate", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
 	{Name: "reservation_post_audit_credit_cards_release", Service: "reservation", Method: "POST", Path: "/api/v1/audit/credit-cards/release", ReadOnly: false, Description: "Release credit card authorizations"},
 	{Name: "reservation_get_audit_credit_cards_reservations", Service: "reservation", Method: "GET", Path: "/api/v1/audit/credit-cards/reservations", ReadOnly: true, Description: "Get reservations with credit cards (audit)", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: false}, {Name: "businessSources", Required: false}, {Name: "rateTypes", Required: false}, {Name: "successfulTransactions", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
 	{Name: "reservation_post_audit_credit_cards_sale", Service: "reservation", Method: "POST", Path: "/api/v1/audit/credit-cards/sale", ReadOnly: false, Description: "Sale/Settle credit card payments in bulk", Query: []QueryParam{{Name: "propertyId", Required: true}}},
+	{Name: "reservation_post_audit_revenue_posting_post", Service: "reservation", Method: "POST", Path: "/api/v1/audit/revenue-posting/post", ReadOnly: false, Description: "Post no-show/cancel revenue to reports"},
+	{Name: "reservation_post_audit_revenue_posting_unpost", Service: "reservation", Method: "POST", Path: "/api/v1/audit/revenue-posting/unpost", ReadOnly: false, Description: "Unpost no-show/cancel revenue from reports"},
+	{Name: "reservation_get_booking_rate_types", Service: "reservation", Method: "GET", Path: "/api/v1/booking/rate-types", ReadOnly: true, Description: "Get rate types from Booking.com", Query: []QueryParam{{Name: "property_id", Required: true}}},
+	{Name: "reservation_get_booking_room_types", Service: "reservation", Method: "GET", Path: "/api/v1/booking/room-types", ReadOnly: true, Description: "Get room types from Booking.com", Query: []QueryParam{{Name: "property_id", Required: true}}},
 	{Name: "reservation_post_bookings", Service: "reservation", Method: "POST", Path: "/api/v1/bookings", ReadOnly: false, Description: "Create a new booking"},
 	{Name: "reservation_get_bookings_id", Service: "reservation", Method: "GET", Path: "/api/v1/bookings/{id}", ReadOnly: true, Description: "Get booking by ID"},
 	{Name: "reservation_post_bookings_id_cancel", Service: "reservation", Method: "POST", Path: "/api/v1/bookings/{id}/cancel", ReadOnly: false, Description: "Cancel a booking"},
@@ -226,6 +170,7 @@ var ReservationTools = []ToolMeta{
 	{Name: "reservation_post_internal_properties_id_seed_email_templates", Service: "reservation", Method: "POST", Path: "/api/v1/internal/properties/{id}/seed-email-templates", ReadOnly: false, Description: "Seed default email templates for a property (internal)"},
 	{Name: "reservation_post_internal_properties_id_seed_folio_notices", Service: "reservation", Method: "POST", Path: "/api/v1/internal/properties/{id}/seed-folio-notices", ReadOnly: false, Description: "Seed default folio notice for a property (internal)"},
 	{Name: "reservation_post_internal_property_init", Service: "reservation", Method: "POST", Path: "/api/v1/internal/property-init", ReadOnly: false, Description: "Initialize property reservation sequence"},
+	{Name: "reservation_patch_internal_property_id_night_audit_settings", Service: "reservation", Method: "PATCH", Path: "/api/v1/internal/property/:id/night-audit-settings", ReadOnly: false, Description: "Update Night Audit Settings for a property"},
 	{Name: "reservation_post_internal_rooms_sync_name", Service: "reservation", Method: "POST", Path: "/api/v1/internal/rooms/sync-name", ReadOnly: false, Description: "Sync config room name to active reservations"},
 	{Name: "reservation_get_inventory_forecasting", Service: "reservation", Method: "GET", Path: "/api/v1/inventory-forecasting", ReadOnly: true, Description: "Returns inventory forecasting data for today", Query: []QueryParam{{Name: "propertyId", Required: true}}},
 	{Name: "reservation_get_inventory_forecasting_export_forecast", Service: "reservation", Method: "GET", Path: "/api/v1/inventory-forecasting/export/forecast", ReadOnly: true, Description: "Export forecast report as Excel", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "exportType", Required: false}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "stly", Required: false}, {Name: "showInventory", Required: false}, {Name: "showForecast", Required: false}, {Name: "inventoryRoomType", Required: false}, {Name: "forecastRoomType", Required: false}, {Name: "rateType", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
@@ -242,16 +187,71 @@ var ReservationTools = []ToolMeta{
 	{Name: "reservation_get_night_audit_settings", Service: "reservation", Method: "GET", Path: "/api/v1/night-audit/settings", ReadOnly: true, Description: "Get Night Audit Settings", Query: []QueryParam{{Name: "propertyId", Required: true}}},
 	{Name: "reservation_get_night_audit_status", Service: "reservation", Method: "GET", Path: "/api/v1/night-audit/status", ReadOnly: true, Description: "Get Night Audit Status (Enquiry API)", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "nightAuditId", Required: false}}},
 	{Name: "reservation_get_night_audit_working_date", Service: "reservation", Method: "GET", Path: "/api/v1/night-audit/working-date", ReadOnly: true, Description: "Get last working date", Query: []QueryParam{{Name: "propertyId", Required: true}}},
+	{Name: "reservation_post_ocr_process", Service: "reservation", Method: "POST", Path: "/api/v1/ocr/process", ReadOnly: false, Description: "Process a document from URLs without storing"},
 	{Name: "reservation_get_payment_methods", Service: "reservation", Method: "GET", Path: "/api/v1/payment-methods", ReadOnly: true, Description: "List payment methods", Query: []QueryParam{{Name: "includeInactive", Required: false}}},
 	{Name: "reservation_get_payments_shift4_invoice_status", Service: "reservation", Method: "GET", Path: "/api/v1/payments/shift4/invoice-status", ReadOnly: true, Description: "Check Shift4 invoice status", Query: []QueryParam{{Name: "invoiceNumber", Required: true}}},
 	{Name: "reservation_post_payments_shift4_manual_sale", Service: "reservation", Method: "POST", Path: "/api/v1/payments/shift4/manual-sale", ReadOnly: false, Description: "Shift4 manual sale (voice auth)"},
 	{Name: "reservation_get_payments_payment_id_terminal_status", Service: "reservation", Method: "GET", Path: "/api/v1/payments/{paymentId}/terminal-status", ReadOnly: true, Description: "Get terminal payment status", Query: []QueryParam{{Name: "propertyId", Required: true}}},
 	{Name: "reservation_post_pms_reservations", Service: "reservation", Method: "POST", Path: "/api/v1/pms/reservations", ReadOnly: false, Description: "Create reservations from CRS (batch)"},
+	{Name: "reservation_get_reports_advance_deposit_ledger", Service: "reservation", Method: "GET", Path: "/api/v1/reports/advance-deposit-ledger", ReadOnly: true, Description: "Get advance deposit ledger", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "status", Required: false}, {Name: "reservationType", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}}},
+	{Name: "reservation_get_reports_advance_deposit_ledger_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/advance-deposit-ledger/export", ReadOnly: true, Description: "Export advance deposit ledger", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "status", Required: false}, {Name: "reservationType", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}}},
 	{Name: "reservation_get_reports_catalog", Service: "reservation", Method: "GET", Path: "/api/v1/reports/catalog", ReadOnly: true, Description: "List report catalog"},
+	{Name: "reservation_get_reports_credit_card_activity", Service: "reservation", Method: "GET", Path: "/api/v1/reports/credit-card-activity", ReadOnly: true, Description: "Get credit card activity report", Query: []QueryParam{{Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "status", Required: false, AllValues: []string{"Completed", "Pending", "Failed", "Voided"}}, {Name: "cardType", Required: false}, {Name: "user", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_credit_card_activity_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/credit-card-activity/export", ReadOnly: true, Description: "Export credit card activity report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "transactionType", Required: false}, {Name: "cardType", Required: false}, {Name: "user", Required: false}, {Name: "reservationId", Required: false}, {Name: "status", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_crs_booking_summary", Service: "reservation", Method: "GET", Path: "/api/v1/reports/crs-booking-summary", ReadOnly: true, Description: "Get CRS booking summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "crsEngineIds", Required: false}, {Name: "crsRatePlanIds", Required: false}, {Name: "loyaltyStatus", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_crs_booking_summary_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/crs-booking-summary/export", ReadOnly: true, Description: "Export CRS booking summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "crsEngineIds", Required: false}, {Name: "crsRatePlanIds", Required: false}, {Name: "loyaltyStatus", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "exportType", Required: false}}},
+	{Name: "reservation_get_reports_crs_booking_summary_filter_options", Service: "reservation", Method: "GET", Path: "/api/v1/reports/crs-booking-summary/filter-options", ReadOnly: true, Description: "Get CRS booking summary filter options", Query: []QueryParam{{Name: "propertyId", Required: true}}},
+	{Name: "reservation_get_reports_daily_collection", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-collection", ReadOnly: true, Description: "Get daily collection report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "paymentMethods", Required: false}, {Name: "status", Required: false}, {Name: "userIds", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}}},
+	{Name: "reservation_get_reports_daily_collection_by_payment_type", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-collection-by-payment-type", ReadOnly: true, Description: "Get daily collection by payment type report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "paymentMethods", Required: false, AllValues: []string{"creditCard", "debitCard", "cash", "check", "badDebts", "businessSource"}}, {Name: "status", Required: false, AllValues: []string{"IN_HOUSE", "CHECKED_OUT", "CONFIRMED", "UNCONFIRMED", "TRANSFER_OUT", "CANCELLED", "NO_SHOW"}}, {Name: "userIds", Required: false}}},
+	{Name: "reservation_get_reports_daily_collection_by_payment_type_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-collection-by-payment-type/export", ReadOnly: true, Description: "Export daily payment collection report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "paymentMethods", Required: false}, {Name: "status", Required: false}, {Name: "userIds", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_daily_collection_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-collection/export", ReadOnly: true, Description: "Export daily collection report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "paymentMethods", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_daily_collection_users", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-collection/users", ReadOnly: true, Description: "Get daily collection report users", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}}},
+	{Name: "reservation_get_reports_daily_credit_card_summary", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-credit-card-summary", ReadOnly: true, Description: "Get daily credit card summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "paymentTypes", Required: false}, {Name: "status", Required: false}, {Name: "cardTypes", Required: false}, {Name: "virtualCard", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}}},
+	{Name: "reservation_get_reports_daily_credit_card_summary_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-credit-card-summary/export", ReadOnly: true, Description: "Export daily credit card summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "paymentTypes", Required: false}, {Name: "status", Required: false}, {Name: "cardTypes", Required: false}, {Name: "virtualCard", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "visibleColumns", Required: false}}},
+	{Name: "reservation_get_reports_daily_reservations", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-reservations", ReadOnly: true, Description: "Get daily transaction report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "status", Required: false, AllValues: []string{"CANCELLED", "CHECKED_OUT", "CONFIRMED", "NO_SHOW", "TRANSFER_OUT", "UNCONFIRMED", "IN_HOUSE"}}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_daily_reservations_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-reservations/export", ReadOnly: true, Description: "Export daily transaction report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "status", Required: false, AllValues: []string{"CANCELLED", "CHECKED_OUT", "CONFIRMED", "NO_SHOW", "TRANSFER_OUT", "UNCONFIRMED", "IN_HOUSE"}}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "visibleColumns", Required: false}}},
+	{Name: "reservation_get_reports_daily_shift", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-shift", ReadOnly: true, Description: "Get daily shift report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "dateType", Required: false}, {Name: "paymentMethods", Required: false}, {Name: "status", Required: false}, {Name: "userIds", Required: false}, {Name: "roomSpaces", Required: false}, {Name: "checkInStart", Required: false}, {Name: "checkInEnd", Required: false}, {Name: "checkOutStart", Required: false}, {Name: "checkOutEnd", Required: false}, {Name: "paymentDateStart", Required: false}, {Name: "paymentDateEnd", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_daily_shift_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-shift/export", ReadOnly: true, Description: "Export daily shift report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "dateType", Required: false}, {Name: "paymentMethods", Required: false}, {Name: "status", Required: false}, {Name: "userIds", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "visibleColumns", Required: false}, {Name: "exportType", Required: false}}},
+	{Name: "reservation_get_reports_daily_shift_users", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-shift/users", ReadOnly: true, Description: "Get daily shift report users", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "dateType", Required: false}}},
+	{Name: "reservation_get_reports_daily_summary", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-summary", ReadOnly: true, Description: "Get daily summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: false}}},
+	{Name: "reservation_get_reports_daily_summary_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/daily-summary/export", ReadOnly: true, Description: "Export daily summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_deposit_ledger", Service: "reservation", Method: "GET", Path: "/api/v1/reports/deposit-ledger", ReadOnly: true, Description: "Get deposit ledger report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: false}, {Name: "checkInDate", Required: false}, {Name: "checkOutDate", Required: false}, {Name: "status", Required: false, AllValues: []string{"IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "paymentMode", Required: false, AllValues: []string{"creditCard", "debitCard", "cash", "check", "badDebts"}}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_deposit_ledger_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/deposit-ledger/export", ReadOnly: true, Description: "Export deposit ledger report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: false}, {Name: "checkInDate", Required: false}, {Name: "checkOutDate", Required: false}, {Name: "status", Required: false, AllValues: []string{"IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "paymentMode", Required: false, AllValues: []string{"creditCard", "debitCard", "cash", "check", "badDebts"}}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_group_ledger", Service: "reservation", Method: "GET", Path: "/api/v1/reports/group-ledger", ReadOnly: true, Description: "Get group ledger report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}}},
+	{Name: "reservation_get_reports_group_ledger_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/group-ledger/export", ReadOnly: true, Description: "Export group ledger report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "visibleColumns", Required: false}}},
+	{Name: "reservation_get_reports_guest_arrival_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/guest-arrival/export", ReadOnly: true, Description: "Export guest arrival report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_guest_departure", Service: "reservation", Method: "GET", Path: "/api/v1/reports/guest-departure", ReadOnly: true, Description: "Get guest departure report (paginated list)", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "checkoutDate", Required: false}, {Name: "status", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}}},
+	{Name: "reservation_get_reports_guest_departure_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/guest-departure/export", ReadOnly: true, Description: "Export guest departure report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "status", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_guest_ledger_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/guest-ledger/export", ReadOnly: true, Description: "Export guest ledger report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_housekeeping_task_summary", Service: "reservation", Method: "GET", Path: "/api/v1/reports/housekeeping-task-summary", ReadOnly: true, Description: "Get housekeeping task summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "entityTypes", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_housekeeping_task_summary_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/housekeeping-task-summary/export", ReadOnly: true, Description: "Export housekeeping task summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "endDate", Required: true}, {Name: "entityTypes", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_in_house_room_change", Service: "reservation", Method: "GET", Path: "/api/v1/reports/in-house-room-change", ReadOnly: true, Description: "Get in-house room change report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_in_house_room_change_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/in-house-room-change/export", ReadOnly: true, Description: "Export in-house room change report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
 	{Name: "reservation_get_reports_ledger_summary", Service: "reservation", Method: "GET", Path: "/api/v1/reports/ledger-summary", ReadOnly: true, Description: "Get ledger summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "type", Required: false}}},
 	{Name: "reservation_get_reports_ledger_summary_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/ledger-summary/export", ReadOnly: true, Description: "Export ledger summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: true}, {Name: "type", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_maintenance", Service: "reservation", Method: "GET", Path: "/api/v1/reports/maintenance", ReadOnly: true, Description: "Get maintenance report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "buildingIds", Required: false}, {Name: "floorIds", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_maintenance_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/maintenance/export", ReadOnly: true, Description: "Export maintenance report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "buildingIds", Required: false}, {Name: "floorIds", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_noshow_cancellation_revenue_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/noshow-cancellation-revenue/export", ReadOnly: true, Description: "Export no-show/cancellation revenue report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "status", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
 	{Name: "reservation_get_reports_reservation_details", Service: "reservation", Method: "GET", Path: "/api/v1/reports/reservation-details", ReadOnly: true, Description: "Get Reservation Details Report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "dateFilterType", Required: false}, {Name: "status", Required: false}, {Name: "businessSource", Required: false}, {Name: "roomSpaces", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}}},
 	{Name: "reservation_get_reports_reservation_details_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/reservation-details/export", ReadOnly: true, Description: "Export Reservation Details Report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "dateFilterType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "status", Required: false}, {Name: "businessSource", Required: false}, {Name: "roomSpaces", Required: false}, {Name: "exportType", Required: false}}},
+	{Name: "reservation_get_reports_revenue_by_room_type", Service: "reservation", Method: "GET", Path: "/api/v1/reports/revenue-by-room-type", ReadOnly: true, Description: "Get revenue by room type report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "date", Required: true}, {Name: "searchKey", Required: false}}},
+	{Name: "reservation_get_reports_revenue_by_room_type_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/revenue-by-room-type/export", ReadOnly: true, Description: "Export revenue by room type report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "searchKey", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_room_space_type_arrival", Service: "reservation", Method: "GET", Path: "/api/v1/reports/room-space-type-arrival", ReadOnly: true, Description: "Get room/space type arrival report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "buildingIds", Required: false}}},
+	{Name: "reservation_get_reports_room_space_type_arrival_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/room-space-type-arrival/export", ReadOnly: true, Description: "Export room/space type arrival report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "buildingIds", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_room_status_change", Service: "reservation", Method: "GET", Path: "/api/v1/reports/room-status-change", ReadOnly: true, Description: "Get room status change report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "limit", Required: false}, {Name: "offset", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_room_status_change_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/room-status-change/export", ReadOnly: true, Description: "Export room status change report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_sales_and_revenue", Service: "reservation", Method: "GET", Path: "/api/v1/reports/sales-and-revenue", ReadOnly: true, Description: "Get sales and revenue report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "roomTypeIds", Required: false}, {Name: "spaceTypeIds", Required: false}, {Name: "rateTypeIds", Required: false}, {Name: "searchKey", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_sales_and_revenue_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/sales-and-revenue/export", ReadOnly: true, Description: "Export sales and revenue report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "roomTypeIds", Required: false}, {Name: "spaceTypeIds", Required: false}, {Name: "rateTypeIds", Required: false}, {Name: "searchKey", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_segmentation", Service: "reservation", Method: "GET", Path: "/api/v1/reports/segmentation", ReadOnly: true, Description: "Get guest segmentation report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "businessSource", Required: false}, {Name: "status", Required: false}, {Name: "roomSpaces", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_segmentation_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/segmentation/export", ReadOnly: true, Description: "Export guest segmentation report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "businessSource", Required: false}, {Name: "status", Required: false}, {Name: "roomSpaces", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_stay_summary", Service: "reservation", Method: "GET", Path: "/api/v1/reports/stay-summary", ReadOnly: true, Description: "Get stay summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "paymentMode", Required: false}, {Name: "guestType", Required: false}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}}},
+	{Name: "reservation_get_reports_stay_summary_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/stay-summary/export", ReadOnly: true, Description: "Export stay summary report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "paymentMode", Required: false}, {Name: "guestType", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "columns", Required: false}}},
+	{Name: "reservation_get_reports_tax_details", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-details", ReadOnly: true, Description: "Get tax details report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "filtersApplied", Required: false}, {Name: "sortBy", Required: false}, {Name: "sortOrder", Required: false}}},
+	{Name: "reservation_get_reports_tax_details_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-details/export", ReadOnly: true, Description: "Export tax details report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "sortBy", Required: false}, {Name: "sortOrder", Required: false}}},
+	{Name: "reservation_get_reports_tax_exempt_claim", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-exempt-claim", ReadOnly: true, Description: "Get tax exempt claim report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "businessSource", Required: false}, {Name: "status", Required: false, AllValues: []string{"CONFIRMED", "UNCONFIRMED", "IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "checkInDateStart", Required: false}, {Name: "checkInDateEnd", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_tax_exempt_claim_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-exempt-claim/export", ReadOnly: true, Description: "Export tax exempt claim report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "businessSource", Required: false}, {Name: "status", Required: false, AllValues: []string{"CONFIRMED", "UNCONFIRMED", "IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "checkInDateStart", Required: false}, {Name: "checkInDateEnd", Required: false}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_tax_exemption", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-exemption", ReadOnly: true, Description: "Get tax exemption report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "status", Required: false, AllValues: []string{"CONFIRMED", "UNCONFIRMED", "IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "filtersApplied", Required: false}}},
+	{Name: "reservation_get_reports_tax_exemption_export", Service: "reservation", Method: "GET", Path: "/api/v1/reports/tax-exemption/export", ReadOnly: true, Description: "Export tax exemption report", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "type", Required: false, AllValues: []string{"rooms", "spaces"}}, {Name: "status", Required: false, AllValues: []string{"CONFIRMED", "UNCONFIRMED", "IN_HOUSE", "CHECKED_OUT", "NO_SHOW", "CANCELLED", "TRANSFER_OUT"}}, {Name: "exportType", Required: false}, {Name: "filtersApplied", Required: false}, {Name: "visibleColumns", Required: false}}},
 	{Name: "reservation_get_reservations", Service: "reservation", Method: "GET", Path: "/api/v1/reservations", ReadOnly: true, Description: "Get all reservations", Query: []QueryParam{{Name: "page", Required: false}, {Name: "pageSize", Required: false}, {Name: "rezStatus", Required: false}, {Name: "roomSpaceType", Required: false}, {Name: "rezType", Required: false}, {Name: "pocEmail", Required: false}, {Name: "pocName", Required: false}, {Name: "businessSource", Required: false}, {Name: "checkInDateStart", Required: false}, {Name: "checkInDateEnd", Required: false}, {Name: "checkoutDateStart", Required: false}, {Name: "checkoutDateEnd", Required: false}, {Name: "excludeGroupReservations", Required: false}, {Name: "hasRoomsAllocations", Required: false}, {Name: "checkin_gte", Required: false}, {Name: "checkout_lte", Required: false}, {Name: "checkout_gte", Required: false}, {Name: "checkin_lte", Required: false}, {Name: "buildingId", Required: false}, {Name: "floorId", Required: false}, {Name: "roomId", Required: false}, {Name: "rateTypeId", Required: false}, {Name: "roomTypeId", Required: false}, {Name: "roomIds", Required: false}, {Name: "entryDate", Required: false}, {Name: "searchKey", Required: false}, {Name: "searchBy", Required: false}, {Name: "propertyId", Required: true}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "delinquent", Required: false}, {Name: "reservationIds", Required: false}, {Name: "views", Required: false}, {Name: "onlyWithPets", Required: false}, {Name: "lateCheckout", Required: false}}},
 	{Name: "reservation_post_reservations", Service: "reservation", Method: "POST", Path: "/api/v1/reservations", ReadOnly: false, Description: "Create reservation from enquiry", Query: []QueryParam{{Name: "propertyId", Required: true}}},
 	{Name: "reservation_post_reservations_allocate_room_to_segments", Service: "reservation", Method: "POST", Path: "/api/v1/reservations/allocate-room-to-segments", ReadOnly: false, Description: "Allocate room to multiple segments", Query: []QueryParam{{Name: "propertyId", Required: true}}},
@@ -325,29 +325,10 @@ var ReservationTools = []ToolMeta{
 	{Name: "reservation_post_reservations_id_tokenized_cards", Service: "reservation", Method: "POST", Path: "/api/v1/reservations/{id}/tokenized-cards", ReadOnly: false, Description: "Tokenize and save a card for a reservation", Query: []QueryParam{{Name: "propertyId", Required: true}}},
 	{Name: "reservation_patch_room_status", Service: "reservation", Method: "PATCH", Path: "/api/v1/room-status", ReadOnly: false, Description: "Update room status for multiple rooms", Query: []QueryParam{{Name: "propertyId", Required: true}}},
 	{Name: "reservation_get_room_types_summary", Service: "reservation", Method: "GET", Path: "/api/v1/room-types-summary", ReadOnly: true, Description: "Returns room type summary with rate information", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}, {Name: "startDate", Required: false}, {Name: "endDate", Required: false}, {Name: "roomType", Required: false}, {Name: "rateType", Required: false}}},
-	{Name: "reservation_patch_v1_internal_property_id_night_audit_settings", Service: "reservation", Method: "PATCH", Path: "/api/v1/v1/internal/property/:id/night-audit-settings", ReadOnly: false, Description: "Update Night Audit Settings for a property"},
+	{Name: "reservation_post_tokenized_cards_session", Service: "reservation", Method: "POST", Path: "/api/v1/tokenized-cards/session", ReadOnly: false, Description: "Create a tokenization session for client-side card capture", Query: []QueryParam{{Name: "propertyId", Required: true}}},
 }
 
 func init() { register(ReservationTools...) }
-
-// ApiNoShowCancelPostRequest mirrors definition "api.NoShowCancelPostRequest".
-type ApiNoShowCancelPostRequest struct {
-	PropertyId     int64 `json:"propertyId"`
-	ReservationIds []any `json:"reservationIds"`
-}
-
-// ApiNoShowCancelUnpostRequest mirrors definition "api.NoShowCancelUnpostRequest".
-type ApiNoShowCancelUnpostRequest struct {
-	PropertyId     int64 `json:"propertyId"`
-	ReservationIds []any `json:"reservationIds"`
-}
-
-// ApiOCRRequest mirrors definition "api.OCRRequest".
-type ApiOCRRequest struct {
-	BackUrl      string `json:"backUrl,omitempty"`
-	DocumentType string `json:"documentType"`
-	FrontUrl     string `json:"frontUrl"`
-}
 
 // ApiCreditCardActionRequest mirrors definition "api.CreditCardActionRequest".
 type ApiCreditCardActionRequest struct {
@@ -361,6 +342,18 @@ type ApiCreditCardActionRequest struct {
 type TypesReleaseAuthorizationPayload struct {
 	PaymentIds []any `json:"paymentIds"`
 	PropertyId int64 `json:"propertyId"`
+}
+
+// ApiNoShowCancelPostRequest mirrors definition "api.NoShowCancelPostRequest".
+type ApiNoShowCancelPostRequest struct {
+	PropertyId     int64 `json:"propertyId"`
+	ReservationIds []any `json:"reservationIds"`
+}
+
+// ApiNoShowCancelUnpostRequest mirrors definition "api.NoShowCancelUnpostRequest".
+type ApiNoShowCancelUnpostRequest struct {
+	PropertyId     int64 `json:"propertyId"`
+	ReservationIds []any `json:"reservationIds"`
 }
 
 // ServicesCreateBookingRequest mirrors definition "services.CreateBookingRequest".
@@ -938,6 +931,19 @@ type ApiPropertyInitRequest struct {
 	StartNumber string `json:"startNumber"`
 }
 
+// ApiNightAuditSettingsInput mirrors definition "api.NightAuditSettingsInput".
+type ApiNightAuditSettingsInput struct {
+	AllowNightAuditWithLateCheckoutGuests bool   `json:"allowNightAuditWithLateCheckoutGuests,omitempty"`
+	AutoClosePaymentBatch                 bool   `json:"autoClosePaymentBatch,omitempty"`
+	AutoUpdateVacantDirtyToVacant         bool   `json:"autoUpdateVacantDirtyToVacant,omitempty"`
+	FailureRecipients                     []any  `json:"failureRecipients,omitempty"`
+	NightAuditTime                        string `json:"nightAuditTime,omitempty"`
+	PromptBeforeNightAuditSeconds         int64  `json:"promptBeforeNightAuditSeconds,omitempty"`
+	Recipients                            []any  `json:"recipients,omitempty"`
+	RunNightAuditAutomatically            bool   `json:"runNightAuditAutomatically,omitempty"`
+	SelectedReportIds                     []any  `json:"selectedReportIds,omitempty"`
+}
+
 // ApiSyncRoomNameRequest mirrors definition "api.SyncRoomNameRequest".
 type ApiSyncRoomNameRequest struct {
 	ChangedFields []any  `json:"changedFields,omitempty"`
@@ -978,6 +984,13 @@ type ApiRetryNightAuditRequest struct {
 type ApiSendNightAuditReportsRequest struct {
 	PropertyId  int64  `json:"propertyId"`
 	WorkingDate string `json:"workingDate"`
+}
+
+// ApiOCRRequest mirrors definition "api.OCRRequest".
+type ApiOCRRequest struct {
+	BackUrl      string `json:"backUrl,omitempty"`
+	DocumentType string `json:"documentType"`
+	FrontUrl     string `json:"frontUrl"`
 }
 
 // ApiShift4ManualSaleAPIRequest mirrors definition "api.Shift4ManualSaleAPIRequest".
@@ -1191,2293 +1204,6 @@ type ApiUpdateRoomStatusRequest struct {
 	RoomIds     []any `json:"roomIds"`
 }
 
-// ApiNightAuditSettingsInput mirrors definition "api.NightAuditSettingsInput".
-type ApiNightAuditSettingsInput struct {
-	AllowNightAuditWithLateCheckoutGuests bool   `json:"allowNightAuditWithLateCheckoutGuests,omitempty"`
-	AutoClosePaymentBatch                 bool   `json:"autoClosePaymentBatch,omitempty"`
-	AutoUpdateVacantDirtyToVacant         bool   `json:"autoUpdateVacantDirtyToVacant,omitempty"`
-	FailureRecipients                     []any  `json:"failureRecipients,omitempty"`
-	NightAuditTime                        string `json:"nightAuditTime,omitempty"`
-	PromptBeforeNightAuditSeconds         int64  `json:"promptBeforeNightAuditSeconds,omitempty"`
-	Recipients                            []any  `json:"recipients,omitempty"`
-	RunNightAuditAutomatically            bool   `json:"runNightAuditAutomatically,omitempty"`
-	SelectedReportIds                     []any  `json:"selectedReportIds,omitempty"`
-}
-
-// ReservationPostApiV1AuditRevenuePostingPostInput is the input for POST /api/v1/audit/revenue-posting/post.
-type ReservationPostApiV1AuditRevenuePostingPostInput struct {
-	Body ApiNoShowCancelPostRequest `json:"request" in:"body"`
-}
-
-// ReservationPostApiV1AuditRevenuePostingPost calls POST /api/v1/audit/revenue-posting/post.
-// Post no-show/cancel revenue to reports
-func ReservationPostApiV1AuditRevenuePostingPost(ctx context.Context, c *Client, in ReservationPostApiV1AuditRevenuePostingPostInput) (any, error) {
-	const tool = "reservation_post_api_v1_audit_revenue_posting_post"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/audit/revenue-posting/post"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	body = in.Body
-	resp, err := c.Do(ctx, ReservationService, "POST", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationPostApiV1AuditRevenuePostingUnpostInput is the input for POST /api/v1/audit/revenue-posting/unpost.
-type ReservationPostApiV1AuditRevenuePostingUnpostInput struct {
-	Body ApiNoShowCancelUnpostRequest `json:"request" in:"body"`
-}
-
-// ReservationPostApiV1AuditRevenuePostingUnpost calls POST /api/v1/audit/revenue-posting/unpost.
-// Unpost no-show/cancel revenue from reports
-func ReservationPostApiV1AuditRevenuePostingUnpost(ctx context.Context, c *Client, in ReservationPostApiV1AuditRevenuePostingUnpostInput) (any, error) {
-	const tool = "reservation_post_api_v1_audit_revenue_posting_unpost"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/audit/revenue-posting/unpost"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	body = in.Body
-	resp, err := c.Do(ctx, ReservationService, "POST", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1BookingRateTypesInput is the input for GET /api/v1/booking/rate-types.
-type ReservationGetApiV1BookingRateTypesInput struct {
-	PropertyId int64 `json:"property_id" in:"query"`
-}
-
-// ReservationGetApiV1BookingRateTypes calls GET /api/v1/booking/rate-types.
-// Get rate types from Booking.com
-func ReservationGetApiV1BookingRateTypes(ctx context.Context, c *Client, in ReservationGetApiV1BookingRateTypesInput) (any, error) {
-	const tool = "reservation_get_api_v1_booking_rate_types"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/booking/rate-types"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "property_id", in.PropertyId)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1BookingRoomTypesInput is the input for GET /api/v1/booking/room-types.
-type ReservationGetApiV1BookingRoomTypesInput struct {
-	PropertyId int64 `json:"property_id" in:"query"`
-}
-
-// ReservationGetApiV1BookingRoomTypes calls GET /api/v1/booking/room-types.
-// Get room types from Booking.com
-func ReservationGetApiV1BookingRoomTypes(ctx context.Context, c *Client, in ReservationGetApiV1BookingRoomTypesInput) (any, error) {
-	const tool = "reservation_get_api_v1_booking_room_types"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/booking/room-types"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "property_id", in.PropertyId)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationPostApiV1OcrProcessInput is the input for POST /api/v1/ocr/process.
-type ReservationPostApiV1OcrProcessInput struct {
-	Body ApiOCRRequest `json:"request" in:"body"`
-}
-
-// ReservationPostApiV1OcrProcess calls POST /api/v1/ocr/process.
-// Process a document from URLs without storing
-func ReservationPostApiV1OcrProcess(ctx context.Context, c *Client, in ReservationPostApiV1OcrProcessInput) (any, error) {
-	const tool = "reservation_post_api_v1_ocr_process"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/ocr/process"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	body = in.Body
-	resp, err := c.Do(ctx, ReservationService, "POST", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsAdvanceDepositLedgerInput is the input for GET /api/v1/reports/advance-deposit-ledger.
-type ReservationGetApiV1ReportsAdvanceDepositLedgerInput struct {
-	PropertyId      int64  `json:"propertyId" in:"query"`
-	StartDate       string `json:"startDate" in:"query"`
-	EndDate         string `json:"endDate" in:"query"`
-	Status          string `json:"status,omitempty" in:"query"`
-	ReservationType string `json:"reservationType,omitempty" in:"query"`
-	SortBy          string `json:"sortBy,omitempty" in:"query"`
-	OrderBy         string `json:"orderBy,omitempty" in:"query"`
-	Limit           int64  `json:"limit,omitempty" in:"query"`
-	Offset          int64  `json:"offset,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsAdvanceDepositLedger calls GET /api/v1/reports/advance-deposit-ledger.
-// Get advance deposit ledger
-func ReservationGetApiV1ReportsAdvanceDepositLedger(ctx context.Context, c *Client, in ReservationGetApiV1ReportsAdvanceDepositLedgerInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_advance_deposit_ledger"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/advance-deposit-ledger"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "reservationType", in.ReservationType)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "limit", in.Limit)
-	addQuery(q, "offset", in.Offset)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsAdvanceDepositLedgerExportInput is the input for GET /api/v1/reports/advance-deposit-ledger/export.
-type ReservationGetApiV1ReportsAdvanceDepositLedgerExportInput struct {
-	PropertyId      int64  `json:"propertyId" in:"query"`
-	StartDate       string `json:"startDate" in:"query"`
-	EndDate         string `json:"endDate" in:"query"`
-	Status          string `json:"status,omitempty" in:"query"`
-	ReservationType string `json:"reservationType,omitempty" in:"query"`
-	SortBy          string `json:"sortBy,omitempty" in:"query"`
-	OrderBy         string `json:"orderBy,omitempty" in:"query"`
-	ExportType      string `json:"exportType,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsAdvanceDepositLedgerExport calls GET /api/v1/reports/advance-deposit-ledger/export.
-// Export advance deposit ledger
-func ReservationGetApiV1ReportsAdvanceDepositLedgerExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsAdvanceDepositLedgerExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_advance_deposit_ledger_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/advance-deposit-ledger/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "reservationType", in.ReservationType)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "exportType", in.ExportType)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsCreditCardActivityInput is the input for GET /api/v1/reports/credit-card-activity.
-type ReservationGetApiV1ReportsCreditCardActivityInput struct {
-	StartDate string `json:"startDate,omitempty" in:"query"`
-	EndDate   string `json:"endDate,omitempty" in:"query"`
-	Status    string `json:"status,omitempty" in:"query"`
-	CardType  string `json:"cardType,omitempty" in:"query"`
-	User      string `json:"user,omitempty" in:"query"`
-	Limit     int64  `json:"limit,omitempty" in:"query"`
-	Offset    int64  `json:"offset,omitempty" in:"query"`
-	SortBy    string `json:"sortBy,omitempty" in:"query"`
-	OrderBy   string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsCreditCardActivity calls GET /api/v1/reports/credit-card-activity.
-// Get credit card activity report
-func ReservationGetApiV1ReportsCreditCardActivity(ctx context.Context, c *Client, in ReservationGetApiV1ReportsCreditCardActivityInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_credit_card_activity"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/credit-card-activity"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "cardType", in.CardType)
-	addQuery(q, "user", in.User)
-	addQuery(q, "limit", in.Limit)
-	addQuery(q, "offset", in.Offset)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsCreditCardActivityExportInput is the input for GET /api/v1/reports/credit-card-activity/export.
-type ReservationGetApiV1ReportsCreditCardActivityExportInput struct {
-	PropertyId      int64    `json:"propertyId" in:"query"`
-	StartDate       string   `json:"startDate,omitempty" in:"query"`
-	EndDate         string   `json:"endDate,omitempty" in:"query"`
-	TransactionType []string `json:"transactionType,omitempty" in:"query"`
-	CardType        []string `json:"cardType,omitempty" in:"query"`
-	User            []string `json:"user,omitempty" in:"query"`
-	ReservationId   string   `json:"reservationId,omitempty" in:"query"`
-	Status          []string `json:"status,omitempty" in:"query"`
-	ExportType      string   `json:"exportType,omitempty" in:"query"`
-	FiltersApplied  bool     `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsCreditCardActivityExport calls GET /api/v1/reports/credit-card-activity/export.
-// Export credit card activity report
-func ReservationGetApiV1ReportsCreditCardActivityExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsCreditCardActivityExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_credit_card_activity_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/credit-card-activity/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "transactionType", in.TransactionType)
-	addQuery(q, "cardType", in.CardType)
-	addQuery(q, "user", in.User)
-	addQuery(q, "reservationId", in.ReservationId)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsCrsBookingSummaryInput is the input for GET /api/v1/reports/crs-booking-summary.
-type ReservationGetApiV1ReportsCrsBookingSummaryInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	StartDate      string   `json:"startDate,omitempty" in:"query"`
-	EndDate        string   `json:"endDate,omitempty" in:"query"`
-	CrsEngineIds   []int64  `json:"crsEngineIds,omitempty" in:"query"`
-	CrsRatePlanIds []int64  `json:"crsRatePlanIds,omitempty" in:"query"`
-	LoyaltyStatus  []string `json:"loyaltyStatus,omitempty" in:"query"`
-	SortBy         string   `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string   `json:"orderBy,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsCrsBookingSummary calls GET /api/v1/reports/crs-booking-summary.
-// Get CRS booking summary report
-func ReservationGetApiV1ReportsCrsBookingSummary(ctx context.Context, c *Client, in ReservationGetApiV1ReportsCrsBookingSummaryInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_crs_booking_summary"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/crs-booking-summary"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "crsEngineIds", in.CrsEngineIds)
-	addQuery(q, "crsRatePlanIds", in.CrsRatePlanIds)
-	addQuery(q, "loyaltyStatus", in.LoyaltyStatus)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsCrsBookingSummaryExportInput is the input for GET /api/v1/reports/crs-booking-summary/export.
-type ReservationGetApiV1ReportsCrsBookingSummaryExportInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	StartDate      string   `json:"startDate,omitempty" in:"query"`
-	EndDate        string   `json:"endDate,omitempty" in:"query"`
-	CrsEngineIds   []int64  `json:"crsEngineIds,omitempty" in:"query"`
-	CrsRatePlanIds []int64  `json:"crsRatePlanIds,omitempty" in:"query"`
-	LoyaltyStatus  []string `json:"loyaltyStatus,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-	ExportType     string   `json:"exportType,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsCrsBookingSummaryExport calls GET /api/v1/reports/crs-booking-summary/export.
-// Export CRS booking summary report
-func ReservationGetApiV1ReportsCrsBookingSummaryExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsCrsBookingSummaryExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_crs_booking_summary_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/crs-booking-summary/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "crsEngineIds", in.CrsEngineIds)
-	addQuery(q, "crsRatePlanIds", in.CrsRatePlanIds)
-	addQuery(q, "loyaltyStatus", in.LoyaltyStatus)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "exportType", in.ExportType)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsCrsBookingSummaryFilterOptionsInput is the input for GET /api/v1/reports/crs-booking-summary/filter-options.
-type ReservationGetApiV1ReportsCrsBookingSummaryFilterOptionsInput struct {
-	PropertyId int64 `json:"propertyId" in:"query"`
-}
-
-// ReservationGetApiV1ReportsCrsBookingSummaryFilterOptions calls GET /api/v1/reports/crs-booking-summary/filter-options.
-// Get CRS booking summary filter options
-func ReservationGetApiV1ReportsCrsBookingSummaryFilterOptions(ctx context.Context, c *Client, in ReservationGetApiV1ReportsCrsBookingSummaryFilterOptionsInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_crs_booking_summary_filter_options"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/crs-booking-summary/filter-options"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyCollectionInput is the input for GET /api/v1/reports/daily-collection.
-type ReservationGetApiV1ReportsDailyCollectionInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	Date           string `json:"date" in:"query"`
-	PaymentMethods string `json:"paymentMethods,omitempty" in:"query"`
-	Status         string `json:"status,omitempty" in:"query"`
-	UserIds        string `json:"userIds,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-	Page           int64  `json:"page,omitempty" in:"query"`
-	PageSize       int64  `json:"pageSize,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyCollection calls GET /api/v1/reports/daily-collection.
-// Get daily collection report
-func ReservationGetApiV1ReportsDailyCollection(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyCollectionInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_collection"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-collection"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "date", in.Date)
-	addQuery(q, "paymentMethods", in.PaymentMethods)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "userIds", in.UserIds)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "page", in.Page)
-	addQuery(q, "pageSize", in.PageSize)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyCollectionByPaymentTypeInput is the input for GET /api/v1/reports/daily-collection-by-payment-type.
-type ReservationGetApiV1ReportsDailyCollectionByPaymentTypeInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	Date           string `json:"date" in:"query"`
-	PaymentMethods string `json:"paymentMethods,omitempty" in:"query"`
-	Status         string `json:"status,omitempty" in:"query"`
-	UserIds        string `json:"userIds,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyCollectionByPaymentType calls GET /api/v1/reports/daily-collection-by-payment-type.
-// Get daily collection by payment type report
-func ReservationGetApiV1ReportsDailyCollectionByPaymentType(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyCollectionByPaymentTypeInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_collection_by_payment_type"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-collection-by-payment-type"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "date", in.Date)
-	addQuery(q, "paymentMethods", in.PaymentMethods)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "userIds", in.UserIds)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyCollectionByPaymentTypeExportInput is the input for GET /api/v1/reports/daily-collection-by-payment-type/export.
-type ReservationGetApiV1ReportsDailyCollectionByPaymentTypeExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	Date           string `json:"date" in:"query"`
-	PaymentMethods string `json:"paymentMethods,omitempty" in:"query"`
-	Status         string `json:"status,omitempty" in:"query"`
-	UserIds        string `json:"userIds,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyCollectionByPaymentTypeExport calls GET /api/v1/reports/daily-collection-by-payment-type/export.
-// Export daily payment collection report
-func ReservationGetApiV1ReportsDailyCollectionByPaymentTypeExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyCollectionByPaymentTypeExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_collection_by_payment_type_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-collection-by-payment-type/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "date", in.Date)
-	addQuery(q, "paymentMethods", in.PaymentMethods)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "userIds", in.UserIds)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyCollectionExportInput is the input for GET /api/v1/reports/daily-collection/export.
-type ReservationGetApiV1ReportsDailyCollectionExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	Date           string `json:"date" in:"query"`
-	PaymentMethods string `json:"paymentMethods,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyCollectionExport calls GET /api/v1/reports/daily-collection/export.
-// Export daily collection report
-func ReservationGetApiV1ReportsDailyCollectionExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyCollectionExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_collection_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-collection/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "date", in.Date)
-	addQuery(q, "paymentMethods", in.PaymentMethods)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyCollectionUsersInput is the input for GET /api/v1/reports/daily-collection/users.
-type ReservationGetApiV1ReportsDailyCollectionUsersInput struct {
-	PropertyId int64  `json:"propertyId" in:"query"`
-	Date       string `json:"date" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyCollectionUsers calls GET /api/v1/reports/daily-collection/users.
-// Get daily collection report users
-func ReservationGetApiV1ReportsDailyCollectionUsers(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyCollectionUsersInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_collection_users"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-collection/users"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "date", in.Date)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyCreditCardSummaryInput is the input for GET /api/v1/reports/daily-credit-card-summary.
-type ReservationGetApiV1ReportsDailyCreditCardSummaryInput struct {
-	PropertyId   int64  `json:"propertyId" in:"query"`
-	StartDate    string `json:"startDate" in:"query"`
-	EndDate      string `json:"endDate" in:"query"`
-	PaymentTypes string `json:"paymentTypes,omitempty" in:"query"`
-	Status       string `json:"status,omitempty" in:"query"`
-	CardTypes    string `json:"cardTypes,omitempty" in:"query"`
-	VirtualCard  bool   `json:"virtualCard,omitempty" in:"query"`
-	SortBy       string `json:"sortBy,omitempty" in:"query"`
-	OrderBy      string `json:"orderBy,omitempty" in:"query"`
-	Page         int64  `json:"page,omitempty" in:"query"`
-	PageSize     int64  `json:"pageSize,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyCreditCardSummary calls GET /api/v1/reports/daily-credit-card-summary.
-// Get daily credit card summary report
-func ReservationGetApiV1ReportsDailyCreditCardSummary(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyCreditCardSummaryInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_credit_card_summary"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-credit-card-summary"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "paymentTypes", in.PaymentTypes)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "cardTypes", in.CardTypes)
-	addQuery(q, "virtualCard", in.VirtualCard)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "page", in.Page)
-	addQuery(q, "pageSize", in.PageSize)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyCreditCardSummaryExportInput is the input for GET /api/v1/reports/daily-credit-card-summary/export.
-type ReservationGetApiV1ReportsDailyCreditCardSummaryExportInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	StartDate      string   `json:"startDate" in:"query"`
-	EndDate        string   `json:"endDate" in:"query"`
-	PaymentTypes   string   `json:"paymentTypes,omitempty" in:"query"`
-	Status         string   `json:"status,omitempty" in:"query"`
-	CardTypes      string   `json:"cardTypes,omitempty" in:"query"`
-	VirtualCard    bool     `json:"virtualCard,omitempty" in:"query"`
-	ExportType     string   `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-	VisibleColumns []string `json:"visibleColumns,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyCreditCardSummaryExport calls GET /api/v1/reports/daily-credit-card-summary/export.
-// Export daily credit card summary report
-func ReservationGetApiV1ReportsDailyCreditCardSummaryExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyCreditCardSummaryExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_credit_card_summary_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-credit-card-summary/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "paymentTypes", in.PaymentTypes)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "cardTypes", in.CardTypes)
-	addQuery(q, "virtualCard", in.VirtualCard)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "visibleColumns", in.VisibleColumns)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyReservationsInput is the input for GET /api/v1/reports/daily-reservations.
-type ReservationGetApiV1ReportsDailyReservationsInput struct {
-	PropertyId int64  `json:"propertyId" in:"query"`
-	Date       string `json:"date" in:"query"`
-	Status     string `json:"status,omitempty" in:"query"`
-	SortBy     string `json:"sortBy,omitempty" in:"query"`
-	OrderBy    string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyReservations calls GET /api/v1/reports/daily-reservations.
-// Get daily transaction report
-func ReservationGetApiV1ReportsDailyReservations(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyReservationsInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_reservations"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-reservations"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "date", in.Date)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyReservationsExportInput is the input for GET /api/v1/reports/daily-reservations/export.
-type ReservationGetApiV1ReportsDailyReservationsExportInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	Date           string   `json:"date" in:"query"`
-	Status         string   `json:"status,omitempty" in:"query"`
-	SortBy         string   `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string   `json:"orderBy,omitempty" in:"query"`
-	ExportType     string   `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-	VisibleColumns []string `json:"visibleColumns,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyReservationsExport calls GET /api/v1/reports/daily-reservations/export.
-// Export daily transaction report
-func ReservationGetApiV1ReportsDailyReservationsExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyReservationsExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_reservations_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-reservations/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "date", in.Date)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "visibleColumns", in.VisibleColumns)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyShiftInput is the input for GET /api/v1/reports/daily-shift.
-type ReservationGetApiV1ReportsDailyShiftInput struct {
-	PropertyId       int64    `json:"propertyId" in:"query"`
-	StartDate        string   `json:"startDate,omitempty" in:"query"`
-	EndDate          string   `json:"endDate,omitempty" in:"query"`
-	DateType         string   `json:"dateType,omitempty" in:"query"`
-	PaymentMethods   []string `json:"paymentMethods,omitempty" in:"query"`
-	Status           []string `json:"status,omitempty" in:"query"`
-	UserIds          []int64  `json:"userIds,omitempty" in:"query"`
-	RoomSpaces       []string `json:"roomSpaces,omitempty" in:"query"`
-	CheckInStart     string   `json:"checkInStart,omitempty" in:"query"`
-	CheckInEnd       string   `json:"checkInEnd,omitempty" in:"query"`
-	CheckOutStart    string   `json:"checkOutStart,omitempty" in:"query"`
-	CheckOutEnd      string   `json:"checkOutEnd,omitempty" in:"query"`
-	PaymentDateStart string   `json:"paymentDateStart,omitempty" in:"query"`
-	PaymentDateEnd   string   `json:"paymentDateEnd,omitempty" in:"query"`
-	SortBy           string   `json:"sortBy,omitempty" in:"query"`
-	OrderBy          string   `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyShift calls GET /api/v1/reports/daily-shift.
-// Get daily shift report
-func ReservationGetApiV1ReportsDailyShift(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyShiftInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_shift"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-shift"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "dateType", in.DateType)
-	addQuery(q, "paymentMethods", in.PaymentMethods)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "userIds", in.UserIds)
-	addQuery(q, "roomSpaces", in.RoomSpaces)
-	addQuery(q, "checkInStart", in.CheckInStart)
-	addQuery(q, "checkInEnd", in.CheckInEnd)
-	addQuery(q, "checkOutStart", in.CheckOutStart)
-	addQuery(q, "checkOutEnd", in.CheckOutEnd)
-	addQuery(q, "paymentDateStart", in.PaymentDateStart)
-	addQuery(q, "paymentDateEnd", in.PaymentDateEnd)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyShiftExportInput is the input for GET /api/v1/reports/daily-shift/export.
-type ReservationGetApiV1ReportsDailyShiftExportInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	StartDate      string   `json:"startDate,omitempty" in:"query"`
-	EndDate        string   `json:"endDate,omitempty" in:"query"`
-	DateType       string   `json:"dateType,omitempty" in:"query"`
-	PaymentMethods []string `json:"paymentMethods,omitempty" in:"query"`
-	Status         []string `json:"status,omitempty" in:"query"`
-	UserIds        []int64  `json:"userIds,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-	VisibleColumns []string `json:"visibleColumns,omitempty" in:"query"`
-	ExportType     string   `json:"exportType,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyShiftExport calls GET /api/v1/reports/daily-shift/export.
-// Export daily shift report
-func ReservationGetApiV1ReportsDailyShiftExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyShiftExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_shift_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-shift/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "dateType", in.DateType)
-	addQuery(q, "paymentMethods", in.PaymentMethods)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "userIds", in.UserIds)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "visibleColumns", in.VisibleColumns)
-	addQuery(q, "exportType", in.ExportType)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailyShiftUsersInput is the input for GET /api/v1/reports/daily-shift/users.
-type ReservationGetApiV1ReportsDailyShiftUsersInput struct {
-	PropertyId int64  `json:"propertyId" in:"query"`
-	StartDate  string `json:"startDate,omitempty" in:"query"`
-	EndDate    string `json:"endDate,omitempty" in:"query"`
-	DateType   string `json:"dateType,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailyShiftUsers calls GET /api/v1/reports/daily-shift/users.
-// Get daily shift report users
-func ReservationGetApiV1ReportsDailyShiftUsers(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailyShiftUsersInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_shift_users"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-shift/users"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "dateType", in.DateType)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailySummaryInput is the input for GET /api/v1/reports/daily-summary.
-type ReservationGetApiV1ReportsDailySummaryInput struct {
-	PropertyId int64  `json:"propertyId" in:"query"`
-	Date       string `json:"date,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailySummary calls GET /api/v1/reports/daily-summary.
-// Get daily summary report
-func ReservationGetApiV1ReportsDailySummary(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailySummaryInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_summary"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-summary"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "date", in.Date)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDailySummaryExportInput is the input for GET /api/v1/reports/daily-summary/export.
-type ReservationGetApiV1ReportsDailySummaryExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	Date           string `json:"date,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDailySummaryExport calls GET /api/v1/reports/daily-summary/export.
-// Export daily summary report
-func ReservationGetApiV1ReportsDailySummaryExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDailySummaryExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_daily_summary_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/daily-summary/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "date", in.Date)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDepositLedgerInput is the input for GET /api/v1/reports/deposit-ledger.
-type ReservationGetApiV1ReportsDepositLedgerInput struct {
-	PropertyId   int64  `json:"propertyId" in:"query"`
-	StartDate    string `json:"startDate" in:"query"`
-	EndDate      string `json:"endDate,omitempty" in:"query"`
-	CheckInDate  string `json:"checkInDate,omitempty" in:"query"`
-	CheckOutDate string `json:"checkOutDate,omitempty" in:"query"`
-	Status       string `json:"status,omitempty" in:"query"`
-	PaymentMode  string `json:"paymentMode,omitempty" in:"query"`
-	SortBy       string `json:"sortBy,omitempty" in:"query"`
-	OrderBy      string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDepositLedger calls GET /api/v1/reports/deposit-ledger.
-// Get deposit ledger report
-func ReservationGetApiV1ReportsDepositLedger(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDepositLedgerInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_deposit_ledger"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/deposit-ledger"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "checkInDate", in.CheckInDate)
-	addQuery(q, "checkOutDate", in.CheckOutDate)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "paymentMode", in.PaymentMode)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsDepositLedgerExportInput is the input for GET /api/v1/reports/deposit-ledger/export.
-type ReservationGetApiV1ReportsDepositLedgerExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	CheckInDate    string `json:"checkInDate,omitempty" in:"query"`
-	CheckOutDate   string `json:"checkOutDate,omitempty" in:"query"`
-	Status         string `json:"status,omitempty" in:"query"`
-	PaymentMode    string `json:"paymentMode,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsDepositLedgerExport calls GET /api/v1/reports/deposit-ledger/export.
-// Export deposit ledger report
-func ReservationGetApiV1ReportsDepositLedgerExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsDepositLedgerExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_deposit_ledger_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/deposit-ledger/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "checkInDate", in.CheckInDate)
-	addQuery(q, "checkOutDate", in.CheckOutDate)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "paymentMode", in.PaymentMode)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsGroupLedgerInput is the input for GET /api/v1/reports/group-ledger.
-type ReservationGetApiV1ReportsGroupLedgerInput struct {
-	PropertyId int64  `json:"propertyId" in:"query"`
-	StartDate  string `json:"startDate" in:"query"`
-	EndDate    string `json:"endDate,omitempty" in:"query"`
-	SortBy     string `json:"sortBy,omitempty" in:"query"`
-	OrderBy    string `json:"orderBy,omitempty" in:"query"`
-	Limit      int64  `json:"limit,omitempty" in:"query"`
-	Offset     int64  `json:"offset,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsGroupLedger calls GET /api/v1/reports/group-ledger.
-// Get group ledger report
-func ReservationGetApiV1ReportsGroupLedger(ctx context.Context, c *Client, in ReservationGetApiV1ReportsGroupLedgerInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_group_ledger"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/group-ledger"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "limit", in.Limit)
-	addQuery(q, "offset", in.Offset)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsGroupLedgerExportInput is the input for GET /api/v1/reports/group-ledger/export.
-type ReservationGetApiV1ReportsGroupLedgerExportInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	StartDate      string   `json:"startDate" in:"query"`
-	EndDate        string   `json:"endDate,omitempty" in:"query"`
-	ExportType     string   `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-	VisibleColumns []string `json:"visibleColumns,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsGroupLedgerExport calls GET /api/v1/reports/group-ledger/export.
-// Export group ledger report
-func ReservationGetApiV1ReportsGroupLedgerExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsGroupLedgerExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_group_ledger_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/group-ledger/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "visibleColumns", in.VisibleColumns)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsGuestArrivalExportInput is the input for GET /api/v1/reports/guest-arrival/export.
-type ReservationGetApiV1ReportsGuestArrivalExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate,omitempty" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsGuestArrivalExport calls GET /api/v1/reports/guest-arrival/export.
-// Export guest arrival report
-func ReservationGetApiV1ReportsGuestArrivalExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsGuestArrivalExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_guest_arrival_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/guest-arrival/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsGuestDepartureInput is the input for GET /api/v1/reports/guest-departure.
-type ReservationGetApiV1ReportsGuestDepartureInput struct {
-	PropertyId   int64    `json:"propertyId" in:"query"`
-	CheckoutDate string   `json:"checkoutDate,omitempty" in:"query"`
-	Status       []string `json:"status,omitempty" in:"query"`
-	SortBy       string   `json:"sortBy,omitempty" in:"query"`
-	OrderBy      string   `json:"orderBy,omitempty" in:"query"`
-	Page         int64    `json:"page,omitempty" in:"query"`
-	PageSize     int64    `json:"pageSize,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsGuestDeparture calls GET /api/v1/reports/guest-departure.
-// Get guest departure report (paginated list)
-func ReservationGetApiV1ReportsGuestDeparture(ctx context.Context, c *Client, in ReservationGetApiV1ReportsGuestDepartureInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_guest_departure"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/guest-departure"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "checkoutDate", in.CheckoutDate)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "page", in.Page)
-	addQuery(q, "pageSize", in.PageSize)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsGuestDepartureExportInput is the input for GET /api/v1/reports/guest-departure/export.
-type ReservationGetApiV1ReportsGuestDepartureExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate,omitempty" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	Status         string `json:"status,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsGuestDepartureExport calls GET /api/v1/reports/guest-departure/export.
-// Export guest departure report
-func ReservationGetApiV1ReportsGuestDepartureExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsGuestDepartureExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_guest_departure_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/guest-departure/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsGuestLedgerExportInput is the input for GET /api/v1/reports/guest-ledger/export.
-type ReservationGetApiV1ReportsGuestLedgerExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate,omitempty" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsGuestLedgerExport calls GET /api/v1/reports/guest-ledger/export.
-// Export guest ledger report
-func ReservationGetApiV1ReportsGuestLedgerExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsGuestLedgerExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_guest_ledger_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/guest-ledger/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsHousekeepingTaskSummaryInput is the input for GET /api/v1/reports/housekeeping-task-summary.
-type ReservationGetApiV1ReportsHousekeepingTaskSummaryInput struct {
-	PropertyId  int64  `json:"propertyId" in:"query"`
-	StartDate   string `json:"startDate" in:"query"`
-	EndDate     string `json:"endDate" in:"query"`
-	EntityTypes string `json:"entityTypes,omitempty" in:"query"`
-	Limit       int64  `json:"limit,omitempty" in:"query"`
-	Offset      int64  `json:"offset,omitempty" in:"query"`
-	SortBy      string `json:"sortBy,omitempty" in:"query"`
-	OrderBy     string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsHousekeepingTaskSummary calls GET /api/v1/reports/housekeeping-task-summary.
-// Get housekeeping task summary report
-func ReservationGetApiV1ReportsHousekeepingTaskSummary(ctx context.Context, c *Client, in ReservationGetApiV1ReportsHousekeepingTaskSummaryInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_housekeeping_task_summary"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/housekeeping-task-summary"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "entityTypes", in.EntityTypes)
-	addQuery(q, "limit", in.Limit)
-	addQuery(q, "offset", in.Offset)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsHousekeepingTaskSummaryExportInput is the input for GET /api/v1/reports/housekeeping-task-summary/export.
-type ReservationGetApiV1ReportsHousekeepingTaskSummaryExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate" in:"query"`
-	EndDate        string `json:"endDate" in:"query"`
-	EntityTypes    string `json:"entityTypes,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsHousekeepingTaskSummaryExport calls GET /api/v1/reports/housekeeping-task-summary/export.
-// Export housekeeping task summary report
-func ReservationGetApiV1ReportsHousekeepingTaskSummaryExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsHousekeepingTaskSummaryExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_housekeeping_task_summary_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/housekeeping-task-summary/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "entityTypes", in.EntityTypes)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsInHouseRoomChangeInput is the input for GET /api/v1/reports/in-house-room-change.
-type ReservationGetApiV1ReportsInHouseRoomChangeInput struct {
-	PropertyId int64  `json:"propertyId" in:"query"`
-	StartDate  string `json:"startDate,omitempty" in:"query"`
-	EndDate    string `json:"endDate,omitempty" in:"query"`
-	Limit      int64  `json:"limit,omitempty" in:"query"`
-	Offset     int64  `json:"offset,omitempty" in:"query"`
-	SortBy     string `json:"sortBy,omitempty" in:"query"`
-	OrderBy    string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsInHouseRoomChange calls GET /api/v1/reports/in-house-room-change.
-// Get in-house room change report
-func ReservationGetApiV1ReportsInHouseRoomChange(ctx context.Context, c *Client, in ReservationGetApiV1ReportsInHouseRoomChangeInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_in_house_room_change"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/in-house-room-change"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "limit", in.Limit)
-	addQuery(q, "offset", in.Offset)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsInHouseRoomChangeExportInput is the input for GET /api/v1/reports/in-house-room-change/export.
-type ReservationGetApiV1ReportsInHouseRoomChangeExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate,omitempty" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsInHouseRoomChangeExport calls GET /api/v1/reports/in-house-room-change/export.
-// Export in-house room change report
-func ReservationGetApiV1ReportsInHouseRoomChangeExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsInHouseRoomChangeExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_in_house_room_change_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/in-house-room-change/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsMaintenanceInput is the input for GET /api/v1/reports/maintenance.
-type ReservationGetApiV1ReportsMaintenanceInput struct {
-	PropertyId  int64  `json:"propertyId" in:"query"`
-	StartDate   string `json:"startDate,omitempty" in:"query"`
-	EndDate     string `json:"endDate,omitempty" in:"query"`
-	BuildingIds string `json:"buildingIds,omitempty" in:"query"`
-	FloorIds    string `json:"floorIds,omitempty" in:"query"`
-	Limit       int64  `json:"limit,omitempty" in:"query"`
-	Offset      int64  `json:"offset,omitempty" in:"query"`
-	SortBy      string `json:"sortBy,omitempty" in:"query"`
-	OrderBy     string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsMaintenance calls GET /api/v1/reports/maintenance.
-// Get maintenance report
-func ReservationGetApiV1ReportsMaintenance(ctx context.Context, c *Client, in ReservationGetApiV1ReportsMaintenanceInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_maintenance"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/maintenance"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "buildingIds", in.BuildingIds)
-	addQuery(q, "floorIds", in.FloorIds)
-	addQuery(q, "limit", in.Limit)
-	addQuery(q, "offset", in.Offset)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsMaintenanceExportInput is the input for GET /api/v1/reports/maintenance/export.
-type ReservationGetApiV1ReportsMaintenanceExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate,omitempty" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	BuildingIds    string `json:"buildingIds,omitempty" in:"query"`
-	FloorIds       string `json:"floorIds,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsMaintenanceExport calls GET /api/v1/reports/maintenance/export.
-// Export maintenance report
-func ReservationGetApiV1ReportsMaintenanceExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsMaintenanceExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_maintenance_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/maintenance/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "buildingIds", in.BuildingIds)
-	addQuery(q, "floorIds", in.FloorIds)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsNoshowCancellationRevenueExportInput is the input for GET /api/v1/reports/noshow-cancellation-revenue/export.
-type ReservationGetApiV1ReportsNoshowCancellationRevenueExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate,omitempty" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	Status         string `json:"status,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsNoshowCancellationRevenueExport calls GET /api/v1/reports/noshow-cancellation-revenue/export.
-// Export no-show/cancellation revenue report
-func ReservationGetApiV1ReportsNoshowCancellationRevenueExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsNoshowCancellationRevenueExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_noshow_cancellation_revenue_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/noshow-cancellation-revenue/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsRevenueByRoomTypeInput is the input for GET /api/v1/reports/revenue-by-room-type.
-type ReservationGetApiV1ReportsRevenueByRoomTypeInput struct {
-	PropertyId int64  `json:"propertyId" in:"query"`
-	Date       string `json:"date" in:"query"`
-	SearchKey  string `json:"searchKey,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsRevenueByRoomType calls GET /api/v1/reports/revenue-by-room-type.
-// Get revenue by room type report
-func ReservationGetApiV1ReportsRevenueByRoomType(ctx context.Context, c *Client, in ReservationGetApiV1ReportsRevenueByRoomTypeInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_revenue_by_room_type"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/revenue-by-room-type"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "date", in.Date)
-	addQuery(q, "searchKey", in.SearchKey)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsRevenueByRoomTypeExportInput is the input for GET /api/v1/reports/revenue-by-room-type/export.
-type ReservationGetApiV1ReportsRevenueByRoomTypeExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate,omitempty" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	SearchKey      string `json:"searchKey,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsRevenueByRoomTypeExport calls GET /api/v1/reports/revenue-by-room-type/export.
-// Export revenue by room type report
-func ReservationGetApiV1ReportsRevenueByRoomTypeExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsRevenueByRoomTypeExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_revenue_by_room_type_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/revenue-by-room-type/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "searchKey", in.SearchKey)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsRoomSpaceTypeArrivalInput is the input for GET /api/v1/reports/room-space-type-arrival.
-type ReservationGetApiV1ReportsRoomSpaceTypeArrivalInput struct {
-	PropertyId  int64  `json:"propertyId" in:"query"`
-	StartDate   string `json:"startDate,omitempty" in:"query"`
-	EndDate     string `json:"endDate,omitempty" in:"query"`
-	BuildingIds string `json:"buildingIds,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsRoomSpaceTypeArrival calls GET /api/v1/reports/room-space-type-arrival.
-// Get room/space type arrival report
-func ReservationGetApiV1ReportsRoomSpaceTypeArrival(ctx context.Context, c *Client, in ReservationGetApiV1ReportsRoomSpaceTypeArrivalInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_room_space_type_arrival"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/room-space-type-arrival"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "buildingIds", in.BuildingIds)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsRoomSpaceTypeArrivalExportInput is the input for GET /api/v1/reports/room-space-type-arrival/export.
-type ReservationGetApiV1ReportsRoomSpaceTypeArrivalExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate,omitempty" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	BuildingIds    string `json:"buildingIds,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsRoomSpaceTypeArrivalExport calls GET /api/v1/reports/room-space-type-arrival/export.
-// Export room/space type arrival report
-func ReservationGetApiV1ReportsRoomSpaceTypeArrivalExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsRoomSpaceTypeArrivalExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_room_space_type_arrival_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/room-space-type-arrival/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "buildingIds", in.BuildingIds)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsSalesAndRevenueInput is the input for GET /api/v1/reports/sales-and-revenue.
-type ReservationGetApiV1ReportsSalesAndRevenueInput struct {
-	PropertyId   int64  `json:"propertyId" in:"query"`
-	StartDate    string `json:"startDate,omitempty" in:"query"`
-	EndDate      string `json:"endDate,omitempty" in:"query"`
-	RoomTypeIds  string `json:"roomTypeIds,omitempty" in:"query"`
-	SpaceTypeIds string `json:"spaceTypeIds,omitempty" in:"query"`
-	RateTypeIds  string `json:"rateTypeIds,omitempty" in:"query"`
-	SearchKey    string `json:"searchKey,omitempty" in:"query"`
-	SortBy       string `json:"sortBy,omitempty" in:"query"`
-	OrderBy      string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsSalesAndRevenue calls GET /api/v1/reports/sales-and-revenue.
-// Get sales and revenue report
-func ReservationGetApiV1ReportsSalesAndRevenue(ctx context.Context, c *Client, in ReservationGetApiV1ReportsSalesAndRevenueInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_sales_and_revenue"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/sales-and-revenue"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "roomTypeIds", in.RoomTypeIds)
-	addQuery(q, "spaceTypeIds", in.SpaceTypeIds)
-	addQuery(q, "rateTypeIds", in.RateTypeIds)
-	addQuery(q, "searchKey", in.SearchKey)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsSalesAndRevenueExportInput is the input for GET /api/v1/reports/sales-and-revenue/export.
-type ReservationGetApiV1ReportsSalesAndRevenueExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate,omitempty" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	RoomTypeIds    string `json:"roomTypeIds,omitempty" in:"query"`
-	SpaceTypeIds   string `json:"spaceTypeIds,omitempty" in:"query"`
-	RateTypeIds    string `json:"rateTypeIds,omitempty" in:"query"`
-	SearchKey      string `json:"searchKey,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsSalesAndRevenueExport calls GET /api/v1/reports/sales-and-revenue/export.
-// Export sales and revenue report
-func ReservationGetApiV1ReportsSalesAndRevenueExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsSalesAndRevenueExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_sales_and_revenue_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/sales-and-revenue/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "roomTypeIds", in.RoomTypeIds)
-	addQuery(q, "spaceTypeIds", in.SpaceTypeIds)
-	addQuery(q, "rateTypeIds", in.RateTypeIds)
-	addQuery(q, "searchKey", in.SearchKey)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsSegmentationInput is the input for GET /api/v1/reports/segmentation.
-type ReservationGetApiV1ReportsSegmentationInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	StartDate      string   `json:"startDate,omitempty" in:"query"`
-	EndDate        string   `json:"endDate,omitempty" in:"query"`
-	BusinessSource []string `json:"businessSource,omitempty" in:"query"`
-	Status         []string `json:"status,omitempty" in:"query"`
-	RoomSpaces     []string `json:"roomSpaces,omitempty" in:"query"`
-	Page           int64    `json:"page,omitempty" in:"query"`
-	PageSize       int64    `json:"pageSize,omitempty" in:"query"`
-	SortBy         string   `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string   `json:"orderBy,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsSegmentation calls GET /api/v1/reports/segmentation.
-// Get guest segmentation report
-func ReservationGetApiV1ReportsSegmentation(ctx context.Context, c *Client, in ReservationGetApiV1ReportsSegmentationInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_segmentation"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/segmentation"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "businessSource", in.BusinessSource)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "roomSpaces", in.RoomSpaces)
-	addQuery(q, "page", in.Page)
-	addQuery(q, "pageSize", in.PageSize)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsSegmentationExportInput is the input for GET /api/v1/reports/segmentation/export.
-type ReservationGetApiV1ReportsSegmentationExportInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	StartDate      string   `json:"startDate,omitempty" in:"query"`
-	EndDate        string   `json:"endDate,omitempty" in:"query"`
-	BusinessSource []string `json:"businessSource,omitempty" in:"query"`
-	Status         []string `json:"status,omitempty" in:"query"`
-	RoomSpaces     []string `json:"roomSpaces,omitempty" in:"query"`
-	SortBy         string   `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string   `json:"orderBy,omitempty" in:"query"`
-	ExportType     string   `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsSegmentationExport calls GET /api/v1/reports/segmentation/export.
-// Export guest segmentation report
-func ReservationGetApiV1ReportsSegmentationExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsSegmentationExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_segmentation_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/segmentation/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "businessSource", in.BusinessSource)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "roomSpaces", in.RoomSpaces)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsStaySummaryInput is the input for GET /api/v1/reports/stay-summary.
-type ReservationGetApiV1ReportsStaySummaryInput struct {
-	PropertyId  int64  `json:"propertyId" in:"query"`
-	StartDate   string `json:"startDate,omitempty" in:"query"`
-	EndDate     string `json:"endDate,omitempty" in:"query"`
-	PaymentMode string `json:"paymentMode,omitempty" in:"query"`
-	GuestType   string `json:"guestType,omitempty" in:"query"`
-	Page        int64  `json:"page,omitempty" in:"query"`
-	PageSize    int64  `json:"pageSize,omitempty" in:"query"`
-	SortBy      string `json:"sortBy,omitempty" in:"query"`
-	OrderBy     string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsStaySummary calls GET /api/v1/reports/stay-summary.
-// Get stay summary report
-func ReservationGetApiV1ReportsStaySummary(ctx context.Context, c *Client, in ReservationGetApiV1ReportsStaySummaryInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_stay_summary"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/stay-summary"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "paymentMode", in.PaymentMode)
-	addQuery(q, "guestType", in.GuestType)
-	addQuery(q, "page", in.Page)
-	addQuery(q, "pageSize", in.PageSize)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsStaySummaryExportInput is the input for GET /api/v1/reports/stay-summary/export.
-type ReservationGetApiV1ReportsStaySummaryExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate,omitempty" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	PaymentMode    string `json:"paymentMode,omitempty" in:"query"`
-	GuestType      string `json:"guestType,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-	Columns        string `json:"columns,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsStaySummaryExport calls GET /api/v1/reports/stay-summary/export.
-// Export stay summary report
-func ReservationGetApiV1ReportsStaySummaryExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsStaySummaryExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_stay_summary_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/stay-summary/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "paymentMode", in.PaymentMode)
-	addQuery(q, "guestType", in.GuestType)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "columns", in.Columns)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsTaxDetailsInput is the input for GET /api/v1/reports/tax-details.
-type ReservationGetApiV1ReportsTaxDetailsInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	StartDate      string   `json:"startDate,omitempty" in:"query"`
-	EndDate        string   `json:"endDate,omitempty" in:"query"`
-	Type           []string `json:"type,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-	SortBy         string   `json:"sortBy,omitempty" in:"query"`
-	SortOrder      string   `json:"sortOrder,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsTaxDetails calls GET /api/v1/reports/tax-details.
-// Get tax details report
-func ReservationGetApiV1ReportsTaxDetails(ctx context.Context, c *Client, in ReservationGetApiV1ReportsTaxDetailsInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_tax_details"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/tax-details"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "type", in.Type)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "sortOrder", in.SortOrder)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsTaxDetailsExportInput is the input for GET /api/v1/reports/tax-details/export.
-type ReservationGetApiV1ReportsTaxDetailsExportInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	StartDate      string   `json:"startDate,omitempty" in:"query"`
-	EndDate        string   `json:"endDate,omitempty" in:"query"`
-	Type           []string `json:"type,omitempty" in:"query"`
-	ExportType     string   `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-	SortBy         string   `json:"sortBy,omitempty" in:"query"`
-	SortOrder      string   `json:"sortOrder,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsTaxDetailsExport calls GET /api/v1/reports/tax-details/export.
-// Export tax details report
-func ReservationGetApiV1ReportsTaxDetailsExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsTaxDetailsExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_tax_details_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/tax-details/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "type", in.Type)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "sortOrder", in.SortOrder)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsTaxExemptClaimInput is the input for GET /api/v1/reports/tax-exempt-claim.
-type ReservationGetApiV1ReportsTaxExemptClaimInput struct {
-	PropertyId       int64    `json:"propertyId" in:"query"`
-	StartDate        string   `json:"startDate,omitempty" in:"query"`
-	EndDate          string   `json:"endDate,omitempty" in:"query"`
-	Type             []string `json:"type,omitempty" in:"query"`
-	BusinessSource   []string `json:"businessSource,omitempty" in:"query"`
-	Status           []string `json:"status,omitempty" in:"query"`
-	CheckInDateStart string   `json:"checkInDateStart,omitempty" in:"query"`
-	CheckInDateEnd   string   `json:"checkInDateEnd,omitempty" in:"query"`
-	FiltersApplied   bool     `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsTaxExemptClaim calls GET /api/v1/reports/tax-exempt-claim.
-// Get tax exempt claim report
-func ReservationGetApiV1ReportsTaxExemptClaim(ctx context.Context, c *Client, in ReservationGetApiV1ReportsTaxExemptClaimInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_tax_exempt_claim"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/tax-exempt-claim"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "type", in.Type)
-	addQuery(q, "businessSource", in.BusinessSource)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "checkInDateStart", in.CheckInDateStart)
-	addQuery(q, "checkInDateEnd", in.CheckInDateEnd)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsTaxExemptClaimExportInput is the input for GET /api/v1/reports/tax-exempt-claim/export.
-type ReservationGetApiV1ReportsTaxExemptClaimExportInput struct {
-	PropertyId       int64    `json:"propertyId" in:"query"`
-	StartDate        string   `json:"startDate,omitempty" in:"query"`
-	EndDate          string   `json:"endDate,omitempty" in:"query"`
-	Type             []string `json:"type,omitempty" in:"query"`
-	BusinessSource   []string `json:"businessSource,omitempty" in:"query"`
-	Status           []string `json:"status,omitempty" in:"query"`
-	CheckInDateStart string   `json:"checkInDateStart,omitempty" in:"query"`
-	CheckInDateEnd   string   `json:"checkInDateEnd,omitempty" in:"query"`
-	ExportType       string   `json:"exportType,omitempty" in:"query"`
-	FiltersApplied   bool     `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsTaxExemptClaimExport calls GET /api/v1/reports/tax-exempt-claim/export.
-// Export tax exempt claim report
-func ReservationGetApiV1ReportsTaxExemptClaimExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsTaxExemptClaimExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_tax_exempt_claim_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/tax-exempt-claim/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "type", in.Type)
-	addQuery(q, "businessSource", in.BusinessSource)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "checkInDateStart", in.CheckInDateStart)
-	addQuery(q, "checkInDateEnd", in.CheckInDateEnd)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsTaxExemptionInput is the input for GET /api/v1/reports/tax-exemption.
-type ReservationGetApiV1ReportsTaxExemptionInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	StartDate      string   `json:"startDate,omitempty" in:"query"`
-	EndDate        string   `json:"endDate,omitempty" in:"query"`
-	Type           []string `json:"type,omitempty" in:"query"`
-	Status         []string `json:"status,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsTaxExemption calls GET /api/v1/reports/tax-exemption.
-// Get tax exemption report
-func ReservationGetApiV1ReportsTaxExemption(ctx context.Context, c *Client, in ReservationGetApiV1ReportsTaxExemptionInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_tax_exemption"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/tax-exemption"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "type", in.Type)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1ReportsTaxExemptionExportInput is the input for GET /api/v1/reports/tax-exemption/export.
-type ReservationGetApiV1ReportsTaxExemptionExportInput struct {
-	PropertyId     int64    `json:"propertyId" in:"query"`
-	StartDate      string   `json:"startDate,omitempty" in:"query"`
-	EndDate        string   `json:"endDate,omitempty" in:"query"`
-	Type           []string `json:"type,omitempty" in:"query"`
-	Status         []string `json:"status,omitempty" in:"query"`
-	ExportType     string   `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
-	VisibleColumns []string `json:"visibleColumns,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1ReportsTaxExemptionExport calls GET /api/v1/reports/tax-exemption/export.
-// Export tax exemption report
-func ReservationGetApiV1ReportsTaxExemptionExport(ctx context.Context, c *Client, in ReservationGetApiV1ReportsTaxExemptionExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_reports_tax_exemption_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/reports/tax-exemption/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "type", in.Type)
-	addQuery(q, "status", in.Status)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "visibleColumns", in.VisibleColumns)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1RoomStatusChangesInput is the input for GET /api/v1/room-status-changes.
-type ReservationGetApiV1RoomStatusChangesInput struct {
-	PropertyId int64  `json:"propertyId" in:"query"`
-	StartDate  string `json:"startDate,omitempty" in:"query"`
-	EndDate    string `json:"endDate,omitempty" in:"query"`
-	Limit      int64  `json:"limit,omitempty" in:"query"`
-	Offset     int64  `json:"offset,omitempty" in:"query"`
-	SortBy     string `json:"sortBy,omitempty" in:"query"`
-	OrderBy    string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1RoomStatusChanges calls GET /api/v1/room-status-changes.
-// Get room status change report
-func ReservationGetApiV1RoomStatusChanges(ctx context.Context, c *Client, in ReservationGetApiV1RoomStatusChangesInput) (any, error) {
-	const tool = "reservation_get_api_v1_room_status_changes"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/room-status-changes"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "limit", in.Limit)
-	addQuery(q, "offset", in.Offset)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationGetApiV1RoomStatusChangesExportInput is the input for GET /api/v1/room-status-changes/export.
-type ReservationGetApiV1RoomStatusChangesExportInput struct {
-	PropertyId     int64  `json:"propertyId" in:"query"`
-	StartDate      string `json:"startDate,omitempty" in:"query"`
-	EndDate        string `json:"endDate,omitempty" in:"query"`
-	ExportType     string `json:"exportType,omitempty" in:"query"`
-	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
-	SortBy         string `json:"sortBy,omitempty" in:"query"`
-	OrderBy        string `json:"orderBy,omitempty" in:"query"`
-}
-
-// ReservationGetApiV1RoomStatusChangesExport calls GET /api/v1/room-status-changes/export.
-// Export room status change report
-func ReservationGetApiV1RoomStatusChangesExport(ctx context.Context, c *Client, in ReservationGetApiV1RoomStatusChangesExportInput) (any, error) {
-	const tool = "reservation_get_api_v1_room_status_changes_export"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/room-status-changes/export"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	addQuery(q, "startDate", in.StartDate)
-	addQuery(q, "endDate", in.EndDate)
-	addQuery(q, "exportType", in.ExportType)
-	addQuery(q, "filtersApplied", in.FiltersApplied)
-	addQuery(q, "sortBy", in.SortBy)
-	addQuery(q, "orderBy", in.OrderBy)
-	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
-// ReservationPostApiV1TokenizedCardsSessionInput is the input for POST /api/v1/tokenized-cards/session.
-type ReservationPostApiV1TokenizedCardsSessionInput struct {
-	PropertyId int64 `json:"propertyId" in:"query"`
-}
-
-// ReservationPostApiV1TokenizedCardsSession calls POST /api/v1/tokenized-cards/session.
-// Create a tokenization session for client-side card capture
-func ReservationPostApiV1TokenizedCardsSession(ctx context.Context, c *Client, in ReservationPostApiV1TokenizedCardsSessionInput) (any, error) {
-	const tool = "reservation_post_api_v1_tokenized_cards_session"
-	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
-		return nil, err
-	}
-	p := "/api/v1/tokenized-cards/session"
-	q := url.Values{}
-	h := map[string]string{}
-	form := url.Values{}
-	var body any
-	_, _, _ = q, h, form
-	addQuery(q, "propertyId", in.PropertyId)
-	resp, err := c.Do(ctx, ReservationService, "POST", p, q, h, body)
-	if err != nil {
-		return nil, err
-	}
-	return toolregistry.MapToCard(tool, resp)
-}
-
 // ReservationPostAuditCreditCardsAuthorizeInput is the input for POST /audit/credit-cards/authorize.
 type ReservationPostAuditCreditCardsAuthorizeInput struct {
 	PropertyId int64                      `json:"propertyId" in:"query"`
@@ -3636,6 +1362,110 @@ func ReservationPostAuditCreditCardsSale(ctx context.Context, c *Client, in Rese
 	addQuery(q, "propertyId", in.PropertyId)
 	body = in.Body
 	resp, err := c.Do(ctx, ReservationService, "POST", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationPostAuditRevenuePostingPostInput is the input for POST /audit/revenue-posting/post.
+type ReservationPostAuditRevenuePostingPostInput struct {
+	Body ApiNoShowCancelPostRequest `json:"request" in:"body"`
+}
+
+// ReservationPostAuditRevenuePostingPost calls POST /api/v1/audit/revenue-posting/post.
+// Post no-show/cancel revenue to reports
+func ReservationPostAuditRevenuePostingPost(ctx context.Context, c *Client, in ReservationPostAuditRevenuePostingPostInput) (any, error) {
+	const tool = "reservation_post_audit_revenue_posting_post"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/audit/revenue-posting/post"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	body = in.Body
+	resp, err := c.Do(ctx, ReservationService, "POST", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationPostAuditRevenuePostingUnpostInput is the input for POST /audit/revenue-posting/unpost.
+type ReservationPostAuditRevenuePostingUnpostInput struct {
+	Body ApiNoShowCancelUnpostRequest `json:"request" in:"body"`
+}
+
+// ReservationPostAuditRevenuePostingUnpost calls POST /api/v1/audit/revenue-posting/unpost.
+// Unpost no-show/cancel revenue from reports
+func ReservationPostAuditRevenuePostingUnpost(ctx context.Context, c *Client, in ReservationPostAuditRevenuePostingUnpostInput) (any, error) {
+	const tool = "reservation_post_audit_revenue_posting_unpost"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/audit/revenue-posting/unpost"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	body = in.Body
+	resp, err := c.Do(ctx, ReservationService, "POST", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetBookingRateTypesInput is the input for GET /booking/rate-types.
+type ReservationGetBookingRateTypesInput struct {
+	PropertyId int64 `json:"property_id" in:"query"`
+}
+
+// ReservationGetBookingRateTypes calls GET /api/v1/booking/rate-types.
+// Get rate types from Booking.com
+func ReservationGetBookingRateTypes(ctx context.Context, c *Client, in ReservationGetBookingRateTypesInput) (any, error) {
+	const tool = "reservation_get_booking_rate_types"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/booking/rate-types"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "property_id", in.PropertyId)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetBookingRoomTypesInput is the input for GET /booking/room-types.
+type ReservationGetBookingRoomTypesInput struct {
+	PropertyId int64 `json:"property_id" in:"query"`
+}
+
+// ReservationGetBookingRoomTypes calls GET /api/v1/booking/room-types.
+// Get room types from Booking.com
+func ReservationGetBookingRoomTypes(ctx context.Context, c *Client, in ReservationGetBookingRoomTypesInput) (any, error) {
+	const tool = "reservation_get_booking_room_types"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/booking/room-types"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "property_id", in.PropertyId)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7870,6 +5700,34 @@ func ReservationPostInternalPropertyInit(ctx context.Context, c *Client, in Rese
 	return toolregistry.MapToCard(tool, resp)
 }
 
+// ReservationPatchInternalPropertyIdNightAuditSettingsInput is the input for PATCH /internal/property/{id}/night-audit-settings.
+type ReservationPatchInternalPropertyIdNightAuditSettingsInput struct {
+	Id   int64                      `json:"id" in:"path"`
+	Body ApiNightAuditSettingsInput `json:"request" in:"body"`
+}
+
+// ReservationPatchInternalPropertyIdNightAuditSettings calls PATCH /api/v1/internal/property/{id}/night-audit-settings.
+// Update Night Audit Settings for a property
+func ReservationPatchInternalPropertyIdNightAuditSettings(ctx context.Context, c *Client, in ReservationPatchInternalPropertyIdNightAuditSettingsInput) (any, error) {
+	const tool = "reservation_patch_internal_property_id_night_audit_settings"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/internal/property/{id}/night-audit-settings"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	p = strings.ReplaceAll(p, "{id}", url.PathEscape(toString(in.Id)))
+	body = in.Body
+	resp, err := c.Do(ctx, ReservationService, "PATCH", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
 // ReservationPostInternalRoomsSyncNameInput is the input for POST /internal/rooms/sync-name.
 type ReservationPostInternalRoomsSyncNameInput struct {
 	Body2 ApiSyncRoomNameRequest `json:"body" in:"body"`
@@ -8370,6 +6228,32 @@ func ReservationGetNightAuditWorkingDate(ctx context.Context, c *Client, in Rese
 	return toolregistry.MapToCard(tool, resp)
 }
 
+// ReservationPostOcrProcessInput is the input for POST /ocr/process.
+type ReservationPostOcrProcessInput struct {
+	Body ApiOCRRequest `json:"request" in:"body"`
+}
+
+// ReservationPostOcrProcess calls POST /api/v1/ocr/process.
+// Process a document from URLs without storing
+func ReservationPostOcrProcess(ctx context.Context, c *Client, in ReservationPostOcrProcessInput) (any, error) {
+	const tool = "reservation_post_ocr_process"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/ocr/process"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	body = in.Body
+	resp, err := c.Do(ctx, ReservationService, "POST", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
 // ReservationGetPaymentMethodsInput is the input for GET /payment-methods.
 type ReservationGetPaymentMethodsInput struct {
 	IncludeInactive bool `json:"includeInactive,omitempty" in:"query"`
@@ -8506,6 +6390,88 @@ func ReservationPostPmsReservations(ctx context.Context, c *Client, in Reservati
 	return toolregistry.MapToCard(tool, resp)
 }
 
+// ReservationGetReportsAdvanceDepositLedgerInput is the input for GET /reports/advance-deposit-ledger.
+type ReservationGetReportsAdvanceDepositLedgerInput struct {
+	PropertyId      int64  `json:"propertyId" in:"query"`
+	StartDate       string `json:"startDate" in:"query"`
+	EndDate         string `json:"endDate" in:"query"`
+	Status          string `json:"status,omitempty" in:"query"`
+	ReservationType string `json:"reservationType,omitempty" in:"query"`
+	SortBy          string `json:"sortBy,omitempty" in:"query"`
+	OrderBy         string `json:"orderBy,omitempty" in:"query"`
+	Limit           int64  `json:"limit,omitempty" in:"query"`
+	Offset          int64  `json:"offset,omitempty" in:"query"`
+}
+
+// ReservationGetReportsAdvanceDepositLedger calls GET /api/v1/reports/advance-deposit-ledger.
+// Get advance deposit ledger
+func ReservationGetReportsAdvanceDepositLedger(ctx context.Context, c *Client, in ReservationGetReportsAdvanceDepositLedgerInput) (any, error) {
+	const tool = "reservation_get_reports_advance_deposit_ledger"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/advance-deposit-ledger"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "reservationType", in.ReservationType)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "limit", in.Limit)
+	addQuery(q, "offset", in.Offset)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsAdvanceDepositLedgerExportInput is the input for GET /reports/advance-deposit-ledger/export.
+type ReservationGetReportsAdvanceDepositLedgerExportInput struct {
+	PropertyId      int64  `json:"propertyId" in:"query"`
+	StartDate       string `json:"startDate" in:"query"`
+	EndDate         string `json:"endDate" in:"query"`
+	Status          string `json:"status,omitempty" in:"query"`
+	ReservationType string `json:"reservationType,omitempty" in:"query"`
+	SortBy          string `json:"sortBy,omitempty" in:"query"`
+	OrderBy         string `json:"orderBy,omitempty" in:"query"`
+	ExportType      string `json:"exportType,omitempty" in:"query"`
+}
+
+// ReservationGetReportsAdvanceDepositLedgerExport calls GET /api/v1/reports/advance-deposit-ledger/export.
+// Export advance deposit ledger
+func ReservationGetReportsAdvanceDepositLedgerExport(ctx context.Context, c *Client, in ReservationGetReportsAdvanceDepositLedgerExportInput) (any, error) {
+	const tool = "reservation_get_reports_advance_deposit_ledger_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/advance-deposit-ledger/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "reservationType", in.ReservationType)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "exportType", in.ExportType)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
 // ReservationGetReportsCatalogInput is the input for GET /reports/catalog.
 type ReservationGetReportsCatalogInput struct {
 }
@@ -8523,6 +6489,1204 @@ func ReservationGetReportsCatalog(ctx context.Context, c *Client, in Reservation
 	form := url.Values{}
 	var body any
 	_, _, _ = q, h, form
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsCreditCardActivityInput is the input for GET /reports/credit-card-activity.
+type ReservationGetReportsCreditCardActivityInput struct {
+	StartDate string `json:"startDate,omitempty" in:"query"`
+	EndDate   string `json:"endDate,omitempty" in:"query"`
+	Status    string `json:"status,omitempty" in:"query"`
+	CardType  string `json:"cardType,omitempty" in:"query"`
+	User      string `json:"user,omitempty" in:"query"`
+	Limit     int64  `json:"limit,omitempty" in:"query"`
+	Offset    int64  `json:"offset,omitempty" in:"query"`
+	SortBy    string `json:"sortBy,omitempty" in:"query"`
+	OrderBy   string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsCreditCardActivity calls GET /api/v1/reports/credit-card-activity.
+// Get credit card activity report
+func ReservationGetReportsCreditCardActivity(ctx context.Context, c *Client, in ReservationGetReportsCreditCardActivityInput) (any, error) {
+	const tool = "reservation_get_reports_credit_card_activity"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/credit-card-activity"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "cardType", in.CardType)
+	addQuery(q, "user", in.User)
+	addQuery(q, "limit", in.Limit)
+	addQuery(q, "offset", in.Offset)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsCreditCardActivityExportInput is the input for GET /reports/credit-card-activity/export.
+type ReservationGetReportsCreditCardActivityExportInput struct {
+	PropertyId      int64    `json:"propertyId" in:"query"`
+	StartDate       string   `json:"startDate,omitempty" in:"query"`
+	EndDate         string   `json:"endDate,omitempty" in:"query"`
+	TransactionType []string `json:"transactionType,omitempty" in:"query"`
+	CardType        []string `json:"cardType,omitempty" in:"query"`
+	User            []string `json:"user,omitempty" in:"query"`
+	ReservationId   string   `json:"reservationId,omitempty" in:"query"`
+	Status          []string `json:"status,omitempty" in:"query"`
+	ExportType      string   `json:"exportType,omitempty" in:"query"`
+	FiltersApplied  bool     `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsCreditCardActivityExport calls GET /api/v1/reports/credit-card-activity/export.
+// Export credit card activity report
+func ReservationGetReportsCreditCardActivityExport(ctx context.Context, c *Client, in ReservationGetReportsCreditCardActivityExportInput) (any, error) {
+	const tool = "reservation_get_reports_credit_card_activity_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/credit-card-activity/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "transactionType", in.TransactionType)
+	addQuery(q, "cardType", in.CardType)
+	addQuery(q, "user", in.User)
+	addQuery(q, "reservationId", in.ReservationId)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsCrsBookingSummaryInput is the input for GET /reports/crs-booking-summary.
+type ReservationGetReportsCrsBookingSummaryInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	StartDate      string   `json:"startDate,omitempty" in:"query"`
+	EndDate        string   `json:"endDate,omitempty" in:"query"`
+	CrsEngineIds   []int64  `json:"crsEngineIds,omitempty" in:"query"`
+	CrsRatePlanIds []int64  `json:"crsRatePlanIds,omitempty" in:"query"`
+	LoyaltyStatus  []string `json:"loyaltyStatus,omitempty" in:"query"`
+	SortBy         string   `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string   `json:"orderBy,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsCrsBookingSummary calls GET /api/v1/reports/crs-booking-summary.
+// Get CRS booking summary report
+func ReservationGetReportsCrsBookingSummary(ctx context.Context, c *Client, in ReservationGetReportsCrsBookingSummaryInput) (any, error) {
+	const tool = "reservation_get_reports_crs_booking_summary"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/crs-booking-summary"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "crsEngineIds", in.CrsEngineIds)
+	addQuery(q, "crsRatePlanIds", in.CrsRatePlanIds)
+	addQuery(q, "loyaltyStatus", in.LoyaltyStatus)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsCrsBookingSummaryExportInput is the input for GET /reports/crs-booking-summary/export.
+type ReservationGetReportsCrsBookingSummaryExportInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	StartDate      string   `json:"startDate,omitempty" in:"query"`
+	EndDate        string   `json:"endDate,omitempty" in:"query"`
+	CrsEngineIds   []int64  `json:"crsEngineIds,omitempty" in:"query"`
+	CrsRatePlanIds []int64  `json:"crsRatePlanIds,omitempty" in:"query"`
+	LoyaltyStatus  []string `json:"loyaltyStatus,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+	ExportType     string   `json:"exportType,omitempty" in:"query"`
+}
+
+// ReservationGetReportsCrsBookingSummaryExport calls GET /api/v1/reports/crs-booking-summary/export.
+// Export CRS booking summary report
+func ReservationGetReportsCrsBookingSummaryExport(ctx context.Context, c *Client, in ReservationGetReportsCrsBookingSummaryExportInput) (any, error) {
+	const tool = "reservation_get_reports_crs_booking_summary_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/crs-booking-summary/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "crsEngineIds", in.CrsEngineIds)
+	addQuery(q, "crsRatePlanIds", in.CrsRatePlanIds)
+	addQuery(q, "loyaltyStatus", in.LoyaltyStatus)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "exportType", in.ExportType)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsCrsBookingSummaryFilterOptionsInput is the input for GET /reports/crs-booking-summary/filter-options.
+type ReservationGetReportsCrsBookingSummaryFilterOptionsInput struct {
+	PropertyId int64 `json:"propertyId" in:"query"`
+}
+
+// ReservationGetReportsCrsBookingSummaryFilterOptions calls GET /api/v1/reports/crs-booking-summary/filter-options.
+// Get CRS booking summary filter options
+func ReservationGetReportsCrsBookingSummaryFilterOptions(ctx context.Context, c *Client, in ReservationGetReportsCrsBookingSummaryFilterOptionsInput) (any, error) {
+	const tool = "reservation_get_reports_crs_booking_summary_filter_options"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/crs-booking-summary/filter-options"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyCollectionInput is the input for GET /reports/daily-collection.
+type ReservationGetReportsDailyCollectionInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	Date           string `json:"date" in:"query"`
+	PaymentMethods string `json:"paymentMethods,omitempty" in:"query"`
+	Status         string `json:"status,omitempty" in:"query"`
+	UserIds        string `json:"userIds,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+	Page           int64  `json:"page,omitempty" in:"query"`
+	PageSize       int64  `json:"pageSize,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailyCollection calls GET /api/v1/reports/daily-collection.
+// Get daily collection report
+func ReservationGetReportsDailyCollection(ctx context.Context, c *Client, in ReservationGetReportsDailyCollectionInput) (any, error) {
+	const tool = "reservation_get_reports_daily_collection"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-collection"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "date", in.Date)
+	addQuery(q, "paymentMethods", in.PaymentMethods)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "userIds", in.UserIds)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "page", in.Page)
+	addQuery(q, "pageSize", in.PageSize)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyCollectionByPaymentTypeInput is the input for GET /reports/daily-collection-by-payment-type.
+type ReservationGetReportsDailyCollectionByPaymentTypeInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	Date           string `json:"date" in:"query"`
+	PaymentMethods string `json:"paymentMethods,omitempty" in:"query"`
+	Status         string `json:"status,omitempty" in:"query"`
+	UserIds        string `json:"userIds,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailyCollectionByPaymentType calls GET /api/v1/reports/daily-collection-by-payment-type.
+// Get daily collection by payment type report
+func ReservationGetReportsDailyCollectionByPaymentType(ctx context.Context, c *Client, in ReservationGetReportsDailyCollectionByPaymentTypeInput) (any, error) {
+	const tool = "reservation_get_reports_daily_collection_by_payment_type"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-collection-by-payment-type"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "date", in.Date)
+	addQuery(q, "paymentMethods", in.PaymentMethods)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "userIds", in.UserIds)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyCollectionByPaymentTypeExportInput is the input for GET /reports/daily-collection-by-payment-type/export.
+type ReservationGetReportsDailyCollectionByPaymentTypeExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	Date           string `json:"date" in:"query"`
+	PaymentMethods string `json:"paymentMethods,omitempty" in:"query"`
+	Status         string `json:"status,omitempty" in:"query"`
+	UserIds        string `json:"userIds,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailyCollectionByPaymentTypeExport calls GET /api/v1/reports/daily-collection-by-payment-type/export.
+// Export daily payment collection report
+func ReservationGetReportsDailyCollectionByPaymentTypeExport(ctx context.Context, c *Client, in ReservationGetReportsDailyCollectionByPaymentTypeExportInput) (any, error) {
+	const tool = "reservation_get_reports_daily_collection_by_payment_type_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-collection-by-payment-type/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "date", in.Date)
+	addQuery(q, "paymentMethods", in.PaymentMethods)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "userIds", in.UserIds)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyCollectionExportInput is the input for GET /reports/daily-collection/export.
+type ReservationGetReportsDailyCollectionExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	Date           string `json:"date" in:"query"`
+	PaymentMethods string `json:"paymentMethods,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailyCollectionExport calls GET /api/v1/reports/daily-collection/export.
+// Export daily collection report
+func ReservationGetReportsDailyCollectionExport(ctx context.Context, c *Client, in ReservationGetReportsDailyCollectionExportInput) (any, error) {
+	const tool = "reservation_get_reports_daily_collection_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-collection/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "date", in.Date)
+	addQuery(q, "paymentMethods", in.PaymentMethods)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyCollectionUsersInput is the input for GET /reports/daily-collection/users.
+type ReservationGetReportsDailyCollectionUsersInput struct {
+	PropertyId int64  `json:"propertyId" in:"query"`
+	Date       string `json:"date" in:"query"`
+}
+
+// ReservationGetReportsDailyCollectionUsers calls GET /api/v1/reports/daily-collection/users.
+// Get daily collection report users
+func ReservationGetReportsDailyCollectionUsers(ctx context.Context, c *Client, in ReservationGetReportsDailyCollectionUsersInput) (any, error) {
+	const tool = "reservation_get_reports_daily_collection_users"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-collection/users"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "date", in.Date)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyCreditCardSummaryInput is the input for GET /reports/daily-credit-card-summary.
+type ReservationGetReportsDailyCreditCardSummaryInput struct {
+	PropertyId   int64  `json:"propertyId" in:"query"`
+	StartDate    string `json:"startDate" in:"query"`
+	EndDate      string `json:"endDate" in:"query"`
+	PaymentTypes string `json:"paymentTypes,omitempty" in:"query"`
+	Status       string `json:"status,omitempty" in:"query"`
+	CardTypes    string `json:"cardTypes,omitempty" in:"query"`
+	VirtualCard  bool   `json:"virtualCard,omitempty" in:"query"`
+	SortBy       string `json:"sortBy,omitempty" in:"query"`
+	OrderBy      string `json:"orderBy,omitempty" in:"query"`
+	Page         int64  `json:"page,omitempty" in:"query"`
+	PageSize     int64  `json:"pageSize,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailyCreditCardSummary calls GET /api/v1/reports/daily-credit-card-summary.
+// Get daily credit card summary report
+func ReservationGetReportsDailyCreditCardSummary(ctx context.Context, c *Client, in ReservationGetReportsDailyCreditCardSummaryInput) (any, error) {
+	const tool = "reservation_get_reports_daily_credit_card_summary"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-credit-card-summary"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "paymentTypes", in.PaymentTypes)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "cardTypes", in.CardTypes)
+	addQuery(q, "virtualCard", in.VirtualCard)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "page", in.Page)
+	addQuery(q, "pageSize", in.PageSize)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyCreditCardSummaryExportInput is the input for GET /reports/daily-credit-card-summary/export.
+type ReservationGetReportsDailyCreditCardSummaryExportInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	StartDate      string   `json:"startDate" in:"query"`
+	EndDate        string   `json:"endDate" in:"query"`
+	PaymentTypes   string   `json:"paymentTypes,omitempty" in:"query"`
+	Status         string   `json:"status,omitempty" in:"query"`
+	CardTypes      string   `json:"cardTypes,omitempty" in:"query"`
+	VirtualCard    bool     `json:"virtualCard,omitempty" in:"query"`
+	ExportType     string   `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+	VisibleColumns []string `json:"visibleColumns,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailyCreditCardSummaryExport calls GET /api/v1/reports/daily-credit-card-summary/export.
+// Export daily credit card summary report
+func ReservationGetReportsDailyCreditCardSummaryExport(ctx context.Context, c *Client, in ReservationGetReportsDailyCreditCardSummaryExportInput) (any, error) {
+	const tool = "reservation_get_reports_daily_credit_card_summary_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-credit-card-summary/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "paymentTypes", in.PaymentTypes)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "cardTypes", in.CardTypes)
+	addQuery(q, "virtualCard", in.VirtualCard)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "visibleColumns", in.VisibleColumns)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyReservationsInput is the input for GET /reports/daily-reservations.
+type ReservationGetReportsDailyReservationsInput struct {
+	PropertyId int64  `json:"propertyId" in:"query"`
+	Date       string `json:"date" in:"query"`
+	Status     string `json:"status,omitempty" in:"query"`
+	SortBy     string `json:"sortBy,omitempty" in:"query"`
+	OrderBy    string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailyReservations calls GET /api/v1/reports/daily-reservations.
+// Get daily transaction report
+func ReservationGetReportsDailyReservations(ctx context.Context, c *Client, in ReservationGetReportsDailyReservationsInput) (any, error) {
+	const tool = "reservation_get_reports_daily_reservations"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-reservations"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "date", in.Date)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyReservationsExportInput is the input for GET /reports/daily-reservations/export.
+type ReservationGetReportsDailyReservationsExportInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	Date           string   `json:"date" in:"query"`
+	Status         string   `json:"status,omitempty" in:"query"`
+	SortBy         string   `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string   `json:"orderBy,omitempty" in:"query"`
+	ExportType     string   `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+	VisibleColumns []string `json:"visibleColumns,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailyReservationsExport calls GET /api/v1/reports/daily-reservations/export.
+// Export daily transaction report
+func ReservationGetReportsDailyReservationsExport(ctx context.Context, c *Client, in ReservationGetReportsDailyReservationsExportInput) (any, error) {
+	const tool = "reservation_get_reports_daily_reservations_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-reservations/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "date", in.Date)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "visibleColumns", in.VisibleColumns)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyShiftInput is the input for GET /reports/daily-shift.
+type ReservationGetReportsDailyShiftInput struct {
+	PropertyId       int64    `json:"propertyId" in:"query"`
+	StartDate        string   `json:"startDate,omitempty" in:"query"`
+	EndDate          string   `json:"endDate,omitempty" in:"query"`
+	DateType         string   `json:"dateType,omitempty" in:"query"`
+	PaymentMethods   []string `json:"paymentMethods,omitempty" in:"query"`
+	Status           []string `json:"status,omitempty" in:"query"`
+	UserIds          []int64  `json:"userIds,omitempty" in:"query"`
+	RoomSpaces       []string `json:"roomSpaces,omitempty" in:"query"`
+	CheckInStart     string   `json:"checkInStart,omitempty" in:"query"`
+	CheckInEnd       string   `json:"checkInEnd,omitempty" in:"query"`
+	CheckOutStart    string   `json:"checkOutStart,omitempty" in:"query"`
+	CheckOutEnd      string   `json:"checkOutEnd,omitempty" in:"query"`
+	PaymentDateStart string   `json:"paymentDateStart,omitempty" in:"query"`
+	PaymentDateEnd   string   `json:"paymentDateEnd,omitempty" in:"query"`
+	SortBy           string   `json:"sortBy,omitempty" in:"query"`
+	OrderBy          string   `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailyShift calls GET /api/v1/reports/daily-shift.
+// Get daily shift report
+func ReservationGetReportsDailyShift(ctx context.Context, c *Client, in ReservationGetReportsDailyShiftInput) (any, error) {
+	const tool = "reservation_get_reports_daily_shift"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-shift"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "dateType", in.DateType)
+	addQuery(q, "paymentMethods", in.PaymentMethods)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "userIds", in.UserIds)
+	addQuery(q, "roomSpaces", in.RoomSpaces)
+	addQuery(q, "checkInStart", in.CheckInStart)
+	addQuery(q, "checkInEnd", in.CheckInEnd)
+	addQuery(q, "checkOutStart", in.CheckOutStart)
+	addQuery(q, "checkOutEnd", in.CheckOutEnd)
+	addQuery(q, "paymentDateStart", in.PaymentDateStart)
+	addQuery(q, "paymentDateEnd", in.PaymentDateEnd)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyShiftExportInput is the input for GET /reports/daily-shift/export.
+type ReservationGetReportsDailyShiftExportInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	StartDate      string   `json:"startDate,omitempty" in:"query"`
+	EndDate        string   `json:"endDate,omitempty" in:"query"`
+	DateType       string   `json:"dateType,omitempty" in:"query"`
+	PaymentMethods []string `json:"paymentMethods,omitempty" in:"query"`
+	Status         []string `json:"status,omitempty" in:"query"`
+	UserIds        []int64  `json:"userIds,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+	VisibleColumns []string `json:"visibleColumns,omitempty" in:"query"`
+	ExportType     string   `json:"exportType,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailyShiftExport calls GET /api/v1/reports/daily-shift/export.
+// Export daily shift report
+func ReservationGetReportsDailyShiftExport(ctx context.Context, c *Client, in ReservationGetReportsDailyShiftExportInput) (any, error) {
+	const tool = "reservation_get_reports_daily_shift_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-shift/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "dateType", in.DateType)
+	addQuery(q, "paymentMethods", in.PaymentMethods)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "userIds", in.UserIds)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "visibleColumns", in.VisibleColumns)
+	addQuery(q, "exportType", in.ExportType)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailyShiftUsersInput is the input for GET /reports/daily-shift/users.
+type ReservationGetReportsDailyShiftUsersInput struct {
+	PropertyId int64  `json:"propertyId" in:"query"`
+	StartDate  string `json:"startDate,omitempty" in:"query"`
+	EndDate    string `json:"endDate,omitempty" in:"query"`
+	DateType   string `json:"dateType,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailyShiftUsers calls GET /api/v1/reports/daily-shift/users.
+// Get daily shift report users
+func ReservationGetReportsDailyShiftUsers(ctx context.Context, c *Client, in ReservationGetReportsDailyShiftUsersInput) (any, error) {
+	const tool = "reservation_get_reports_daily_shift_users"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-shift/users"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "dateType", in.DateType)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailySummaryInput is the input for GET /reports/daily-summary.
+type ReservationGetReportsDailySummaryInput struct {
+	PropertyId int64  `json:"propertyId" in:"query"`
+	Date       string `json:"date,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailySummary calls GET /api/v1/reports/daily-summary.
+// Get daily summary report
+func ReservationGetReportsDailySummary(ctx context.Context, c *Client, in ReservationGetReportsDailySummaryInput) (any, error) {
+	const tool = "reservation_get_reports_daily_summary"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-summary"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "date", in.Date)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDailySummaryExportInput is the input for GET /reports/daily-summary/export.
+type ReservationGetReportsDailySummaryExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	Date           string `json:"date,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDailySummaryExport calls GET /api/v1/reports/daily-summary/export.
+// Export daily summary report
+func ReservationGetReportsDailySummaryExport(ctx context.Context, c *Client, in ReservationGetReportsDailySummaryExportInput) (any, error) {
+	const tool = "reservation_get_reports_daily_summary_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/daily-summary/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "date", in.Date)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDepositLedgerInput is the input for GET /reports/deposit-ledger.
+type ReservationGetReportsDepositLedgerInput struct {
+	PropertyId   int64  `json:"propertyId" in:"query"`
+	StartDate    string `json:"startDate" in:"query"`
+	EndDate      string `json:"endDate,omitempty" in:"query"`
+	CheckInDate  string `json:"checkInDate,omitempty" in:"query"`
+	CheckOutDate string `json:"checkOutDate,omitempty" in:"query"`
+	Status       string `json:"status,omitempty" in:"query"`
+	PaymentMode  string `json:"paymentMode,omitempty" in:"query"`
+	SortBy       string `json:"sortBy,omitempty" in:"query"`
+	OrderBy      string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDepositLedger calls GET /api/v1/reports/deposit-ledger.
+// Get deposit ledger report
+func ReservationGetReportsDepositLedger(ctx context.Context, c *Client, in ReservationGetReportsDepositLedgerInput) (any, error) {
+	const tool = "reservation_get_reports_deposit_ledger"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/deposit-ledger"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "checkInDate", in.CheckInDate)
+	addQuery(q, "checkOutDate", in.CheckOutDate)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "paymentMode", in.PaymentMode)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsDepositLedgerExportInput is the input for GET /reports/deposit-ledger/export.
+type ReservationGetReportsDepositLedgerExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	CheckInDate    string `json:"checkInDate,omitempty" in:"query"`
+	CheckOutDate   string `json:"checkOutDate,omitempty" in:"query"`
+	Status         string `json:"status,omitempty" in:"query"`
+	PaymentMode    string `json:"paymentMode,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsDepositLedgerExport calls GET /api/v1/reports/deposit-ledger/export.
+// Export deposit ledger report
+func ReservationGetReportsDepositLedgerExport(ctx context.Context, c *Client, in ReservationGetReportsDepositLedgerExportInput) (any, error) {
+	const tool = "reservation_get_reports_deposit_ledger_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/deposit-ledger/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "checkInDate", in.CheckInDate)
+	addQuery(q, "checkOutDate", in.CheckOutDate)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "paymentMode", in.PaymentMode)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsGroupLedgerInput is the input for GET /reports/group-ledger.
+type ReservationGetReportsGroupLedgerInput struct {
+	PropertyId int64  `json:"propertyId" in:"query"`
+	StartDate  string `json:"startDate" in:"query"`
+	EndDate    string `json:"endDate,omitempty" in:"query"`
+	SortBy     string `json:"sortBy,omitempty" in:"query"`
+	OrderBy    string `json:"orderBy,omitempty" in:"query"`
+	Limit      int64  `json:"limit,omitempty" in:"query"`
+	Offset     int64  `json:"offset,omitempty" in:"query"`
+}
+
+// ReservationGetReportsGroupLedger calls GET /api/v1/reports/group-ledger.
+// Get group ledger report
+func ReservationGetReportsGroupLedger(ctx context.Context, c *Client, in ReservationGetReportsGroupLedgerInput) (any, error) {
+	const tool = "reservation_get_reports_group_ledger"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/group-ledger"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "limit", in.Limit)
+	addQuery(q, "offset", in.Offset)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsGroupLedgerExportInput is the input for GET /reports/group-ledger/export.
+type ReservationGetReportsGroupLedgerExportInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	StartDate      string   `json:"startDate" in:"query"`
+	EndDate        string   `json:"endDate,omitempty" in:"query"`
+	ExportType     string   `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+	VisibleColumns []string `json:"visibleColumns,omitempty" in:"query"`
+}
+
+// ReservationGetReportsGroupLedgerExport calls GET /api/v1/reports/group-ledger/export.
+// Export group ledger report
+func ReservationGetReportsGroupLedgerExport(ctx context.Context, c *Client, in ReservationGetReportsGroupLedgerExportInput) (any, error) {
+	const tool = "reservation_get_reports_group_ledger_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/group-ledger/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "visibleColumns", in.VisibleColumns)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsGuestArrivalExportInput is the input for GET /reports/guest-arrival/export.
+type ReservationGetReportsGuestArrivalExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate,omitempty" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsGuestArrivalExport calls GET /api/v1/reports/guest-arrival/export.
+// Export guest arrival report
+func ReservationGetReportsGuestArrivalExport(ctx context.Context, c *Client, in ReservationGetReportsGuestArrivalExportInput) (any, error) {
+	const tool = "reservation_get_reports_guest_arrival_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/guest-arrival/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsGuestDepartureInput is the input for GET /reports/guest-departure.
+type ReservationGetReportsGuestDepartureInput struct {
+	PropertyId   int64    `json:"propertyId" in:"query"`
+	CheckoutDate string   `json:"checkoutDate,omitempty" in:"query"`
+	Status       []string `json:"status,omitempty" in:"query"`
+	SortBy       string   `json:"sortBy,omitempty" in:"query"`
+	OrderBy      string   `json:"orderBy,omitempty" in:"query"`
+	Page         int64    `json:"page,omitempty" in:"query"`
+	PageSize     int64    `json:"pageSize,omitempty" in:"query"`
+}
+
+// ReservationGetReportsGuestDeparture calls GET /api/v1/reports/guest-departure.
+// Get guest departure report (paginated list)
+func ReservationGetReportsGuestDeparture(ctx context.Context, c *Client, in ReservationGetReportsGuestDepartureInput) (any, error) {
+	const tool = "reservation_get_reports_guest_departure"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/guest-departure"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "checkoutDate", in.CheckoutDate)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "page", in.Page)
+	addQuery(q, "pageSize", in.PageSize)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsGuestDepartureExportInput is the input for GET /reports/guest-departure/export.
+type ReservationGetReportsGuestDepartureExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate,omitempty" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	Status         string `json:"status,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsGuestDepartureExport calls GET /api/v1/reports/guest-departure/export.
+// Export guest departure report
+func ReservationGetReportsGuestDepartureExport(ctx context.Context, c *Client, in ReservationGetReportsGuestDepartureExportInput) (any, error) {
+	const tool = "reservation_get_reports_guest_departure_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/guest-departure/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsGuestLedgerExportInput is the input for GET /reports/guest-ledger/export.
+type ReservationGetReportsGuestLedgerExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate,omitempty" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsGuestLedgerExport calls GET /api/v1/reports/guest-ledger/export.
+// Export guest ledger report
+func ReservationGetReportsGuestLedgerExport(ctx context.Context, c *Client, in ReservationGetReportsGuestLedgerExportInput) (any, error) {
+	const tool = "reservation_get_reports_guest_ledger_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/guest-ledger/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsHousekeepingTaskSummaryInput is the input for GET /reports/housekeeping-task-summary.
+type ReservationGetReportsHousekeepingTaskSummaryInput struct {
+	PropertyId  int64  `json:"propertyId" in:"query"`
+	StartDate   string `json:"startDate" in:"query"`
+	EndDate     string `json:"endDate" in:"query"`
+	EntityTypes string `json:"entityTypes,omitempty" in:"query"`
+	Limit       int64  `json:"limit,omitempty" in:"query"`
+	Offset      int64  `json:"offset,omitempty" in:"query"`
+	SortBy      string `json:"sortBy,omitempty" in:"query"`
+	OrderBy     string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsHousekeepingTaskSummary calls GET /api/v1/reports/housekeeping-task-summary.
+// Get housekeeping task summary report
+func ReservationGetReportsHousekeepingTaskSummary(ctx context.Context, c *Client, in ReservationGetReportsHousekeepingTaskSummaryInput) (any, error) {
+	const tool = "reservation_get_reports_housekeeping_task_summary"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/housekeeping-task-summary"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "entityTypes", in.EntityTypes)
+	addQuery(q, "limit", in.Limit)
+	addQuery(q, "offset", in.Offset)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsHousekeepingTaskSummaryExportInput is the input for GET /reports/housekeeping-task-summary/export.
+type ReservationGetReportsHousekeepingTaskSummaryExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate" in:"query"`
+	EndDate        string `json:"endDate" in:"query"`
+	EntityTypes    string `json:"entityTypes,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsHousekeepingTaskSummaryExport calls GET /api/v1/reports/housekeeping-task-summary/export.
+// Export housekeeping task summary report
+func ReservationGetReportsHousekeepingTaskSummaryExport(ctx context.Context, c *Client, in ReservationGetReportsHousekeepingTaskSummaryExportInput) (any, error) {
+	const tool = "reservation_get_reports_housekeeping_task_summary_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/housekeeping-task-summary/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "entityTypes", in.EntityTypes)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsInHouseRoomChangeInput is the input for GET /reports/in-house-room-change.
+type ReservationGetReportsInHouseRoomChangeInput struct {
+	PropertyId int64  `json:"propertyId" in:"query"`
+	StartDate  string `json:"startDate,omitempty" in:"query"`
+	EndDate    string `json:"endDate,omitempty" in:"query"`
+	Limit      int64  `json:"limit,omitempty" in:"query"`
+	Offset     int64  `json:"offset,omitempty" in:"query"`
+	SortBy     string `json:"sortBy,omitempty" in:"query"`
+	OrderBy    string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsInHouseRoomChange calls GET /api/v1/reports/in-house-room-change.
+// Get in-house room change report
+func ReservationGetReportsInHouseRoomChange(ctx context.Context, c *Client, in ReservationGetReportsInHouseRoomChangeInput) (any, error) {
+	const tool = "reservation_get_reports_in_house_room_change"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/in-house-room-change"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "limit", in.Limit)
+	addQuery(q, "offset", in.Offset)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsInHouseRoomChangeExportInput is the input for GET /reports/in-house-room-change/export.
+type ReservationGetReportsInHouseRoomChangeExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate,omitempty" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsInHouseRoomChangeExport calls GET /api/v1/reports/in-house-room-change/export.
+// Export in-house room change report
+func ReservationGetReportsInHouseRoomChangeExport(ctx context.Context, c *Client, in ReservationGetReportsInHouseRoomChangeExportInput) (any, error) {
+	const tool = "reservation_get_reports_in_house_room_change_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/in-house-room-change/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
 	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
 	if err != nil {
 		return nil, err
@@ -8585,6 +7749,130 @@ func ReservationGetReportsLedgerSummaryExport(ctx context.Context, c *Client, in
 	addQuery(q, "propertyId", in.PropertyId)
 	addQuery(q, "startDate", in.StartDate)
 	addQuery(q, "type", in.Type)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsMaintenanceInput is the input for GET /reports/maintenance.
+type ReservationGetReportsMaintenanceInput struct {
+	PropertyId  int64  `json:"propertyId" in:"query"`
+	StartDate   string `json:"startDate,omitempty" in:"query"`
+	EndDate     string `json:"endDate,omitempty" in:"query"`
+	BuildingIds string `json:"buildingIds,omitempty" in:"query"`
+	FloorIds    string `json:"floorIds,omitempty" in:"query"`
+	Limit       int64  `json:"limit,omitempty" in:"query"`
+	Offset      int64  `json:"offset,omitempty" in:"query"`
+	SortBy      string `json:"sortBy,omitempty" in:"query"`
+	OrderBy     string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsMaintenance calls GET /api/v1/reports/maintenance.
+// Get maintenance report
+func ReservationGetReportsMaintenance(ctx context.Context, c *Client, in ReservationGetReportsMaintenanceInput) (any, error) {
+	const tool = "reservation_get_reports_maintenance"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/maintenance"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "buildingIds", in.BuildingIds)
+	addQuery(q, "floorIds", in.FloorIds)
+	addQuery(q, "limit", in.Limit)
+	addQuery(q, "offset", in.Offset)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsMaintenanceExportInput is the input for GET /reports/maintenance/export.
+type ReservationGetReportsMaintenanceExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate,omitempty" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	BuildingIds    string `json:"buildingIds,omitempty" in:"query"`
+	FloorIds       string `json:"floorIds,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsMaintenanceExport calls GET /api/v1/reports/maintenance/export.
+// Export maintenance report
+func ReservationGetReportsMaintenanceExport(ctx context.Context, c *Client, in ReservationGetReportsMaintenanceExportInput) (any, error) {
+	const tool = "reservation_get_reports_maintenance_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/maintenance/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "buildingIds", in.BuildingIds)
+	addQuery(q, "floorIds", in.FloorIds)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsNoshowCancellationRevenueExportInput is the input for GET /reports/noshow-cancellation-revenue/export.
+type ReservationGetReportsNoshowCancellationRevenueExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate,omitempty" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	Status         string `json:"status,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsNoshowCancellationRevenueExport calls GET /api/v1/reports/noshow-cancellation-revenue/export.
+// Export no-show/cancellation revenue report
+func ReservationGetReportsNoshowCancellationRevenueExport(ctx context.Context, c *Client, in ReservationGetReportsNoshowCancellationRevenueExportInput) (any, error) {
+	const tool = "reservation_get_reports_noshow_cancellation_revenue_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/noshow-cancellation-revenue/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
 	addQuery(q, "exportType", in.ExportType)
 	addQuery(q, "filtersApplied", in.FiltersApplied)
 	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
@@ -8671,6 +7959,720 @@ func ReservationGetReportsReservationDetailsExport(ctx context.Context, c *Clien
 	addQuery(q, "businessSource", in.BusinessSource)
 	addQuery(q, "roomSpaces", in.RoomSpaces)
 	addQuery(q, "exportType", in.ExportType)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsRevenueByRoomTypeInput is the input for GET /reports/revenue-by-room-type.
+type ReservationGetReportsRevenueByRoomTypeInput struct {
+	PropertyId int64  `json:"propertyId" in:"query"`
+	Date       string `json:"date" in:"query"`
+	SearchKey  string `json:"searchKey,omitempty" in:"query"`
+}
+
+// ReservationGetReportsRevenueByRoomType calls GET /api/v1/reports/revenue-by-room-type.
+// Get revenue by room type report
+func ReservationGetReportsRevenueByRoomType(ctx context.Context, c *Client, in ReservationGetReportsRevenueByRoomTypeInput) (any, error) {
+	const tool = "reservation_get_reports_revenue_by_room_type"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/revenue-by-room-type"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "date", in.Date)
+	addQuery(q, "searchKey", in.SearchKey)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsRevenueByRoomTypeExportInput is the input for GET /reports/revenue-by-room-type/export.
+type ReservationGetReportsRevenueByRoomTypeExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate,omitempty" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	SearchKey      string `json:"searchKey,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsRevenueByRoomTypeExport calls GET /api/v1/reports/revenue-by-room-type/export.
+// Export revenue by room type report
+func ReservationGetReportsRevenueByRoomTypeExport(ctx context.Context, c *Client, in ReservationGetReportsRevenueByRoomTypeExportInput) (any, error) {
+	const tool = "reservation_get_reports_revenue_by_room_type_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/revenue-by-room-type/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "searchKey", in.SearchKey)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsRoomSpaceTypeArrivalInput is the input for GET /reports/room-space-type-arrival.
+type ReservationGetReportsRoomSpaceTypeArrivalInput struct {
+	PropertyId  int64  `json:"propertyId" in:"query"`
+	StartDate   string `json:"startDate,omitempty" in:"query"`
+	EndDate     string `json:"endDate,omitempty" in:"query"`
+	BuildingIds string `json:"buildingIds,omitempty" in:"query"`
+}
+
+// ReservationGetReportsRoomSpaceTypeArrival calls GET /api/v1/reports/room-space-type-arrival.
+// Get room/space type arrival report
+func ReservationGetReportsRoomSpaceTypeArrival(ctx context.Context, c *Client, in ReservationGetReportsRoomSpaceTypeArrivalInput) (any, error) {
+	const tool = "reservation_get_reports_room_space_type_arrival"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/room-space-type-arrival"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "buildingIds", in.BuildingIds)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsRoomSpaceTypeArrivalExportInput is the input for GET /reports/room-space-type-arrival/export.
+type ReservationGetReportsRoomSpaceTypeArrivalExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate,omitempty" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	BuildingIds    string `json:"buildingIds,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsRoomSpaceTypeArrivalExport calls GET /api/v1/reports/room-space-type-arrival/export.
+// Export room/space type arrival report
+func ReservationGetReportsRoomSpaceTypeArrivalExport(ctx context.Context, c *Client, in ReservationGetReportsRoomSpaceTypeArrivalExportInput) (any, error) {
+	const tool = "reservation_get_reports_room_space_type_arrival_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/room-space-type-arrival/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "buildingIds", in.BuildingIds)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsRoomStatusChangeInput is the input for GET /reports/room-status-change.
+type ReservationGetReportsRoomStatusChangeInput struct {
+	PropertyId int64  `json:"propertyId" in:"query"`
+	StartDate  string `json:"startDate,omitempty" in:"query"`
+	EndDate    string `json:"endDate,omitempty" in:"query"`
+	Limit      int64  `json:"limit,omitempty" in:"query"`
+	Offset     int64  `json:"offset,omitempty" in:"query"`
+	SortBy     string `json:"sortBy,omitempty" in:"query"`
+	OrderBy    string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsRoomStatusChange calls GET /api/v1/reports/room-status-change.
+// Get room status change report
+func ReservationGetReportsRoomStatusChange(ctx context.Context, c *Client, in ReservationGetReportsRoomStatusChangeInput) (any, error) {
+	const tool = "reservation_get_reports_room_status_change"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/room-status-change"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "limit", in.Limit)
+	addQuery(q, "offset", in.Offset)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsRoomStatusChangeExportInput is the input for GET /reports/room-status-change/export.
+type ReservationGetReportsRoomStatusChangeExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate,omitempty" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsRoomStatusChangeExport calls GET /api/v1/reports/room-status-change/export.
+// Export room status change report
+func ReservationGetReportsRoomStatusChangeExport(ctx context.Context, c *Client, in ReservationGetReportsRoomStatusChangeExportInput) (any, error) {
+	const tool = "reservation_get_reports_room_status_change_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/room-status-change/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsSalesAndRevenueInput is the input for GET /reports/sales-and-revenue.
+type ReservationGetReportsSalesAndRevenueInput struct {
+	PropertyId   int64  `json:"propertyId" in:"query"`
+	StartDate    string `json:"startDate,omitempty" in:"query"`
+	EndDate      string `json:"endDate,omitempty" in:"query"`
+	RoomTypeIds  string `json:"roomTypeIds,omitempty" in:"query"`
+	SpaceTypeIds string `json:"spaceTypeIds,omitempty" in:"query"`
+	RateTypeIds  string `json:"rateTypeIds,omitempty" in:"query"`
+	SearchKey    string `json:"searchKey,omitempty" in:"query"`
+	SortBy       string `json:"sortBy,omitempty" in:"query"`
+	OrderBy      string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsSalesAndRevenue calls GET /api/v1/reports/sales-and-revenue.
+// Get sales and revenue report
+func ReservationGetReportsSalesAndRevenue(ctx context.Context, c *Client, in ReservationGetReportsSalesAndRevenueInput) (any, error) {
+	const tool = "reservation_get_reports_sales_and_revenue"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/sales-and-revenue"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "roomTypeIds", in.RoomTypeIds)
+	addQuery(q, "spaceTypeIds", in.SpaceTypeIds)
+	addQuery(q, "rateTypeIds", in.RateTypeIds)
+	addQuery(q, "searchKey", in.SearchKey)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsSalesAndRevenueExportInput is the input for GET /reports/sales-and-revenue/export.
+type ReservationGetReportsSalesAndRevenueExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate,omitempty" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	RoomTypeIds    string `json:"roomTypeIds,omitempty" in:"query"`
+	SpaceTypeIds   string `json:"spaceTypeIds,omitempty" in:"query"`
+	RateTypeIds    string `json:"rateTypeIds,omitempty" in:"query"`
+	SearchKey      string `json:"searchKey,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsSalesAndRevenueExport calls GET /api/v1/reports/sales-and-revenue/export.
+// Export sales and revenue report
+func ReservationGetReportsSalesAndRevenueExport(ctx context.Context, c *Client, in ReservationGetReportsSalesAndRevenueExportInput) (any, error) {
+	const tool = "reservation_get_reports_sales_and_revenue_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/sales-and-revenue/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "roomTypeIds", in.RoomTypeIds)
+	addQuery(q, "spaceTypeIds", in.SpaceTypeIds)
+	addQuery(q, "rateTypeIds", in.RateTypeIds)
+	addQuery(q, "searchKey", in.SearchKey)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsSegmentationInput is the input for GET /reports/segmentation.
+type ReservationGetReportsSegmentationInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	StartDate      string   `json:"startDate,omitempty" in:"query"`
+	EndDate        string   `json:"endDate,omitempty" in:"query"`
+	BusinessSource []string `json:"businessSource,omitempty" in:"query"`
+	Status         []string `json:"status,omitempty" in:"query"`
+	RoomSpaces     []string `json:"roomSpaces,omitempty" in:"query"`
+	Page           int64    `json:"page,omitempty" in:"query"`
+	PageSize       int64    `json:"pageSize,omitempty" in:"query"`
+	SortBy         string   `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string   `json:"orderBy,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsSegmentation calls GET /api/v1/reports/segmentation.
+// Get guest segmentation report
+func ReservationGetReportsSegmentation(ctx context.Context, c *Client, in ReservationGetReportsSegmentationInput) (any, error) {
+	const tool = "reservation_get_reports_segmentation"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/segmentation"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "businessSource", in.BusinessSource)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "roomSpaces", in.RoomSpaces)
+	addQuery(q, "page", in.Page)
+	addQuery(q, "pageSize", in.PageSize)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsSegmentationExportInput is the input for GET /reports/segmentation/export.
+type ReservationGetReportsSegmentationExportInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	StartDate      string   `json:"startDate,omitempty" in:"query"`
+	EndDate        string   `json:"endDate,omitempty" in:"query"`
+	BusinessSource []string `json:"businessSource,omitempty" in:"query"`
+	Status         []string `json:"status,omitempty" in:"query"`
+	RoomSpaces     []string `json:"roomSpaces,omitempty" in:"query"`
+	SortBy         string   `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string   `json:"orderBy,omitempty" in:"query"`
+	ExportType     string   `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsSegmentationExport calls GET /api/v1/reports/segmentation/export.
+// Export guest segmentation report
+func ReservationGetReportsSegmentationExport(ctx context.Context, c *Client, in ReservationGetReportsSegmentationExportInput) (any, error) {
+	const tool = "reservation_get_reports_segmentation_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/segmentation/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "businessSource", in.BusinessSource)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "roomSpaces", in.RoomSpaces)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsStaySummaryInput is the input for GET /reports/stay-summary.
+type ReservationGetReportsStaySummaryInput struct {
+	PropertyId  int64  `json:"propertyId" in:"query"`
+	StartDate   string `json:"startDate,omitempty" in:"query"`
+	EndDate     string `json:"endDate,omitempty" in:"query"`
+	PaymentMode string `json:"paymentMode,omitempty" in:"query"`
+	GuestType   string `json:"guestType,omitempty" in:"query"`
+	Page        int64  `json:"page,omitempty" in:"query"`
+	PageSize    int64  `json:"pageSize,omitempty" in:"query"`
+	SortBy      string `json:"sortBy,omitempty" in:"query"`
+	OrderBy     string `json:"orderBy,omitempty" in:"query"`
+}
+
+// ReservationGetReportsStaySummary calls GET /api/v1/reports/stay-summary.
+// Get stay summary report
+func ReservationGetReportsStaySummary(ctx context.Context, c *Client, in ReservationGetReportsStaySummaryInput) (any, error) {
+	const tool = "reservation_get_reports_stay_summary"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/stay-summary"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "paymentMode", in.PaymentMode)
+	addQuery(q, "guestType", in.GuestType)
+	addQuery(q, "page", in.Page)
+	addQuery(q, "pageSize", in.PageSize)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsStaySummaryExportInput is the input for GET /reports/stay-summary/export.
+type ReservationGetReportsStaySummaryExportInput struct {
+	PropertyId     int64  `json:"propertyId" in:"query"`
+	StartDate      string `json:"startDate,omitempty" in:"query"`
+	EndDate        string `json:"endDate,omitempty" in:"query"`
+	PaymentMode    string `json:"paymentMode,omitempty" in:"query"`
+	GuestType      string `json:"guestType,omitempty" in:"query"`
+	SortBy         string `json:"sortBy,omitempty" in:"query"`
+	OrderBy        string `json:"orderBy,omitempty" in:"query"`
+	ExportType     string `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool   `json:"filtersApplied,omitempty" in:"query"`
+	Columns        string `json:"columns,omitempty" in:"query"`
+}
+
+// ReservationGetReportsStaySummaryExport calls GET /api/v1/reports/stay-summary/export.
+// Export stay summary report
+func ReservationGetReportsStaySummaryExport(ctx context.Context, c *Client, in ReservationGetReportsStaySummaryExportInput) (any, error) {
+	const tool = "reservation_get_reports_stay_summary_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/stay-summary/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "paymentMode", in.PaymentMode)
+	addQuery(q, "guestType", in.GuestType)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "orderBy", in.OrderBy)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "columns", in.Columns)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsTaxDetailsInput is the input for GET /reports/tax-details.
+type ReservationGetReportsTaxDetailsInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	StartDate      string   `json:"startDate,omitempty" in:"query"`
+	EndDate        string   `json:"endDate,omitempty" in:"query"`
+	Type           []string `json:"type,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+	SortBy         string   `json:"sortBy,omitempty" in:"query"`
+	SortOrder      string   `json:"sortOrder,omitempty" in:"query"`
+}
+
+// ReservationGetReportsTaxDetails calls GET /api/v1/reports/tax-details.
+// Get tax details report
+func ReservationGetReportsTaxDetails(ctx context.Context, c *Client, in ReservationGetReportsTaxDetailsInput) (any, error) {
+	const tool = "reservation_get_reports_tax_details"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/tax-details"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "type", in.Type)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "sortOrder", in.SortOrder)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsTaxDetailsExportInput is the input for GET /reports/tax-details/export.
+type ReservationGetReportsTaxDetailsExportInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	StartDate      string   `json:"startDate,omitempty" in:"query"`
+	EndDate        string   `json:"endDate,omitempty" in:"query"`
+	Type           []string `json:"type,omitempty" in:"query"`
+	ExportType     string   `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+	SortBy         string   `json:"sortBy,omitempty" in:"query"`
+	SortOrder      string   `json:"sortOrder,omitempty" in:"query"`
+}
+
+// ReservationGetReportsTaxDetailsExport calls GET /api/v1/reports/tax-details/export.
+// Export tax details report
+func ReservationGetReportsTaxDetailsExport(ctx context.Context, c *Client, in ReservationGetReportsTaxDetailsExportInput) (any, error) {
+	const tool = "reservation_get_reports_tax_details_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/tax-details/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "type", in.Type)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "sortBy", in.SortBy)
+	addQuery(q, "sortOrder", in.SortOrder)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsTaxExemptClaimInput is the input for GET /reports/tax-exempt-claim.
+type ReservationGetReportsTaxExemptClaimInput struct {
+	PropertyId       int64    `json:"propertyId" in:"query"`
+	StartDate        string   `json:"startDate,omitempty" in:"query"`
+	EndDate          string   `json:"endDate,omitempty" in:"query"`
+	Type             []string `json:"type,omitempty" in:"query"`
+	BusinessSource   []string `json:"businessSource,omitempty" in:"query"`
+	Status           []string `json:"status,omitempty" in:"query"`
+	CheckInDateStart string   `json:"checkInDateStart,omitempty" in:"query"`
+	CheckInDateEnd   string   `json:"checkInDateEnd,omitempty" in:"query"`
+	FiltersApplied   bool     `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsTaxExemptClaim calls GET /api/v1/reports/tax-exempt-claim.
+// Get tax exempt claim report
+func ReservationGetReportsTaxExemptClaim(ctx context.Context, c *Client, in ReservationGetReportsTaxExemptClaimInput) (any, error) {
+	const tool = "reservation_get_reports_tax_exempt_claim"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/tax-exempt-claim"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "type", in.Type)
+	addQuery(q, "businessSource", in.BusinessSource)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "checkInDateStart", in.CheckInDateStart)
+	addQuery(q, "checkInDateEnd", in.CheckInDateEnd)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsTaxExemptClaimExportInput is the input for GET /reports/tax-exempt-claim/export.
+type ReservationGetReportsTaxExemptClaimExportInput struct {
+	PropertyId       int64    `json:"propertyId" in:"query"`
+	StartDate        string   `json:"startDate,omitempty" in:"query"`
+	EndDate          string   `json:"endDate,omitempty" in:"query"`
+	Type             []string `json:"type,omitempty" in:"query"`
+	BusinessSource   []string `json:"businessSource,omitempty" in:"query"`
+	Status           []string `json:"status,omitempty" in:"query"`
+	CheckInDateStart string   `json:"checkInDateStart,omitempty" in:"query"`
+	CheckInDateEnd   string   `json:"checkInDateEnd,omitempty" in:"query"`
+	ExportType       string   `json:"exportType,omitempty" in:"query"`
+	FiltersApplied   bool     `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsTaxExemptClaimExport calls GET /api/v1/reports/tax-exempt-claim/export.
+// Export tax exempt claim report
+func ReservationGetReportsTaxExemptClaimExport(ctx context.Context, c *Client, in ReservationGetReportsTaxExemptClaimExportInput) (any, error) {
+	const tool = "reservation_get_reports_tax_exempt_claim_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/tax-exempt-claim/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "type", in.Type)
+	addQuery(q, "businessSource", in.BusinessSource)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "checkInDateStart", in.CheckInDateStart)
+	addQuery(q, "checkInDateEnd", in.CheckInDateEnd)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsTaxExemptionInput is the input for GET /reports/tax-exemption.
+type ReservationGetReportsTaxExemptionInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	StartDate      string   `json:"startDate,omitempty" in:"query"`
+	EndDate        string   `json:"endDate,omitempty" in:"query"`
+	Type           []string `json:"type,omitempty" in:"query"`
+	Status         []string `json:"status,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+}
+
+// ReservationGetReportsTaxExemption calls GET /api/v1/reports/tax-exemption.
+// Get tax exemption report
+func ReservationGetReportsTaxExemption(ctx context.Context, c *Client, in ReservationGetReportsTaxExemptionInput) (any, error) {
+	const tool = "reservation_get_reports_tax_exemption"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/tax-exemption"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "type", in.Type)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
+	if err != nil {
+		return nil, err
+	}
+	return toolregistry.MapToCard(tool, resp)
+}
+
+// ReservationGetReportsTaxExemptionExportInput is the input for GET /reports/tax-exemption/export.
+type ReservationGetReportsTaxExemptionExportInput struct {
+	PropertyId     int64    `json:"propertyId" in:"query"`
+	StartDate      string   `json:"startDate,omitempty" in:"query"`
+	EndDate        string   `json:"endDate,omitempty" in:"query"`
+	Type           []string `json:"type,omitempty" in:"query"`
+	Status         []string `json:"status,omitempty" in:"query"`
+	ExportType     string   `json:"exportType,omitempty" in:"query"`
+	FiltersApplied bool     `json:"filtersApplied,omitempty" in:"query"`
+	VisibleColumns []string `json:"visibleColumns,omitempty" in:"query"`
+}
+
+// ReservationGetReportsTaxExemptionExport calls GET /api/v1/reports/tax-exemption/export.
+// Export tax exemption report
+func ReservationGetReportsTaxExemptionExport(ctx context.Context, c *Client, in ReservationGetReportsTaxExemptionExportInput) (any, error) {
+	const tool = "reservation_get_reports_tax_exemption_export"
+	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
+		return nil, err
+	}
+	p := "/api/v1/reports/tax-exemption/export"
+	q := url.Values{}
+	h := map[string]string{}
+	form := url.Values{}
+	var body any
+	_, _, _ = q, h, form
+	addQuery(q, "propertyId", in.PropertyId)
+	addQuery(q, "startDate", in.StartDate)
+	addQuery(q, "endDate", in.EndDate)
+	addQuery(q, "type", in.Type)
+	addQuery(q, "status", in.Status)
+	addQuery(q, "exportType", in.ExportType)
+	addQuery(q, "filtersApplied", in.FiltersApplied)
+	addQuery(q, "visibleColumns", in.VisibleColumns)
 	resp, err := c.Do(ctx, ReservationService, "GET", p, q, h, body)
 	if err != nil {
 		return nil, err
@@ -11004,28 +11006,26 @@ func ReservationGetRoomTypesSummary(ctx context.Context, c *Client, in Reservati
 	return toolregistry.MapToCard(tool, resp)
 }
 
-// ReservationPatchV1InternalPropertyIdNightAuditSettingsInput is the input for PATCH /v1/internal/property/{id}/night-audit-settings.
-type ReservationPatchV1InternalPropertyIdNightAuditSettingsInput struct {
-	Id   int64                      `json:"id" in:"path"`
-	Body ApiNightAuditSettingsInput `json:"request" in:"body"`
+// ReservationPostTokenizedCardsSessionInput is the input for POST /tokenized-cards/session.
+type ReservationPostTokenizedCardsSessionInput struct {
+	PropertyId int64 `json:"propertyId" in:"query"`
 }
 
-// ReservationPatchV1InternalPropertyIdNightAuditSettings calls PATCH /api/v1/v1/internal/property/{id}/night-audit-settings.
-// Update Night Audit Settings for a property
-func ReservationPatchV1InternalPropertyIdNightAuditSettings(ctx context.Context, c *Client, in ReservationPatchV1InternalPropertyIdNightAuditSettingsInput) (any, error) {
-	const tool = "reservation_patch_v1_internal_property_id_night_audit_settings"
+// ReservationPostTokenizedCardsSession calls POST /api/v1/tokenized-cards/session.
+// Create a tokenization session for client-side card capture
+func ReservationPostTokenizedCardsSession(ctx context.Context, c *Client, in ReservationPostTokenizedCardsSessionInput) (any, error) {
+	const tool = "reservation_post_tokenized_cards_session"
 	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
 		return nil, err
 	}
-	p := "/api/v1/v1/internal/property/{id}/night-audit-settings"
+	p := "/api/v1/tokenized-cards/session"
 	q := url.Values{}
 	h := map[string]string{}
 	form := url.Values{}
 	var body any
 	_, _, _ = q, h, form
-	p = strings.ReplaceAll(p, "{id}", url.PathEscape(toString(in.Id)))
-	body = in.Body
-	resp, err := c.Do(ctx, ReservationService, "PATCH", p, q, h, body)
+	addQuery(q, "propertyId", in.PropertyId)
+	resp, err := c.Do(ctx, ReservationService, "POST", p, q, h, body)
 	if err != nil {
 		return nil, err
 	}

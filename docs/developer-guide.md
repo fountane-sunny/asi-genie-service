@@ -3,7 +3,7 @@
 One doc for engineers and leads: what Genie is, how a message flows through it, where the code lives, how to run it, and how to change it safely.
 
 Non-technical overview: [genie-for-everyone.md](./genie-for-everyone.md).
-Reference docs: [response-contract.md](./response-contract.md) (API + cards) · [database.md](./database.md) (Postgres) · [phase1-coverage.md](./phase1-coverage.md) (scenario catalogue, generated).
+Reference docs: [response-contract.md](./response-contract.md) (API + cards) · [database.md](./database.md) (Postgres).
 
 ---
 
@@ -211,7 +211,7 @@ Timeouts: 120s per chat request, 30s total LLM budget per request, 20s per ASI c
 | Change refusal / greeting / scope wording | `plannerSystem()` in `planner.go`; answer rules in `answerSystem` (also `planner.go`); card caps and shaping in `present.go`. |
 | Add a create/update screen shortcut | `create_guide.go` (entity → verified asi-frontend route). |
 | Add or change a deep link | `links.go` / `navigate.go`, aligned with asi-frontend `ROUTES`. |
-| Add a scenario to the catalogue | Edit `specs/catalogue/genie-catalogue/Scenarios.csv`, run `make gen-intents`; regenerate coverage with `scripts/gen-intents/gen_coverage.py`. |
+| Add a scenario to the catalogue | Edit `specs/catalogue/genie-catalogue/Scenarios.csv`, run `make gen-intents`. |
 | Block a sensitive GET | Add a fragment to `blockedReadFragments` in `tools.go`. |
 | Add a DB column | Change the model in `internal/store/store_postgres.go`; AutoMigrate applies it on start. |
 
@@ -256,4 +256,4 @@ Full request/response shapes: [response-contract.md](./response-contract.md).
 - List responses are mostly untyped in Swagger, so field names are read defensively (`data` / `items` / `rows`, `guestName` / `firstName`+`lastName`). Verify against real data.
 - Read results larger than 12 KB are truncated before the answer call; the model is told the data is partial.
 - Session context is in memory: restarting the service forgets "last guest" style context (history in Postgres stays).
-- `phase1-coverage.md` describes the **fallback router's** handlers; most live turns now go through the planner.
+- Most live turns go through the planner. The fallback router answers when there is no LLM, the planner fails, or the message is a file export or a reply to a clarify card.

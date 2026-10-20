@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -275,5 +276,84 @@ func TestHEmailFolioMissingPOCEmail(t *testing.T) {
 	}
 	if rc.sess.LastEntity != nil && rc.sess.LastEntity.Kind == emailFolioPendingKind {
 		t.Fatal("no pending confirmation should be remembered without a recipient")
+	}
+}
+
+// A confirmation search must hit searchKey. The service ignores the swagger
+// name "key", and an empty searchKey returns a page of current stays — which
+// is why every folio number looked like several reservations.
+func TestResolveReservationUsesSearchKeyAndExactNumber(t *testing.T) {
+	t.Parallel()
+	const confirmation = "F20261015075416"
+	var search url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/reservations/search":
+			search = r.URL.Query()
+			_, _ = w.Write([]byte(`{"data":[
+				{"entryType":"REPORT","reportName":"Sales"},
+				{"entryType":"RESERVATION","reservationId":"res-other","reservationNumber":"F20261015075418","pocName":"Sunny Sahsi"},
+				{"entryType":"RESERVATION","reservationId":"res-1","reservationNumber":"F20261015075416","pocName":"Sunny Sahsi","checkInDateTime":"2026-10-15T15:00:00Z","checkOutDateTime":"2026-10-16T11:00:00Z"}
+			]}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/reservations/res-1":
+			_, _ = w.Write([]byte(`{"data":` + testReservationJSON + `}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	rc := folioFixture(t, testReservationJSON, nil)
+	for _, s := range []generated.Service{generated.AuthService, generated.ConfigService, generated.ReservationService} {
+		rc.e.HTTP.BaseURLs[s.Name] = srv.URL
+	}
+	it, _ := intents.Get("download_folio")
+	rc.intent = it
+	rc.req.Message = "download pdf folio for " + confirmation
+
+	if err := hDownloadFolio(rc, it, Slots{Confirmation: confirmation}); err != nil {
+		t.Fatalf("hDownloadFolio: %v", err)
+	}
+	if search.Get("searchKey") != confirmation || search.Get("key") != "" || search.Get("entryType") != "RESERVATION" {
+		t.Fatalf("search query = %s", search.Encode())
+	}
+	if len(rc.resp.Cards) != 1 || rc.resp.Cards[0].Type != cards.TypeData || len(rc.resp.Cards[0].Downloads) != 1 {
+		t.Fatalf("expected a download for the exact confirmation, got %+v", rc.resp.Cards)
+	}
+}
+
+func TestResolveReservationDisambiguationSkipsReportsAndEmptyDates(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/reservations/search" {
+			_, _ = w.Write([]byte(`{"data":[
+				{"entryType":"REPORT"},
+				{"entryType":"RESERVATION","reservationId":"a","reservationNumber":"F1","pocName":"Sunny Sahsi"},
+				{"entryType":"RESERVATION","reservationId":"b","reservationNumber":"F2","pocName":"Riyaz Ramesh","checkInDateTime":"2026-10-15T00:00:00Z","checkOutDateTime":"2026-10-16T00:00:00Z"}
+			]}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(srv.Close)
+	rc := folioFixture(t, testReservationJSON, nil)
+	for _, s := range []generated.Service{generated.AuthService, generated.ConfigService, generated.ReservationService} {
+		rc.e.HTTP.BaseURLs[s.Name] = srv.URL
+	}
+	it, _ := intents.Get("download_folio")
+	rc.intent = it
+	rc.setIntent(IntentInfo{ID: it.ID, Handler: "dedicated"})
+
+	if err := hDownloadFolio(rc, it, Slots{GuestName: "Sahsi"}); err != nil {
+		t.Fatalf("hDownloadFolio: %v", err)
+	}
+	if len(rc.resp.Cards) != 1 || rc.resp.Cards[0].Type != cards.TypeDisambiguation {
+		t.Fatalf("expected disambiguation, got %+v", rc.resp.Cards)
+	}
+	opts := rc.resp.Cards[0].Options
+	if len(opts) != 2 {
+		t.Fatalf("options = %+v", opts)
+	}
+	if opts[0].Label != "Sunny Sahsi #F1" || opts[1].Label != "Riyaz Ramesh #F2 2026-10-15→2026-10-16" {
+		t.Fatalf("labels = %q, %q", opts[0].Label, opts[1].Label)
 	}
 }
