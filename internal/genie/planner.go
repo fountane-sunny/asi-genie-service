@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"asi-genie-poc/internal/cards"
 	genillm "asi-genie-poc/llm"
@@ -135,18 +137,25 @@ func labelFromDescription(desc string) string {
 }
 
 // queryHint lists a read's query params for the model ("date*, status");
-// * marks required. propertyId is omitted because the server always sets it.
+// * marks required. A comma-separated filter param shows its full value set
+// ("paymentMethods=creditCard|debitCard|...") because the server defaults it
+// to every value (see fillEnumDefaults); naming it here lets the model narrow
+// it when the user asks for a subset. propertyId is omitted because the
+// server always sets it.
 func queryHint(t generated.ToolMeta) string {
 	var parts []string
 	for _, q := range t.Query {
 		if q.Name == "propertyId" {
 			continue
 		}
+		name := q.Name
 		if q.Required {
-			parts = append(parts, q.Name+"*")
-			continue
+			name += "*"
 		}
-		parts = append(parts, q.Name)
+		if len(q.AllValues) > 0 {
+			name += "=" + strings.Join(q.AllValues, "|") + " (all sent unless narrowed)"
+		}
+		parts = append(parts, name)
 	}
 	return strings.Join(parts, ", ")
 }
@@ -215,7 +224,7 @@ func planToolDef() genillm.Tool {
 					"description": "with entity: create/add vs update/edit/modify; defaults to create"},
 				"message": map[string]any{"type": "string", "description": "required for refuse/reply, unless entity is set: the reply to show the user, written for this question. " +
 					"For any other write (update, cancel, check-in, payment): say in one sentence that you can't do that action, name the ASI screen where they can, and offer the related read you can do. " +
-					"For a non-hotel topic: say briefly what you do help with instead. Never a generic sentence that ignores what was asked."},
+					"For a non-hotel topic: one sentence that names the topic and says it is outside hotel operations. Do not define it, give an example, or list what you can look up."},
 			},
 		},
 	}
@@ -267,6 +276,59 @@ func oneLineDesc(s string) string {
 	return s
 }
 
+// A greeting is the whole message: "Hi", "Good morning", "Hello genie, how are you?"
+var greetingRe = regexp.MustCompile(`(?i)^\s*(?:good\s+(morning|afternoon|evening|night)|hi+|hey+|hello+|howdy|yo|namaste)(?:\s+there)?(?:\s+genie)?(?:\s*,?\s*how\s+are\s+you)?[?!.\s]*$`)
+
+func isGreeting(message string) bool {
+	return greetingRe.MatchString(message)
+}
+
+func daypartForHour(hour int) string {
+	switch {
+	case hour >= 5 && hour < 12:
+		return "Good morning"
+	case hour >= 12 && hour < 17:
+		return "Good afternoon"
+	case hour >= 17 && hour < 22:
+		return "Good evening"
+	default:
+		return "Hello"
+	}
+}
+
+func firstName(fullName string) string {
+	fields := strings.Fields(fullName)
+	if len(fields) == 0 {
+		return ""
+	}
+	return fields[0]
+}
+
+// greetingHour prefers the browser clock. A missing or out-of-range hour
+// falls back to the server clock.
+func greetingHour(rc *reqCtx) int {
+	if rc.req.LocalHour != nil {
+		h := *rc.req.LocalHour
+		if h >= 0 && h <= 23 {
+			return h
+		}
+	}
+	return time.Now().Hour()
+}
+
+// greetingContext gives the model the name and time of day for a hello, and
+// nothing for any other message. The sentence itself is still written by the model.
+func (rc *reqCtx) greetingContext() string {
+	if !isGreeting(rc.req.Message) {
+		return ""
+	}
+	name := firstName(rc.currentUser().name)
+	if name == "" {
+		name = "the signed-in user (name unknown)"
+	}
+	return fmt.Sprintf("\nGreeting for %s. Time of day: %s.", name, daypartForHour(greetingHour(rc)))
+}
+
 func (rc *reqCtx) plannerSystem() string {
 	core, matched, others := rc.plannerReads()
 	if matched == "" {
@@ -274,15 +336,17 @@ func (rc *reqCtx) plannerSystem() string {
 	}
 	return fmt.Sprintf(`You plan answers for ASI Genie, the assistant inside a hotel property-management system.
 Always call %s exactly once.
-Scope: operating property %d in ASI, including what hotel terms mean (RevPAR, ADR, occupancy, folio, no-show, walk-in, length of stay, night audit, out of order, rack rate, CTA, CTD). "What is RevPAR?" is in scope: action=read of the KPI or report that holds that figure for the business date, not refuse. action=reply (with the definition in message) when no read has the figure. action=refuse only for non-hotel topics (programming, trivia, weather, news) and for writes, payments, refunds, and check-in/out actions.
+Scope: operating property %d in ASI, including what hotel terms mean (RevPAR, ADR, occupancy, folio, no-show, walk-in, length of stay, night audit, out of order, rack rate, CTA, CTD). "What is RevPAR?" is in scope: action=read of the KPI or report that holds that figure for the business date, not refuse. action=reply (with the definition in message) when no read has the figure. action=refuse only for non-hotel topics (programming, trivia, weather, news) and for writes, payments, refunds, and check-in/out actions. Someone who says they are in danger and asks what number to call is action=reply: one sentence with the local emergency number and to get a staff member. Do not refuse that.
 Read intent, not spelling: "list all the roroms", "arivals tday", "who is sunny" are property questions.
-Every refuse/reply carries a message written for this question, except when entity is set.
+Every refuse/reply carries a message written for this question, except when entity is set. A thanks is one short sentence. A greeting (hi, hello, good morning) is action=reply with a new one-sentence hello you write for this turn: use the name and time of day below, vary the wording every time, and do not list what you can do or mention a property id.%s
+A non-hotel refusal is one sentence. Name the topic ("Python is outside hotel operations."). Do not define it, do not give an example, and do not list arrivals, reports, or KPIs. A follow-up to that refusal ("example?", "why?", "tell me more") is still action=refuse in one sentence. Do not continue the topic.
+The messages before this one are the conversation. A short confirmation (yes, do it, go ahead, sure, ok, please) means carry out a hotel offer from the previous assistant message. It does not continue a topic you just refused. Read the guest, report, or date named there. Do not start an unrelated lookup.
 For "create/add" or "update/edit/modify" one of <room, room type, rate type, amenity, tax, other charge, space, building, floor, role, reservation, guest, email template, folio notice> (any spelling): action=refuse, set entity to the matching id and writeKind to create or update, and leave message empty - the server sends the verified screen. A generic "update <reservation/guest>" with no name or id has no entity here; write the message yourself instead.
 For any other write (cancel, check-in, payment, refund), write the message yourself: say which ASI screen does it and what you can show instead.
 A person's name may be a guest or a staff user: read reservation_get_guests and config_get_properties_id_users together.
 "Today" is the business date %s. Resolve relative dates to YYYY-MM-DD.
 Pick the fewest reads (at most %d). propertyId and /properties/{id} are filled for you. Use pageSize 100 for lists.
-Any read listed below may be used: the core reads, the reads matching this question, or any other allowed read by name. [query: ...] lists a read's params; * marks required. A required date param left out defaults to the business date (startDate/endDate copy each other first).
+Any read listed below may be used: the core reads, the reads matching this question, or any other allowed read by name. [query: ...] lists a read's params; * marks required. A required date param left out defaults to the business date (startDate/endDate copy each other first). A param shown as name=val1|val2|... (all sent unless narrowed) is already sent with every value when you leave it out, so "show me the report" needs no query at all; set it yourself, to only the matching value(s), only when the user named a subset (e.g. "only cash", "just the checked-out ones").
 A named report, screen, or setting (any spelling) uses the read whose name matches it, never a different one: a collection report is not sales and revenue, settings are not status. If no listed read matches, action=reply naming what you can't find.
 When a read returns ids the user would see and this round has no name for them, set followUp and read the list that carries the names (reports catalog, room types, rate types, users, guests) before answering. Night audit settings are rewritten for you: selectedReports is already the report names.
 If a result has status error with a detail, fix the params in a follow-up round when the detail says what was wrong.
@@ -291,14 +355,16 @@ Core reads:
 Reads matching this question:
 %s
 Other allowed reads (by name):
-%s`, planTool, rc.pid, rc.bizDate, maxPlannedReads, core, matched, others)
+%s`, planTool, rc.pid, rc.greetingContext(), rc.bizDate, maxPlannedReads, core, matched, others)
 }
 
 const answerSystem = `You are ASI Genie. Answer the user's question from the JSON read results, by calling present_answer exactly once.
+The messages before the question are the conversation, including your previous reply. A short confirmation (yes, do it, go ahead, sure, ok) means do what that reply offered. Do not say the request names no action when the previous reply offered one.
 Copy numbers and names exactly; never invent a figure. When a list response has a total, use it for counts.
 If the user asked what a hotel term means (RevPAR, ADR, occupancy, folio, and similar), the first sentence is a plain definition. Any number after that must come from the JSON; if the JSON has no figure, stop after the definition.
 If a read failed or returned nothing, say what you couldn't find in summary and send no views.
 summary: one or two plain sentences with the direct answer. Never put a table or bullet list in summary.
+Every view needs a title: a short name of what it shows (the report, the metric, or the person), such as "Daily Collection by Payment Type" or "Cash". Never title a view "ASI Genie", "Report", "Table", or "Chart".
 Pick the views that fit the data (any combination):
 - stats: 2-8 headline numbers (counts, occupancy, ADR, revenue, balances).
 - chart: a trend over dates or a breakdown by category with 3+ points (bar for categories, line/area for dates, pie for shares of a whole). Values must be numbers.
@@ -327,7 +393,7 @@ func (rc *reqCtx) routerOwnsTurn() bool {
 // data. It returns false when the planner call fails, so Handle falls back to
 // the intent router.
 func (e *Engine) planAndAnswer(rc *reqCtx) bool {
-	msgs := append(rc.recentTurns(), genillm.Message{Role: genillm.RoleUser, Content: rc.req.Message})
+	msgs := appendUserTurn(rc.recentTurns(), rc.req.Message)
 	var results []readResult
 	for round := 0; round < maxPlanRounds; round++ {
 		plan, ok := e.plan(rc, msgs)
@@ -456,6 +522,7 @@ func (rc *reqCtx) runRead(r plannedRead) readResult {
 		qv.Set("propertyId", rc.pidStr())
 	}
 	fillRequiredDates(t, qv, rc.bizDate)
+	fillEnumDefaults(t, qv)
 	if missing := missingRequiredQuery(t, qv); len(missing) > 0 {
 		// Reported back instead of sent: the API would only 400, and the
 		// follow-up round can supply the value.
@@ -515,6 +582,22 @@ func isDateParam(name string) bool {
 	return n == "date" || strings.HasSuffix(n, "date")
 }
 
+// fillEnumDefaults defaults an unset comma-separated filter param (AllValues,
+// from the swagger "Comma-separated ... filter (A, B, C)" convention) to
+// every known value. Several reports treat that param missing as "match
+// nothing" rather than "don't filter" (e.g. Daily Collection by Payment Type
+// returns all-zero totals with no paymentMethods set), so a plain "show me
+// the report" must send every value explicitly to see the real data. A param
+// the model did set — even to one value, for "only cash" — is left alone.
+func fillEnumDefaults(t generated.ToolMeta, qv url.Values) {
+	for _, q := range t.Query {
+		if len(q.AllValues) == 0 || qv.Get(q.Name) != "" {
+			continue
+		}
+		qv.Set(q.Name, strings.Join(q.AllValues, ","))
+	}
+}
+
 func missingRequiredQuery(t generated.ToolMeta, qv url.Values) []string {
 	var missing []string
 	for _, q := range t.Query {
@@ -566,14 +649,19 @@ func (e *Engine) answerFromReads(rc *reqCtx, results []readResult) bool {
 		rc.text("That isn't available for your role.")
 		return true
 	}
+	if card, text, ok := outageCard(results); ok {
+		rc.add(card)
+		rc.text(text)
+		return true
+	}
 	payload, err := json.Marshal(results)
 	if err != nil {
 		slog.Error("genie answer payload failed", "err", err, "propertyId", rc.pid)
 		return false
 	}
 	ctx, cancel := rc.llmCtx()
-	res, err := e.LLM.SendMessage(ctx, answerSystem, []genillm.Message{{Role: genillm.RoleUser, Content: fmt.Sprintf(
-		"Business date: %s\nQuestion: %s\nRead results: %s", rc.bizDate, rc.req.Message, payload)}}, []genillm.Tool{presentToolDef()})
+	res, err := e.LLM.SendMessage(ctx, answerSystem, appendUserTurn(rc.recentTurns(), fmt.Sprintf(
+		"Business date: %s\nQuestion: %s\nRead results: %s", rc.bizDate, rc.req.Message, payload)), []genillm.Tool{presentToolDef()})
 	cancel()
 	if err != nil {
 		rc.llmFailed = true

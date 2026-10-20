@@ -2,8 +2,10 @@ package genie
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"asi-genie-poc/internal/cards"
 	genillm "asi-genie-poc/llm"
@@ -83,8 +85,9 @@ func presentToolDef() genillm.Tool {
 	str := map[string]any{"type": "string"}
 	stat := map[string]any{"type": "object", "required": []string{"label", "value"},
 		"properties": map[string]any{"label": str, "value": str, "hint": str}}
-	facts := map[string]any{"type": "object", "required": []string{"rows"},
-		"properties": map[string]any{"title": str, "rows": map[string]any{"type": "array", "items": stat}}}
+	viewTitle := map[string]any{"type": "string", "description": "short name of what this view shows (the report, metric, or person). Never \"ASI Genie\", \"Report\", or \"Table\"."}
+	facts := map[string]any{"type": "object", "required": []string{"title", "rows"},
+		"properties": map[string]any{"title": viewTitle, "rows": map[string]any{"type": "array", "items": stat}}}
 	column := map[string]any{"type": "object", "required": []string{"key", "label"},
 		"properties": map[string]any{"key": str, "label": str, "align": map[string]any{"type": "string", "enum": []any{"left", "right", "center"}}}}
 	series := map[string]any{"type": "object", "required": []string{"key", "label"},
@@ -99,25 +102,25 @@ func presentToolDef() genillm.Tool {
 				"summary": map[string]any{"type": "string", "description": "one or two plain sentences"},
 				"stats":   facts,
 				"detail":  facts,
-				"chart": map[string]any{"type": "object", "required": []string{"kind", "xKey", "series", "data"},
+				"chart": map[string]any{"type": "object", "required": []string{"title", "kind", "xKey", "series", "data"},
 					"properties": map[string]any{
-						"title":  str,
+						"title":  viewTitle,
 						"kind":   map[string]any{"type": "string", "enum": []any{cards.ChartBar, cards.ChartLine, cards.ChartArea, cards.ChartPie}},
 						"xKey":   map[string]any{"type": "string", "description": "data field holding the category or date label"},
 						"series": map[string]any{"type": "array", "maxItems": maxChartSeries, "items": series},
 						"data":   map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "one object per point: {xKey: label, seriesKey: number}"},
 						"unit":   map[string]any{"type": "string", "description": "e.g. % or $"},
 					}},
-				"table": map[string]any{"type": "object", "required": []string{"columns", "rows"},
+				"table": map[string]any{"type": "object", "required": []string{"title", "columns", "rows"},
 					"properties": map[string]any{
-						"title":   str,
+						"title":   viewTitle,
 						"columns": map[string]any{"type": "array", "maxItems": maxPresentColumns, "items": column},
 						"rows":    map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "one object per row keyed by column key"},
 						"total":   map[string]any{"type": "integer", "description": "full count when rows are a subset"},
 					}},
-				"list": map[string]any{"type": "object", "required": []string{"items"},
+				"list": map[string]any{"type": "object", "required": []string{"title", "items"},
 					"properties": map[string]any{
-						"title": str,
+						"title": viewTitle,
 						"items": map[string]any{"type": "array", "items": map[string]any{"type": "object", "required": []string{"title"},
 							"properties": map[string]any{"title": str, "subtitle": str, "badges": map[string]any{"type": "array", "items": str}}}},
 						"total": map[string]any{"type": "integer"},
@@ -131,6 +134,7 @@ func presentToolDef() genillm.Tool {
 // false when there is nothing to show so the caller can use plain text.
 func (rc *reqCtx) present(a presentedAnswer) bool {
 	summary := strings.TrimSpace(a.Summary)
+	fillViewTitles(&a, subjectFromQuestion(rc.req.Message))
 	built := presentCards(a)
 	if summary == "" && len(built) == 0 {
 		return false
@@ -142,6 +146,93 @@ func (rc *reqCtx) present(a presentedAnswer) bool {
 		rc.add(c)
 	}
 	return true
+}
+
+var (
+	viewTitleLead   = regexp.MustCompile(`(?i)^\s*(?:please\s+)?(?:can you\s+|could you\s+)?(?:show|display|list|get|give|pull|fetch|open)\s+(?:me\s+)?(?:the\s+)?`)
+	viewTitleTail   = regexp.MustCompile(`(?i)\s+(?:in\s+(?:a\s+)?(?:table|chart|list|graph)|as\s+(?:a\s+)?(?:table|chart|list))(?:\s+please)?\s*[?.!]*\s*$`)
+	viewTitleReport = regexp.MustCompile(`(?i)\s+report\s*$`)
+)
+
+// fillViewTitles replaces a missing or generic view title ("ASI Genie",
+// "Table") with the subject of the question, so the panel header names what
+// the card shows.
+func fillViewTitles(a *presentedAnswer, fallback string) {
+	if isGenericViewTitle(fallback) {
+		return
+	}
+	if a.Stats != nil {
+		a.Stats.Title = titled(a.Stats.Title, fallback)
+	}
+	if a.Chart != nil {
+		a.Chart.Title = titled(a.Chart.Title, fallback)
+	}
+	if a.Table != nil {
+		a.Table.Title = titled(a.Table.Title, fallback)
+	}
+	if a.List != nil {
+		a.List.Title = titled(a.List.Title, fallback)
+	}
+	if a.Detail != nil {
+		a.Detail.Title = titled(a.Detail.Title, fallback)
+	}
+}
+
+func titled(given, fallback string) string {
+	if isGenericViewTitle(given) {
+		return fallback
+	}
+	return strings.TrimSpace(given)
+}
+
+func isGenericViewTitle(title string) bool {
+	switch strings.ToLower(strings.TrimSpace(title)) {
+	case "", "asi genie", "genie", "report", "table", "chart", "stats", "summary", "data", "list", "detail", "overview":
+		return true
+	default:
+		return false
+	}
+}
+
+// subjectFromQuestion turns "show Daily Collection by Payment Type Report in
+// table" into "Daily Collection by Payment Type".
+func subjectFromQuestion(msg string) string {
+	s := strings.TrimSpace(msg)
+	if s == "" {
+		return ""
+	}
+	cleaned := viewTitleLead.ReplaceAllString(s, "")
+	cleaned = viewTitleTail.ReplaceAllString(cleaned, "")
+	cleaned = viewTitleReport.ReplaceAllString(cleaned, "")
+	cleaned = strings.Trim(cleaned, " \t\"'?.!")
+	if cleaned == "" {
+		cleaned = strings.Trim(s, " \t\"'?.!")
+	}
+	return clipTitle(cleaned)
+}
+
+func clipTitle(s string) string {
+	const maxTitleRunes = 72
+	r := []rune(s)
+	clipped := s
+	if len(r) > maxTitleRunes {
+		clipped = strings.TrimSpace(string(r[:maxTitleRunes])) + "…"
+	}
+	return capitalizeTitle(clipped)
+}
+
+func capitalizeTitle(s string) string {
+	for _, r := range s {
+		if unicode.IsUpper(r) {
+			return s
+		}
+	}
+	rs := []rune(s)
+	if len(rs) == 0 {
+		return s
+	}
+	rs[0] = unicode.ToUpper(rs[0])
+	return string(rs)
 }
 
 // presentCards orders views headline-first: stats, chart, table, list, detail.

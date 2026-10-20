@@ -70,8 +70,13 @@ func (e *Engine) dispatch(rc *reqCtx, it intents.Intent, s Slots, info IntentInf
 	switch it.ID {
 	case intents.SmallTalkID:
 		rc.resp.Intent.Handler = "fallback"
-		rc.text("Hi! I can answer questions about your property, explain how things work, and open the right screen.")
-		rc.chips("Who arrives today?", "How's the hotel doing today?", "What can you do?")
+		// Only reached when the model is down. A greeting is still a hello;
+		// the wording is the model's job whenever it can answer.
+		if isGreeting(rc.req.Message) {
+			rc.text("Hello.")
+			return nil
+		}
+		rc.text("You're welcome.")
 		return nil
 	case intents.UnsupportedID:
 		rc.resp.Intent.Handler = "fallback"

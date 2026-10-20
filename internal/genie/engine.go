@@ -42,6 +42,7 @@ type Request struct {
 	GroupID      int               `json:"groupId,omitempty"`      // rejected: no group chat
 	PropertyID   int               `json:"propertyId,omitempty"`   // required: the property the user is on (body or X-Property-Id)
 	BusinessDate string            `json:"businessDate,omitempty"` // YYYY-MM-DD (optional; read from night-audit working date)
+	LocalHour    *int              `json:"localHour,omitempty"`    // 0-23 on the user's clock, for greetings
 	Screen       string            `json:"screen,omitempty"`       // current route (optional)
 	History      []genillm.Message `json:"history,omitempty"`
 }

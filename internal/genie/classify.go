@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"regexp"
 	"strings"
 	"time"
@@ -251,31 +252,81 @@ func classifierMessages(message string, prior []genillm.Message) []genillm.Messa
 	return out
 }
 
-// recentTurns returns the last contextTurns stored user/assistant messages.
+// recentTurns returns the last contextTurns user and assistant messages.
+// Stored history is used when it includes the assistant replies. When it does
+// not, the transcript sent with the request is used, so a follow-up such as
+// "do it" still sees what the assistant just offered.
 func (rc *reqCtx) recentTurns() []genillm.Message {
-	var out []genillm.Message
-	if rc.req.SessionID != "" {
-		u := rc.currentUser()
-		hist, err := rc.e.Store.History(rc.ctx, rc.req.SessionID, u.id, rc.pid, contextTurns)
-		if err == nil {
-			for _, m := range hist {
-				if (m.Role == genillm.RoleUser || m.Role == genillm.RoleAssistant) && m.Content != "" {
-					out = append(out, genillm.Message{Role: m.Role, Content: m.Content})
-				}
-			}
-		}
+	stored := clipTurns(rc.turnsFromStore())
+	client := clipTurns(rc.req.History)
+	if len(stored) == 0 || (!hasAssistantTurn(stored) && hasAssistantTurn(client)) {
+		return client
 	}
-	if len(out) == 0 {
-		for _, m := range rc.req.History {
-			if (m.Role == genillm.RoleUser || m.Role == genillm.RoleAssistant) && m.Content != "" {
-				out = append(out, genillm.Message{Role: m.Role, Content: m.Content})
-			}
-		}
-		if len(out) > contextTurns {
-			out = out[len(out)-contextTurns:]
+	return stored
+}
+
+func (rc *reqCtx) turnsFromStore() []genillm.Message {
+	if rc.req.SessionID == "" || rc.e == nil || rc.e.Store == nil {
+		return nil
+	}
+	u := rc.currentUser()
+	hist, err := rc.e.Store.History(rc.ctx, rc.req.SessionID, u.id, rc.pid, contextTurns)
+	if err != nil {
+		slog.Warn("genie history lookup failed", "err", err, "propertyId", rc.pid)
+		return nil
+	}
+	out := make([]genillm.Message, 0, len(hist))
+	for _, m := range hist {
+		if (m.Role == genillm.RoleUser || m.Role == genillm.RoleAssistant) && strings.TrimSpace(m.Content) != "" {
+			out = append(out, genillm.Message{Role: m.Role, Content: m.Content})
 		}
 	}
 	return out
+}
+
+func clipTurns(in []genillm.Message) []genillm.Message {
+	out := make([]genillm.Message, 0, len(in))
+	for _, m := range in {
+		content := clipTurn(m.Content)
+		if (m.Role != genillm.RoleUser && m.Role != genillm.RoleAssistant) || content == "" {
+			continue
+		}
+		out = append(out, genillm.Message{Role: m.Role, Content: content})
+	}
+	if len(out) > contextTurns {
+		out = out[len(out)-contextTurns:]
+	}
+	return out
+}
+
+func hasAssistantTurn(msgs []genillm.Message) bool {
+	for _, m := range msgs {
+		if m.Role == genillm.RoleAssistant {
+			return true
+		}
+	}
+	return false
+}
+
+const maxTurnRunes = 500
+
+func clipTurn(s string) string {
+	s = strings.TrimSpace(s)
+	r := []rune(s)
+	if len(r) <= maxTurnRunes {
+		return s
+	}
+	return string(r[:maxTurnRunes]) + "…"
+}
+
+// appendUserTurn adds the current user message without two user messages in a
+// row, which the model API rejects.
+func appendUserTurn(prior []genillm.Message, content string) []genillm.Message {
+	if len(prior) > 0 && prior[len(prior)-1].Role == genillm.RoleUser {
+		prior[len(prior)-1].Content += "\n" + content
+		return prior
+	}
+	return append(prior, genillm.Message{Role: genillm.RoleUser, Content: content})
 }
 
 func validDate(s string) string {

@@ -43,12 +43,13 @@ type schema struct {
 }
 
 type param struct {
-	Name     string  `json:"name"`
-	In       string  `json:"in"`
-	Type     string  `json:"type"`
-	Required bool    `json:"required"`
-	Items    *schema `json:"items"`
-	Schema   *schema `json:"schema"`
+	Name        string  `json:"name"`
+	In          string  `json:"in"`
+	Type        string  `json:"type"`
+	Required    bool    `json:"required"`
+	Description string  `json:"description"`
+	Items       *schema `json:"items"`
+	Schema      *schema `json:"schema"`
 }
 
 type operation struct {
@@ -174,12 +175,59 @@ func queryMeta(params []param) string {
 			continue
 		}
 		seen[pr.Name] = true
-		parts = append(parts, fmt.Sprintf("{Name: %q, Required: %v}", pr.Name, pr.Required))
+		field := fmt.Sprintf("{Name: %q, Required: %v", pr.Name, pr.Required)
+		if all := commaFilterValues(pr.Description); len(all) > 0 {
+			quoted := make([]string, len(all))
+			for i, v := range all {
+				quoted[i] = fmt.Sprintf("%q", v)
+			}
+			field += fmt.Sprintf(", AllValues: []string{%s}", strings.Join(quoted, ", "))
+		}
+		parts = append(parts, field+"}")
 	}
 	if len(parts) == 0 {
 		return ""
 	}
 	return ", Query: []QueryParam{" + strings.Join(parts, ", ") + "}"
+}
+
+var (
+	filterValuesRe   = regexp.MustCompile(`(?i)filter\s*\(([^)]+)\)`)
+	commaSeparatedRe = regexp.MustCompile(`(?i)^comma[-\s]separated:?\s*`)
+	enumIdentifierRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+)
+
+// commaFilterValues extracts the full value set of a comma-separated filter
+// param from its swagger description, e.g. "Comma-separated payment methods
+// filter (creditCard, debitCard, cash, ...)" -> [creditCard debitCard cash ...].
+// Leaving such a param unset makes some reports return an empty result (it
+// means "match nothing") rather than "don't filter"; the planner uses this
+// list to default the param to every value instead, and only narrows it when
+// the user names specific ones. Returns nil for anything that isn't a clean,
+// exhaustive enum (free text, dates, "etc." placeholders).
+func commaFilterValues(desc string) []string {
+	lower := strings.ToLower(desc)
+	if !strings.Contains(lower, "comma-separated") && !strings.Contains(lower, "comma separated") {
+		return nil
+	}
+	m := filterValuesRe.FindStringSubmatch(desc)
+	if m == nil {
+		return nil
+	}
+	group := commaSeparatedRe.ReplaceAllString(m[1], "")
+	raw := strings.Split(group, ",")
+	vals := make([]string, 0, len(raw))
+	for _, v := range raw {
+		v = strings.TrimSpace(v)
+		if !enumIdentifierRe.MatchString(v) || strings.EqualFold(v, "etc") {
+			return nil // not a clean, exhaustive enum
+		}
+		vals = append(vals, v)
+	}
+	if len(vals) < 2 {
+		return nil
+	}
+	return vals
 }
 
 type fileGen struct {
@@ -476,6 +524,11 @@ type ToolMeta struct {
 type QueryParam struct {
 	Name     string
 	Required bool
+	// AllValues is the full value set for a comma-separated filter param
+	// (from its swagger description), when the spec documents one. Some
+	// reports return an empty result when such a param is left unset, so the
+	// planner defaults to sending every value instead of none.
+	AllValues []string
 }
 
 var allTools []ToolMeta

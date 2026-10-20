@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -165,6 +166,17 @@ func TestPlannerRefusalMakesNoAPICalls(t *testing.T) {
 	// A write outside the create-guide table: the reply is the model's, written for this question.
 	if rc.resp.Text != written {
 		t.Errorf("text = %q", rc.resp.Text)
+	}
+}
+
+func TestPlannerPromptKeepsNonHotelRefusalsShort(t *testing.T) {
+	rc := &reqCtx{e: New(nil, logOnlyStore{}), req: Request{Message: "what is python?"}, resp: &Response{}}
+	sys := rc.plannerSystem()
+	if !strings.Contains(sys, "Do not define it") || !strings.Contains(sys, "still action=refuse") {
+		t.Fatal("a non-hotel topic and its follow-up must stay a one-sentence refusal")
+	}
+	if !strings.Contains(sys, "in danger") {
+		t.Fatal("someone in danger must still be told the emergency number")
 	}
 }
 
@@ -358,8 +370,11 @@ func TestPlannerRunsReportOutsideCoreWithBusinessDate(t *testing.T) {
 		got[r.URL.Path] = r.URL.RawQuery
 	}
 	want := map[string]string{
-		"/api/v1/reports/advance-deposit-ledger":           "endDate=2026-10-20&propertyId=42&startDate=2026-10-20",
-		"/api/v1/reports/daily-collection-by-payment-type": "date=2026-10-20&propertyId=42",
+		"/api/v1/reports/advance-deposit-ledger": "endDate=2026-10-20&propertyId=42&startDate=2026-10-20",
+		// paymentMethods/status are comma-separated filters: left unset by the
+		// model, they default to every value (fillEnumDefaults) instead of
+		// the API's own "unset = match nothing" behavior.
+		"/api/v1/reports/daily-collection-by-payment-type": "date=2026-10-20&paymentMethods=creditCard%2CdebitCard%2Ccash%2Ccheck%2CbadDebts%2CbusinessSource&propertyId=42&status=IN_HOUSE%2CCHECKED_OUT%2CCONFIRMED%2CUNCONFIRMED%2CTRANSFER_OUT%2CCANCELLED%2CNO_SHOW",
 		"/api/v1/reports/housekeeping-task-summary":        "endDate=2026-10-01&propertyId=42&startDate=2026-10-01",
 	}
 	for path, q := range want {
@@ -394,6 +409,59 @@ func TestPlannerReportsMissingRequiredParamWithoutCalling(t *testing.T) {
 	retry := llm.calls[1].msgs[len(llm.calls[1].msgs)-1].Content
 	if !strings.Contains(retry, "required query params not set: reservationId") {
 		t.Errorf("retry round should see the missing param, got %s", retry)
+	}
+}
+
+func TestFillEnumDefaultsSendsAllUnlessModelNarrowed(t *testing.T) {
+	tool := generated.ToolMeta{Query: []generated.QueryParam{
+		{Name: "paymentMethods", AllValues: []string{"creditCard", "debitCard", "cash"}},
+		{Name: "status", AllValues: []string{"IN_HOUSE", "CHECKED_OUT"}},
+		{Name: "date"}, // no AllValues: untouched
+	}}
+
+	unset := url.Values{}
+	fillEnumDefaults(tool, unset)
+	if got := unset.Get("paymentMethods"); got != "creditCard,debitCard,cash" {
+		t.Errorf("unset paymentMethods = %q, want every value", got)
+	}
+	if got := unset.Get("status"); got != "IN_HOUSE,CHECKED_OUT" {
+		t.Errorf("unset status = %q, want every value", got)
+	}
+	if unset.Get("date") != "" {
+		t.Error("a param without AllValues must not be touched")
+	}
+
+	narrowed := url.Values{"paymentMethods": {"cash"}}
+	fillEnumDefaults(tool, narrowed)
+	if got := narrowed.Get("paymentMethods"); got != "cash" {
+		t.Errorf("model-set paymentMethods = %q, want unchanged \"cash\"", got)
+	}
+	if got := narrowed.Get("status"); got != "IN_HOUSE,CHECKED_OUT" {
+		t.Errorf("status still unset, want defaulted to every value, got %q", got)
+	}
+}
+
+func TestPlannerOnlyCashStaysNarrowed(t *testing.T) {
+	llm := &scriptedLLM{replies: []genillm.Response{
+		planCall(t, readPlan{Action: planActionRead, Reads: []plannedRead{
+			{Tool: "reservation_get_api_v1_reports_daily_collection_by_payment_type", Query: map[string]string{"paymentMethods": "cash"}},
+		}}),
+		{Text: "Cash collections for today."},
+	}}
+	rc, seen := plannerFixture(t, llm)
+
+	if !rc.e.planAndAnswer(rc) {
+		t.Fatal("planner did not handle the turn")
+	}
+	if len(*seen) != 1 {
+		t.Fatalf("want 1 call, got %d", len(*seen))
+	}
+	q := (*seen)[0].URL.Query()
+	if q.Get("paymentMethods") != "cash" {
+		t.Errorf(`"only cash" must stay narrowed, got paymentMethods=%q`, q.Get("paymentMethods"))
+	}
+	if q.Get("status") == "" {
+		t.Error("status has no AllValues set by the user, so it should still default to every value")
 	}
 }
 
@@ -477,6 +545,98 @@ func TestRouterOwnsExportTurns(t *testing.T) {
 		if !rc.routerOwnsTurn() {
 			t.Errorf("%q should stay on the intent router", msg)
 		}
+	}
+}
+
+func TestSubjectFromQuestion(t *testing.T) {
+	cases := map[string]string{
+		"show Daily Collection by Payment Type Report in table": "Daily Collection by Payment Type",
+		"please show me the cash only":                          "Cash only",
+		"Who arrives today?":                                    "Who arrives today",
+		"ASI Genie":                                             "ASI Genie",
+	}
+	for in, want := range cases {
+		if got := subjectFromQuestion(in); got != want {
+			t.Errorf("subjectFromQuestion(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if got := subjectFromQuestion("show daily collection"); got != "Daily collection" {
+		t.Errorf("lowercase question should be capitalized, got %q", got)
+	}
+}
+
+func TestPresentReplacesGenericTitle(t *testing.T) {
+	rc := &reqCtx{req: Request{Message: "show Daily Collection by Payment Type Report in table"}, resp: &Response{}}
+	ok := rc.present(presentedAnswer{
+		Summary: "Two payments.",
+		Stats:   &presentedFacts{Title: "ASI Genie", Rows: []presentedStat{{Label: "Cash collected", Value: "12.00"}}},
+		Table: &presentedTable{
+			Title:   "Table",
+			Columns: []cards.Column{{Key: "method", Label: "Payment Method"}},
+			Rows:    []map[string]any{{"method": "Cash"}},
+		},
+	})
+	if !ok {
+		t.Fatal("present returned false")
+	}
+	if len(rc.resp.Cards) != 2 {
+		t.Fatalf("cards = %d, want stats and table", len(rc.resp.Cards))
+	}
+	for _, c := range rc.resp.Cards {
+		if c.Title != "Daily Collection by Payment Type" {
+			t.Errorf("%s title = %q", c.Type, c.Title)
+		}
+	}
+}
+
+func TestDoItSeesThePreviousAssistantOffer(t *testing.T) {
+	offer := "I can't set a reminder. I can look up the Patel reservation. Should I search for it now?"
+	llm := &scriptedLLM{replies: []genillm.Response{
+		planCall(t, readPlan{Action: planActionRead, Reads: []plannedRead{
+			{Tool: "reservation_get_guests", Query: map[string]string{"searchKey": "Patel"}},
+		}}),
+		{Text: "No Patel reservation on file."},
+	}}
+	rc, _ := plannerFixture(t, llm)
+	rc.req.Message = "Do it"
+	rc.req.History = []genillm.Message{
+		{Role: genillm.RoleUser, Content: "Remind me at 3 PM to call the Patel family about their ETA"},
+		{Role: genillm.RoleAssistant, Content: offer},
+	}
+
+	if !rc.e.planAndAnswer(rc) {
+		t.Fatal("planner did not handle the turn")
+	}
+	if len(llm.calls) < 2 {
+		t.Fatalf("LLM calls = %d, want plan and answer", len(llm.calls))
+	}
+	for i, call := range llm.calls[:2] {
+		var sawOffer bool
+		for _, m := range call.msgs {
+			if m.Role == genillm.RoleAssistant && strings.Contains(m.Content, "Patel reservation") {
+				sawOffer = true
+			}
+		}
+		if !sawOffer {
+			t.Errorf("call %d did not include the previous assistant offer", i)
+		}
+	}
+	last := llm.calls[1].msgs[len(llm.calls[1].msgs)-1]
+	if last.Role != genillm.RoleUser || !strings.Contains(last.Content, "Question: Do it") {
+		t.Errorf("answer question = %q", last.Content)
+	}
+}
+
+func TestPresentKeepsSpecificTitle(t *testing.T) {
+	rc := &reqCtx{req: Request{Message: "only cash"}, resp: &Response{}}
+	if !rc.present(presentedAnswer{
+		Summary: "Cash today.",
+		Stats:   &presentedFacts{Title: "Cash", Rows: []presentedStat{{Label: "Collected", Value: "12.00"}}},
+	}) {
+		t.Fatal("present returned false")
+	}
+	if rc.resp.Cards[0].Title != "Cash" {
+		t.Errorf("title = %q, want the model's title", rc.resp.Cards[0].Title)
 	}
 }
 

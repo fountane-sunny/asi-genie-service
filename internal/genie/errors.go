@@ -79,5 +79,35 @@ func errorCard(it intents.Intent, err error, service string, link *cards.Link) (
 	return cards.Error(it.ID, code, title, msg, retry, link), msg + " " + retry
 }
 
-// llmBusyNote is added when the classifier LLM failed and keywords were used.
-const llmBusyNote = "The AI is busy right now, so I used quick matching - the answer may be less precise."
+// llmBusyNote is added when the assistant model failed and a simpler match was used.
+const llmBusyNote = "The assistant is busy right now. Try again in a moment if this answer looks off."
+
+// outageCard is the reply when every planned read failed because ASI could
+// not be reached. The model is not asked to narrate a total outage.
+func outageCard(results []readResult) (cards.Card, string, bool) {
+	if len(results) == 0 {
+		return cards.Card{}, "", false
+	}
+	code := ""
+	for _, r := range results {
+		if r.Status != "error" {
+			return cards.Card{}, "", false
+		}
+		switch r.Error {
+		case "service_unavailable", "service_error":
+			if code == "" || r.Error == "service_unavailable" {
+				code = r.Error
+			}
+		default:
+			return cards.Card{}, "", false
+		}
+	}
+	title := "Couldn't load that"
+	msg := "ASI had a problem loading that."
+	retry := "Please try again in a moment."
+	if code == "service_unavailable" {
+		msg = "I couldn't reach ASI just now."
+	}
+	text := msg + " " + retry
+	return cards.Error("agent", code, title, msg, retry, nil), text, true
+}

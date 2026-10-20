@@ -40,6 +40,11 @@ type ToolMeta struct {
 type QueryParam struct {
 	Name     string
 	Required bool
+	// AllValues is the full value set for a comma-separated filter param
+	// (from its swagger description), when the spec documents one. Some
+	// reports return an empty result when such a param is left unset, so the
+	// planner defaults to sending every value instead of none.
+	AllValues []string
 }
 
 var allTools []ToolMeta
