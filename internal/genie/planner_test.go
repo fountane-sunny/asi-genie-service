@@ -641,6 +641,35 @@ func TestDoItSeesThePreviousAssistantOffer(t *testing.T) {
 	}
 }
 
+func TestListRequestAddsReportCatalogWhenModelOnlySummarizes(t *testing.T) {
+	data := []byte(`{"reports":[{"id":1,"name":"Daily Summary Report","groupName":"Daily","dateSelectionType":"single","componentKey":"daily-summary"},{"id":2,"name":"Guest Arrival Report","groupName":"Front Desk","dateSelectionType":"range","componentKey":"guest-arrival"}]}`)
+	results := []readResult{{Tool: "reservation_get_reports_catalog", Status: "executed", Data: data}}
+	rc := &reqCtx{req: Request{Message: "show me list with name"}, resp: &Response{}}
+	if !rc.present(presentedAnswer{Summary: "There are 2 reports in total."}) {
+		t.Fatal("present returned false")
+	}
+	rc.ensureRequestedList(results)
+	if len(rc.resp.Cards) != 1 || rc.resp.Cards[0].Type != cards.TypeList {
+		t.Fatalf("cards=%+v", rc.resp.Cards)
+	}
+	items := rc.resp.Cards[0].Items
+	if len(items) != 2 || items[0].Title != "Daily Summary Report" || items[1].Title != "Guest Arrival Report" {
+		t.Fatalf("items=%+v", items)
+	}
+
+	rc = &reqCtx{req: Request{Message: "how many reports do we have"}, resp: &Response{}}
+	rc.ensureRequestedList(results)
+	if len(rc.resp.Cards) != 0 {
+		t.Fatal("a count question should not get a list")
+	}
+}
+
+func TestAnswerPromptRequiresListForListRequests(t *testing.T) {
+	if !strings.Contains(answerPrompt(), "Never answer a list request with only a count or a summary") {
+		t.Fatal("answer prompt must require a list view for list requests")
+	}
+}
+
 func TestPresentKeepsSpecificTitle(t *testing.T) {
 	rc := &reqCtx{req: Request{Message: "only cash"}, resp: &Response{}}
 	if !rc.present(presentedAnswer{

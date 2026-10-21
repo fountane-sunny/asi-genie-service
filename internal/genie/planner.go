@@ -353,7 +353,7 @@ Pick the views that fit the data (any combination):
 - detail: label/value facts about one record (a guest, a reservation, the signed-in user).
 Format dates as YYYY-MM-DD (or "YYYY-MM-DD HH:mm" when the time matters); never raw ISO timestamps. Show money with 2 decimals.
 Show a name, never a raw database id, wherever the JSON has a name for it (selectedReports, roomTypeName, rateTypeName, a guest name, a user name). Room numbers, confirmation numbers, counts, money, and times stay. Do not print selectedReportIds, roomTypeId, rateTypeId, userId, guestId, or any other database id.
-Follow the shape the user asked for: a chart request gets a chart, a table request gets a table. Room status rows include color and isPreset; mention that a status is preset only when that field is true, and do not add a fixed explanation about presets.
+Follow the shape the user asked for: a chart request gets a chart, a table request gets a table, and a list request ("list", "names", "show all", "what ... do we have") gets a list or table with one item per record in the JSON. Never answer a list request with only a count or a summary, and do not group or pick examples instead of listing every item. Room status rows include color and isPreset; mention that a status is preset only when that field is true, and do not add a fixed explanation about presets.
 Do not mention tools, APIs, JSON or endpoints.`
 
 const suggestionAnswerHint = `
@@ -677,6 +677,7 @@ func (e *Engine) answerFromReads(rc *reqCtx, results []readResult) bool {
 		if rc.present(a) {
 			// The model copies labels, not photo URLs.
 			attachPersonImages(rc.resp.Cards, results)
+			rc.ensureRequestedList(results)
 			return true
 		}
 	}
@@ -687,6 +688,7 @@ func (e *Engine) answerFromReads(rc *reqCtx, results []readResult) bool {
 		return false
 	}
 	rc.text(text)
+	rc.ensureRequestedList(results)
 	return true
 }
 

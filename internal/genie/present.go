@@ -1,7 +1,9 @@
 package genie
 
 import (
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
@@ -24,7 +26,7 @@ const (
 const (
 	maxPresentColumns = 8
 	maxPresentRows    = 50
-	maxPresentItems   = 30
+	maxPresentItems   = 50
 	maxPresentStats   = 8
 	maxPresentDetail  = 16
 	maxChartSeries    = 4
@@ -342,6 +344,62 @@ func listCard(l *presentedList) (cards.Card, bool) {
 	}
 	return cards.Card{Type: cards.TypeList, Intent: agentListIntent, Title: strings.TrimSpace(l.Title),
 		Items: items, Total: max(l.Total, len(items))}, true
+}
+
+var listRequestRe = regexp.MustCompile(`(?i)\b(list|names?|all|every)\b`)
+
+func messageWantsList(msg string) bool {
+	return listRequestRe.MatchString(msg)
+}
+
+func hasListView(cs []cards.Card) bool {
+	for _, c := range cs {
+		if c.Type == cards.TypeList || c.Type == cards.TypeTable {
+			return true
+		}
+	}
+	return false
+}
+
+// The model sometimes answers "list all reports" with a count. The catalog names are in the read, so list them.
+func (rc *reqCtx) ensureRequestedList(results []readResult) {
+	if !messageWantsList(rc.req.Message) || hasListView(rc.resp.Cards) {
+		return
+	}
+	if c, ok := reportCatalogListCard(results); ok {
+		rc.add(c)
+	}
+}
+
+func reportCatalogListCard(results []readResult) (cards.Card, bool) {
+	for _, r := range results {
+		if r.Tool != "reservation_get_reports_catalog" || r.Status != "executed" || len(r.Data) == 0 {
+			continue
+		}
+		var raw any
+		if err := json.Unmarshal(r.Data, &raw); err != nil {
+			slog.Warn("report catalog result is not JSON; skipping list", "err", err)
+			continue
+		}
+		list := findList(path(raw, "reports"))
+		if list == nil {
+			list = findList(raw)
+		}
+		items := make([]presentedItem, 0, len(list))
+		for _, row := range list {
+			name := str(row, "name", "Name")
+			if name == "" {
+				continue
+			}
+			item := presentedItem{Title: name, Subtitle: str(row, "groupName", "GroupName")}
+			if dt := str(row, "dateSelectionType", "DateSelectionType"); dt != "" {
+				item.Badges = []string{dt}
+			}
+			items = append(items, item)
+		}
+		return listCard(&presentedList{Title: "Reports", Items: items, Total: len(items)})
+	}
+	return cards.Card{}, false
 }
 
 // Drop points the model sent as text; the panel only plots numbers.
