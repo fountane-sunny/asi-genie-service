@@ -32,10 +32,11 @@ var plannerIndex = []plannerTool{
 	{"auth_get_current_user", "Checking your profile", "the signed-in user (\"who am I\")"},
 	{"config_get_properties_id_users", "Checking users", "staff on this property; query searchKey=name or email"},
 	{"config_get_roles", "Checking roles", "roles and privileges"},
-	{"config_get_room_space_statuses", "Checking rooms", "every room/space with type, floor and housekeeping status (vacant, dirty, occupied, out of service); query searchKey=room number, pageSize"},
-	{"config_get_rooms", "Checking rooms", "room master list (number, room type)"},
+	{"config_get_room_space_statuses", "Checking rooms", "each room and the status it is in right now, plus type and floor; query searchKey=room number, pageSize. Not the list of status names"},
+	{"config_get_rooms", "Checking rooms", "room master list (number, room type). Not room statuses"},
 	{"config_get_room_types", "Checking room types", "room types (id, code, name, occupancy)"},
-	{"config_get_room_statuses_summary", "Checking room status", "counts of rooms per housekeeping status, total and sellable rooms"},
+	{"config_get_room_statuses", "Checking room statuses", "the room status catalog (name, shortName, color, description, isPreset). Use this when the user asks which statuses exist, their colors, or a chart of them. Not the rooms, and not counts"},
+	{"config_get_room_statuses_summary", "Checking room status counts", "how many rooms are in each status, plus total and sellable rooms. Not the catalog of status names"},
 	{"config_get_properties_id_hk_assignments", "Checking housekeeping", "housekeeper room assignments"},
 	{"config_get_properties_id_housekeeping_tasks", "Checking housekeeping tasks", "housekeeping task definitions"},
 	{"config_get_properties_id_housekeeping_groups", "Checking housekeeping groups", "housekeeping groups and members"},
@@ -347,7 +348,7 @@ A person's name may be a guest or a staff user: read reservation_get_guests and 
 "Today" is the business date %s. Resolve relative dates to YYYY-MM-DD.
 Pick the fewest reads (at most %d). propertyId and /properties/{id} are filled for you. Use pageSize 100 for lists.
 Any read listed below may be used: the core reads, the reads matching this question, or any other allowed read by name. [query: ...] lists a read's params; * marks required. A required date param left out defaults to the business date (startDate/endDate copy each other first). A param shown as name=val1|val2|... (all sent unless narrowed) is already sent with every value when you leave it out, so "show me the report" needs no query at all; set it yourself, to only the matching value(s), only when the user named a subset (e.g. "only cash", "just the checked-out ones").
-A named report, screen, or setting (any spelling) uses the read whose name matches it, never a different one: a collection report is not sales and revenue, settings are not status. If no listed read matches, action=reply naming what you can't find.
+A named report, screen, or setting (any spelling) uses the read whose name matches it, never a different one: a collection report is not sales and revenue, settings are not status. Questions about which room statuses exist, their colors, or a chart of them use config_get_room_statuses. That is not the list of rooms and not the status counts. If no listed read matches, action=reply naming what you can't find.
 When a read returns ids the user would see and this round has no name for them, set followUp and read the list that carries the names (reports catalog, room types, rate types, users, guests) before answering. Night audit settings are rewritten for you: selectedReports is already the report names.
 If a result has status error with a detail, fix the params in a follow-up round when the detail says what was wrong.
 Core reads:
@@ -373,6 +374,7 @@ Pick the views that fit the data (any combination):
 - detail: label/value facts about one record (a guest, a reservation, the signed-in user).
 Format dates as YYYY-MM-DD (or "YYYY-MM-DD HH:mm" when the time matters); never raw ISO timestamps. Show money with 2 decimals.
 Show a name, never a raw database id, wherever the JSON has a name for it (selectedReports, roomTypeName, rateTypeName, a guest name, a user name). Room numbers, confirmation numbers, counts, money, and times stay. Do not print selectedReportIds, roomTypeId, rateTypeId, userId, guestId, or any other database id.
+Follow the shape the user asked for: a chart request gets a chart, a table request gets a table. Room status rows include color and isPreset; mention that a status is preset only when that field is true, and do not add a fixed explanation about presets.
 Do not mention tools, APIs, JSON or endpoints.`
 
 // routerOwnsTurn keeps turns the planner can't produce (file exports, guest
@@ -690,6 +692,8 @@ func (e *Engine) answerFromReads(rc *reqCtx, results []readResult) bool {
 			break
 		}
 		if rc.present(a) {
+			// The model copies labels, not photo URLs. Pull avatarURL/image off the same reads.
+			attachPersonImages(rc.resp.Cards, results)
 			return true
 		}
 	}

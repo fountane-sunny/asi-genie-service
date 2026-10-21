@@ -140,7 +140,8 @@ func userProfileCard(intentID, name string, primary, extra map[string]any, pid i
 	})
 	return cards.Card{
 		Type: cards.TypeData, Intent: intentID, Title: orDash(name), Subtitle: role, Rows: rows,
-		Link: &cards.Link{Label: "Open users", Route: fmt.Sprintf("/users/%d", pid)},
+		Image: firstNonEmpty(recordImage(primary), recordImage(extra)),
+		Link:  &cards.Link{Label: "Open users", Route: fmt.Sprintf("/users/%d", pid)},
 	}
 }
 

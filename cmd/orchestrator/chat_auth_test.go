@@ -7,6 +7,30 @@ import (
 	"testing"
 )
 
+func TestLoggingWrapperPreservesFlush(t *testing.T) {
+	t.Parallel()
+	var sawFlusher bool
+	handler := withLogging(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		flusher, ok := w.(http.Flusher)
+		sawFlusher = ok
+		if !ok {
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("event: done\ndata: {}\n\n"))
+		flusher.Flush()
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/chat/stream", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if !sawFlusher {
+		t.Fatal("logging wrapper hid http.Flusher, so /chat/stream would return an empty body")
+	}
+	if !strings.Contains(rec.Body.String(), "event: done") {
+		t.Fatalf("body = %q", rec.Body.String())
+	}
+}
+
 func TestChatRequiresToken(t *testing.T) {
 	t.Parallel()
 	body := strings.NewReader(`{"message":"who arrives today?","propertyId":12}`)

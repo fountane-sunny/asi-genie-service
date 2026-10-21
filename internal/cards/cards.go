@@ -91,6 +91,7 @@ type ListItem struct {
 	Title    string   `json:"title"`
 	Subtitle string   `json:"subtitle,omitempty"`
 	Badges   []string `json:"badges,omitempty"`
+	Image    string   `json:"image,omitempty"` // profile photo URL when the source record has one
 	Link     *Link    `json:"link,omitempty"`
 }
 
@@ -152,6 +153,7 @@ type Card struct {
 	Title      string            `json:"title"`
 	Subtitle   string            `json:"subtitle,omitempty"`
 	Message    string            `json:"message,omitempty"`
+	Image      string            `json:"image,omitempty"` // profile photo; the panel shows name initials when this is empty
 	Rows       []Field           `json:"rows,omitempty"`
 	Items      []ListItem        `json:"items,omitempty"`
 	Total      int               `json:"total,omitempty"`

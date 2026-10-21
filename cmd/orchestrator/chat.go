@@ -174,11 +174,7 @@ func (a *api) chatStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		slog.Error("stream response writer does not support flushing")
-		return
-	}
+	flusher, _ := w.(http.Flusher)
 	for i, call := range resp.ToolCalls {
 		id := fmt.Sprintf("tool-%d", i+1)
 		writeSSE(w, "tool_start", map[string]any{"id": id, "name": call.Name, "label": toolLabel(call.Name)})
@@ -192,7 +188,9 @@ func (a *api) chatStream(w http.ResponseWriter, r *http.Request) {
 		writeSSE(w, "chips", resp.Chips)
 	}
 	writeSSE(w, "done", map[string]string{"turnId": resp.TurnID, "sessionId": resp.SessionID})
-	flusher.Flush()
+	if flusher != nil {
+		flusher.Flush()
+	}
 }
 
 func toolLabel(name string) string { return genie.ToolLabel(name) }
@@ -434,6 +432,15 @@ type statusRecorder struct {
 func (s *statusRecorder) WriteHeader(code int) {
 	s.status = code
 	s.ResponseWriter.WriteHeader(code)
+}
+
+// Flush keeps SSE working. The logging wrapper sits in front of every
+// response; without Flush, /chat/stream writes nothing, the browser treats
+// that as a failed stream, and it posts /chat — saving the same turn twice.
+func (s *statusRecorder) Flush() {
+	if f, ok := s.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 func withLogging(next http.Handler) http.Handler {
