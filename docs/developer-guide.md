@@ -9,7 +9,7 @@
 | Rule | How it's enforced |
 |------|-------------------|
 | **Read-only** | Only `GET` tools marked read-only are loaded. `admin`, `impersonat`, `invite`, `/internal/`, `audit-log`, `export` paths are dropped at startup (`IsAllowedReadTool`). The model can't call anything else, even by name. |
-| **User's permissions, not ours** | Every ASI call forwards the user's JWT. Genie has no permission matrix; ASI's 401/403 become `denied` / `error` cards. |
+| **User's permissions, not ours** | Every ASI call forwards the user's JWT. Genie has no permission matrix; ASI's 401/403 become `denied` / `error` cards. See [4.6](#46-access-control-rbac). |
 | **One property** | `propertyId` is required. Before each request, `Authorize` checks that the property is in the user's `auth /permissions`. The planner can't widen scope: `propertyId` and `/properties/{id}` are overwritten with the active property. |
 | **No card numbers** | Luhn-valid card numbers are masked before the model, the logs and the database see them. The reply is a `denied` card (`pci_block`). |
 | **Numbers come from ASI** | The answer prompt copies figures from read results; ids are shown as names where the JSON has them. |
@@ -112,6 +112,29 @@ Used when there is no LLM (`LLM_PROVIDER=none`), the planner failed, the user as
 ### 4.5 Streaming
 
 `POST /chat/stream` runs the same auth and engine as `/chat`, then sends the finished result as Server-Sent Events: `tool_start` / `tool_end` per read (with a label like "Checking revenue"), `text_delta`, one `card` per card, `chips`, `done`. The frontend uses `/chat/stream` first and falls back to `/chat` if no event arrives.
+
+### 4.6 Access control (RBAC)
+
+Genie does not keep a permission matrix. ASI is the authority. There are two checks.
+
+**Property membership, before the turn.** `Authorize` (`authz.go`) runs on `/chat`, `/chat/stream`, history, feedback, and analytics. It calls auth current-user and `GET /permissions` with the user's token (cached 10 minutes per token). The request `propertyId` must appear in that payload.
+
+| Result | HTTP |
+|--------|------|
+| Missing or rejected token | `401` Sign in to use Genie. |
+| Property not in the user's permissions, or auth returns 403 | `403` You don't have access to this property. |
+| Auth unreachable | `502` Genie couldn't verify your sign-in. |
+
+Every read overwrites `propertyId` and `/properties/{id}` with this property, so a planned call cannot ask about another one. History and feedback are also limited to this caller and property.
+
+**Feature permission, during the turn.** Each ASI GET uses the same JWT, and ASI enforces Module → Feature → Permission on that call. Catalogue `RBAC` / `Requirements` (from `Scenarios.csv`) record which permission a scenario needs. Genie does not filter intents against those strings before the model runs.
+
+When a read is refused:
+
+- **Planner:** if every planned read is 401 or 403, the reply is one `denied` card ("That isn't available for your role.") and no figures.
+- **Fallback router:** 401 becomes an `error` card `session_expired`; 403 becomes `forbidden`. That path also stores a `denied` event.
+
+A `denied` card is also used when the message contains a card number (`pci_block`). That is PCI masking, separate from role checks.
 
 ## 5. Code map
 
