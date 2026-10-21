@@ -99,6 +99,12 @@ type Store interface {
 	// AppendMessages appends msgs to sessionID's conversation, which is bound to
 	// propertyID: a new conversation is started if the property differs.
 	AppendMessages(ctx context.Context, sessionID, userID string, propertyID int, msgs ...Message) error
+	// ReplaceTurnMessages overwrites the user question and assistant reply for
+	// turnID. replaced is false when that turn is not in this conversation.
+	ReplaceTurnMessages(ctx context.Context, sessionID, userID string, propertyID int, turnID string, userMsg, assistant Message) (replaced bool, err error)
+	// UpdateTurn writes the latest reply onto an existing analytics row and
+	// counts the retry. A missing turn returns an error.
+	UpdateTurn(ctx context.Context, turnID string, t Turn) error
 	// History returns the last limit messages (oldest first) for this user and property.
 	// A conversation with a null or different user_id is not returned.
 	// limit<=0 means all. Missing or unowned conversation returns an error.

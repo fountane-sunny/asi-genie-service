@@ -2,6 +2,7 @@ package genie
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"asi-genie-poc/internal/cards"
@@ -20,7 +21,10 @@ type pendingEmailFolio struct {
 	guestName       string
 }
 
-const emailFolioPendingKind = "email_folio_pending"
+const (
+	emailFolioPendingKind = "email_folio_pending"
+	emailFolioSentKind    = "email_folio_sent"
+)
 
 func encodeEmailFolioPending(p pendingEmailFolio) Entity {
 	return Entity{
@@ -79,6 +83,10 @@ func isNegative(message string) bool {
 // ask for an explicit confirm before ever calling the write endpoint. Genie
 // never writes to ASI except through this one confirmed path.
 func hEmailFolio(rc *reqCtx, it intents.Intent, s Slots) error {
+	if sent, ok := decodeEmailFolioSent(rc.sess.LastEntity); ok && messageAsksFolioEmailStatus(rc.req.Message) {
+		rc.text(emailFolioStatusText(sent))
+		return nil
+	}
 	if pending, ok := decodeEmailFolioPending(rc.sess.LastEntity); ok {
 		return rc.resolveEmailFolioConfirmation(it, pending)
 	}
@@ -102,16 +110,28 @@ func hEmailFolio(rc *reqCtx, it intents.Intent, s Slots) error {
 		return nil
 	}
 
-	docType := folioDocType(rc.req.Message)
+	resType := folioReservationType(m)
+	docTypes := []string{folioDocType(rc.req.Message)}
+	if messageWantsAllFolioDocs(rc.req.Message) {
+		docTypes = folioDocTypesFor(resType)
+	}
 	guest := personName(m)
 	pending := pendingEmailFolio{
-		reservationID: id, docType: docType, reservationType: folioReservationType(m),
+		reservationID: id, docType: strings.Join(docTypes, ","), reservationType: resType,
 		recipient: recipient, guestName: guest,
 	}
 	rc.remember(encodeEmailFolioPending(pending))
+	action := "send it?"
+	option := "Yes, send it"
+	reply := "yes, send it"
+	if len(docTypes) > 1 {
+		action = "send them?"
+		option = "Yes, send them"
+		reply = "yes, send them"
+	}
 	rc.add(cards.Clarify(it.ID,
-		fmt.Sprintf("Email the %s for %s to %s — send it?", strings.ToLower(folioDocLabel(docType)), guest, recipient),
-		cards.Option{Label: "Yes, send it", Value: "send", Message: "yes, send it"},
+		fmt.Sprintf("Email %s for %s to %s — %s", folioDocsPhrase(docTypes), guest, recipient, action),
+		cards.Option{Label: option, Value: "send", Message: reply},
 		cards.Option{Label: "Cancel", Value: "cancel", Message: "cancel"},
 	))
 	return nil
@@ -127,25 +147,117 @@ func (rc *reqCtx) resolveEmailFolioConfirmation(it intents.Intent, pending pendi
 		return nil
 	}
 
-	body := map[string]any{
-		"reservationId":   pending.reservationID,
-		"propertyId":      rc.pidStr(),
-		"docType":         pending.docType,
-		"reservationType": pending.reservationType,
-		"email":           pending.recipient,
+	docTypes := folioDocTypeList(pending.docType)
+	sentTypes := make([]string, 0, len(docTypes))
+	for _, docType := range docTypes {
+		body := map[string]any{
+			"reservationId":   pending.reservationID,
+			"propertyId":      rc.pidStr(),
+			"docType":         docType,
+			"reservationType": pending.reservationType,
+			"email":           pending.recipient,
+		}
+		// The reservation service accepts one document per /folio/email call.
+		if _, err := rc.post("reservation_post_folio_id_email", nil, body); err != nil {
+			slog.Error("failed to email folio document", "err", err, "reservationId", pending.reservationID, "docType", docType)
+			if len(sentTypes) > 0 {
+				partial := pending
+				partial.docType = strings.Join(sentTypes, ",")
+				rc.rememberSentEmailFolio(partial)
+			}
+			return err
+		}
+		sentTypes = append(sentTypes, docType)
 	}
-	if _, err := rc.post("reservation_post_folio_id_email", map[string]string{"id": pending.reservationID}, body); err != nil {
-		return err
-	}
+	pending.docType = strings.Join(sentTypes, ",")
 
-	label := strings.ToLower(folioDocLabel(pending.docType))
+	phrase := folioDocsPhrase(sentTypes)
 	rc.add(cards.Card{
 		Type:    cards.TypeData,
 		Intent:  it.ID,
 		Title:   "Email sent",
-		Message: fmt.Sprintf("Sent the %s for %s to %s.", label, pending.guestName, pending.recipient),
+		Message: fmt.Sprintf("Sent %s for %s to %s.", phrase, pending.guestName, pending.recipient),
 		Link:    reservationLink(rc.pid, pending.reservationID),
 	})
-	rc.text(fmt.Sprintf("Sent the %s to %s.", label, pending.recipient))
+	rc.text(fmt.Sprintf("Sent %s to %s.", phrase, pending.recipient))
+	rc.rememberSentEmailFolio(pending)
 	return nil
+}
+
+func (rc *reqCtx) rememberSentEmailFolio(sent pendingEmailFolio) {
+	ent := encodeEmailFolioPending(sent)
+	ent.Kind = emailFolioSentKind
+	rc.remember(ent)
+}
+
+func folioDocTypeList(encoded string) []string {
+	parts := strings.Split(encoded, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	if len(out) == 0 {
+		return []string{"folio"}
+	}
+	return out
+}
+
+func folioDocsPhrase(docTypes []string) string {
+	labels := make([]string, 0, len(docTypes))
+	for _, docType := range docTypes {
+		labels = append(labels, strings.ToLower(folioDocLabel(docType)))
+	}
+	switch len(labels) {
+	case 0:
+		return "the folio"
+	case 1:
+		return "the " + labels[0]
+	case 2:
+		return "the " + labels[0] + " and " + labels[1]
+	default:
+		return "the " + strings.Join(labels[:len(labels)-1], ", ") + ", and " + labels[len(labels)-1]
+	}
+}
+
+func emailFolioStatusText(sent pendingEmailFolio) string {
+	sentTypes := folioDocTypeList(sent.docType)
+	phrase := folioDocsPhrase(sentTypes)
+	if sameDocTypes(sentTypes, folioDocTypesFor(sent.reservationType)) {
+		return fmt.Sprintf("Yes. I sent %s for %s to %s.", phrase, sent.guestName, sent.recipient)
+	}
+	return fmt.Sprintf("No. I sent only %s for %s to %s; the other folio documents were not sent.", phrase, sent.guestName, sent.recipient)
+}
+
+func sameDocTypes(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	counts := make(map[string]int, len(left))
+	for _, docType := range left {
+		counts[docType]++
+	}
+	for _, docType := range right {
+		counts[docType]--
+		if counts[docType] < 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func decodeEmailFolioSent(ent *Entity) (pendingEmailFolio, bool) {
+	if ent == nil || ent.Kind != emailFolioSentKind {
+		return pendingEmailFolio{}, false
+	}
+	copy := *ent
+	copy.Kind = emailFolioPendingKind
+	return decodeEmailFolioPending(&copy)
+}
+
+func messageAsksFolioEmailStatus(message string) bool {
+	lower := strings.ToLower(message)
+	return strings.Contains(lower, "sent") && (strings.Contains(lower, "folio") || strings.Contains(lower, "all"))
 }

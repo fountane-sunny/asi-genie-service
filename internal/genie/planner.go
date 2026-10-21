@@ -390,6 +390,17 @@ func (rc *reqCtx) routerOwnsTurn() bool {
 	if messageWantsFolioAction(m) {
 		return true
 	}
+	if rc.isBareFolioPrintFollowUp() {
+		return true
+	}
+	// A confirmation reply has no folio keyword. Keep it out of the planner
+	// so hEmailFolio can apply the explicit yes/no safety check and send it.
+	if _, ok := decodeEmailFolioPending(rc.sess.LastEntity); ok {
+		return true
+	}
+	if _, ok := decodeEmailFolioSent(rc.sess.LastEntity); ok && messageAsksFolioEmailStatus(m) {
+		return true
+	}
 	if parseGuestIDFromLookupMessage(m) != "" {
 		return true
 	}

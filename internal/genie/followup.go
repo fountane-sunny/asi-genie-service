@@ -19,6 +19,26 @@ func (e *Engine) resolveFollowUpIntent(rc *reqCtx, it intents.Intent, info Inten
 		return it, info, slots
 	}
 	msg := strings.TrimSpace(rc.req.Message)
+	// A status question follows a completed email action but looks like a new
+	// question. Keep it on email_folio so the recorded send result is used.
+	if pending == "email_folio" {
+		if _, ok := decodeEmailFolioSent(rc.sess.LastEntity); ok && messageAsksFolioEmailStatus(msg) {
+			it2, found := intents.Get(pending)
+			if !found {
+				return it, info, slots
+			}
+			info = IntentInfo{
+				ID:           it2.ID,
+				ScenarioID:   it2.ScenarioID,
+				ResponseType: it2.ResponseType,
+				Handler:      "dedicated",
+				Source:       "rule",
+				Confidence:   1,
+				Slots:        slots,
+			}
+			return it2, info, slots
+		}
+	}
 	if msg == "" || looksLikeNewQuestion(msg) {
 		return it, info, slots
 	}
@@ -39,6 +59,17 @@ func (e *Engine) resolveFollowUpIntent(rc *reqCtx, it intents.Intent, info Inten
 		Slots:        slots,
 	}
 	return it2, info, slots
+}
+
+// isBareFolioPrintFollowUp keeps "print it" on the folio flow after Genie has
+// shown a folio card. It has no document or guest name, so treating it as a
+// missing reservation slot would search for the words "I want to print".
+func (rc *reqCtx) isBareFolioPrintFollowUp() bool {
+	if rc.sess.LastIntent != "download_folio" || messageWantsFolioAction(rc.req.Message) {
+		return false
+	}
+	lower := strings.ToLower(rc.req.Message)
+	return strings.Contains(lower, "print") || strings.Contains(lower, "download")
 }
 
 func fillFollowUpSlot(pendingIntent, message string, s *Slots) bool {
@@ -65,6 +96,11 @@ func fillFollowUpSlot(pendingIntent, message string, s *Slots) bool {
 		// Keep the report from the previous turn; dates are read from this message.
 		return true
 	case "download_folio":
+		if strings.Contains(strings.ToLower(message), "print") || strings.Contains(strings.ToLower(message), "download") {
+			// hDownloadFolio uses the remembered reservation and defaults the
+			// document to the standard Folio for a bare print/download request.
+			return true
+		}
 		if s.GuestName != "" || s.Confirmation != "" || s.Room != "" {
 			return false
 		}

@@ -60,6 +60,79 @@ func messageWantsFolioAction(message string) bool {
 	return false
 }
 
+// messageWantsAllFolioDocs reports a request for every document on the Print
+// Folio menu, such as "email all the folios". A plain "folio" remains the
+// summary folio only.
+func messageWantsAllFolioDocs(message string) bool {
+	lower := strings.ToLower(message)
+	if strings.Contains(lower, "notice") {
+		return false
+	}
+	return strings.Contains(lower, "all folio") || strings.Contains(lower, "all the folio") ||
+		strings.Contains(lower, "all of the folio") || strings.Contains(lower, "every folio") ||
+		strings.Contains(lower, "each folio")
+}
+
+// messageWantsEmailFolio reports whether a folio-action message should email
+// the document rather than download/print it. "Send the folio" is an email
+// request; print, download, and export stay on the download path.
+func messageWantsEmailFolio(message string) bool {
+	lower := strings.ToLower(message)
+	if strings.Contains(lower, "email") || strings.Contains(lower, "e-mail") ||
+		strings.Contains(lower, "mail") {
+		return true
+	}
+	if strings.Contains(lower, "print") || strings.Contains(lower, "download") ||
+		strings.Contains(lower, "export") {
+		return false
+	}
+	return strings.Contains(lower, "send")
+}
+
+// messageWantsDefaultFolioDownload detects a bare print/download continuation.
+// The previous folio card established the reservation; in that context the
+// standard Folio is the least surprising document to download.
+func messageWantsDefaultFolioDownload(message string) bool {
+	lower := strings.ToLower(message)
+	if strings.Contains(lower, "folio") || strings.Contains(lower, "registration") ||
+		strings.Contains(lower, "charge") || strings.Contains(lower, "receipt") ||
+		strings.Contains(lower, "status") {
+		return false
+	}
+	return strings.Contains(lower, "print") || strings.Contains(lower, "download")
+}
+
+// applyFolioIntent steers print/download/email folio requests onto the
+// dedicated handlers. The catalogue still has G-029 folio_document (a navigate
+// guide whose UserSees text is a spec note), and the classifier often picks it
+// for "print folio" — that must never reach the generic navigate path.
+func (e *Engine) applyFolioIntent(it intents.Intent, info IntentInfo, slots Slots, message string) (intents.Intent, IntentInfo, Slots) {
+	if !messageWantsFolioAction(message) {
+		return it, info, slots
+	}
+	id := "download_folio"
+	if messageWantsEmailFolio(message) {
+		id = "email_folio"
+	}
+	if it.ID == id {
+		return it, info, slots
+	}
+	next, ok := intents.Get(id)
+	if !ok {
+		return it, info, slots
+	}
+	info = IntentInfo{
+		ID:           next.ID,
+		ScenarioID:   next.ScenarioID,
+		ResponseType: next.ResponseType,
+		Handler:      "dedicated",
+		Source:       "rule",
+		Confidence:   1,
+		Slots:        slots,
+	}
+	return next, info, slots
+}
+
 // folioDocType infers the /folio/{id} doc_type query param from the message.
 // Defaults to "folio" when the message names no specific document.
 func folioDocType(message string) string {
@@ -179,13 +252,17 @@ func hDownloadFolio(rc *reqCtx, it intents.Intent, s Slots) error {
 	resType := folioReservationType(m)
 	docType, named := folioDocTypeNamed(rc.req.Message)
 	docTypes := folioDocTypesFor(resType)
-	if named {
+	defaultFolio := !named && messageWantsDefaultFolioDownload(rc.req.Message)
+	if named || defaultFolio {
+		if defaultFolio {
+			docType = "folio"
+		}
 		docTypes = []string{docType}
 	}
 	downloads := make([]cards.Download, 0, len(docTypes))
 	for _, dt := range docTypes {
 		label := folioDocLabel(dt)
-		if named {
+		if named || defaultFolio {
 			label = "Download PDF"
 		}
 		downloads = append(downloads, cards.Download{
@@ -207,7 +284,7 @@ func hDownloadFolio(rc *reqCtx, it intents.Intent, s Slots) error {
 		who = "this reservation"
 	}
 	lead := fmt.Sprintf("Here are the folios for %s.", who)
-	if named {
+	if named || defaultFolio {
 		title = folioDocLabel(docType)
 		message = "Here's your download."
 		lead = fmt.Sprintf("Here's the %s for %s.", strings.ToLower(folioDocLabel(docType)), who)

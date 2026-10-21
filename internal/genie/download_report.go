@@ -51,8 +51,8 @@ type downloadCommand struct {
 // not depend on the previous turn's intent.
 func (e *Engine) applyDownloadIntent(it intents.Intent, info IntentInfo, slots Slots, message string) (intents.Intent, IntentInfo, Slots) {
 	// A folio/registration/other-charges document is a reservation action
-	// (download_folio / email_folio), not a report export: leave classify's
-	// choice (or the follow-up resolver's) alone.
+	// (download_folio / email_folio), not a report export. applyFolioIntent
+	// steers those after this runs.
 	if messageWantsFolioAction(message) {
 		return it, info, slots
 	}

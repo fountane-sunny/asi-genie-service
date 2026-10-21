@@ -45,6 +45,9 @@ type Request struct {
 	LocalHour    *int              `json:"localHour,omitempty"`    // 0-23 on the user's clock, for greetings
 	Screen       string            `json:"screen,omitempty"`       // current route (optional)
 	History      []genillm.Message `json:"history,omitempty"`
+	// ReplaceTurnID is the analytics id of the reply the user asked to retry.
+	// The new reply overwrites that turn instead of appending another copy.
+	ReplaceTurnID string `json:"replaceTurnId,omitempty"`
 }
 
 // IntentInfo reports how the message was understood.
@@ -280,9 +283,17 @@ func (e *Engine) logTurn(rc *reqCtx) string {
 	if t.Source == "" && e.LLM == nil {
 		t.Source = "keyword"
 	}
+	if rc.req.ReplaceTurnID != "" {
+		err := e.Store.UpdateTurn(context.WithoutCancel(rc.ctx), rc.req.ReplaceTurnID, t)
+		if err == nil {
+			rc.resp.TurnID = rc.req.ReplaceTurnID
+			return rc.req.ReplaceTurnID
+		}
+		slog.Warn("retry kept a new turn", "err", err, "turnId", rc.req.ReplaceTurnID, "propertyId", rc.pid)
+	}
 	id, err := e.Store.LogTurn(context.WithoutCancel(rc.ctx), t)
 	if err != nil {
-		log.Printf("store turn: %v", err)
+		slog.Error("failed to store turn", "err", err, "propertyId", rc.pid)
 		return ""
 	}
 	rc.resp.TurnID = id
@@ -362,6 +373,9 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 	rc.applyContext(&slots)
 	it, info, slots = e.resolveFollowUpIntent(rc, it, info, slots)
 	it, info, slots = e.applyDownloadIntent(it, info, slots, rc.req.Message)
+	// After classify: "print/download/email folio" must not stay on the
+	// legacy folio_document navigate guide (G-029).
+	it, info, slots = e.applyFolioIntent(it, info, slots, rc.req.Message)
 	rc.intent = it
 	info.Slots = slots
 	rc.setIntent(info)
@@ -724,12 +738,20 @@ func (e *Engine) persist(rc *reqCtx) {
 			"chips":     rc.resp.Chips,
 		})
 	}
-	err := e.Store.AppendMessages(context.WithoutCancel(rc.ctx), rc.req.SessionID, rc.currentUser().id, rc.pid,
-		store.Message{Role: genillm.RoleUser, Content: rc.req.Message, CreatedAt: rc.start.UTC()},
-		store.Message{Role: genillm.RoleAssistant, Content: rc.resp.Text, ToolCalls: meta, CreatedAt: rc.resp.CreatedAt, DurationMs: rc.resp.DurationMs},
-	)
+	userMsg := store.Message{Role: genillm.RoleUser, Content: rc.req.Message, CreatedAt: rc.start.UTC()}
+	assistantMsg := store.Message{Role: genillm.RoleAssistant, Content: rc.resp.Text, ToolCalls: meta, CreatedAt: rc.resp.CreatedAt, DurationMs: rc.resp.DurationMs}
+	if rc.req.ReplaceTurnID != "" {
+		replaced, err := e.Store.ReplaceTurnMessages(context.WithoutCancel(rc.ctx), rc.req.SessionID, rc.currentUser().id, rc.pid, rc.req.ReplaceTurnID, userMsg, assistantMsg)
+		if err != nil {
+			slog.Error("failed to replace retried messages", "err", err, "turnId", rc.req.ReplaceTurnID, "propertyId", rc.pid)
+		}
+		if replaced {
+			return
+		}
+	}
+	err := e.Store.AppendMessages(context.WithoutCancel(rc.ctx), rc.req.SessionID, rc.currentUser().id, rc.pid, userMsg, assistantMsg)
 	if err != nil {
-		log.Printf("store append %s: %v", rc.req.SessionID, err)
+		slog.Error("failed to append messages", "err", err, "sessionId", rc.req.SessionID, "propertyId", rc.pid)
 	}
 }
 

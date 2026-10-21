@@ -1,11 +1,5 @@
 # ASI Genie — explained simply
 
-This page is for everyone: front desk, housekeeping, managers, support, product, QA, and new joiners. No technical knowledge needed.
-
-Developers and leads: see [developer-guide.md](./developer-guide.md).
-
----
-
 ## What is Genie?
 
 Genie is the **chat assistant inside ASI** (our hotel property-management system). You type a question in plain English, and Genie looks up the answer in ASI for you.

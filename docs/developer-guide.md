@@ -1,12 +1,5 @@
 # ASI Genie — developer & lead guide
 
-One doc for engineers and leads: what Genie is, how a message flows through it, where the code lives, how to run it, and how to change it safely.
-
-Non-technical overview: [genie-for-everyone.md](./genie-for-everyone.md).
-Reference docs: [response-contract.md](./response-contract.md) (API + cards) · [database.md](./database.md) (Postgres).
-
----
-
 ## 1. In one paragraph
 
 `asi-genie-service` is a Go HTTP service (port `8090`, module `asi-genie-poc`) that sits between the **asi-frontend** Genie panel and the four ASI APIs (**config, auth, reporting, reservation**). For each chat message it asks an LLM which **read-only GET** endpoints answer the question, runs them **with the user's own token** for **one property**, and asks the LLM to turn the JSON into a short text plus typed **cards** (stats, table, chart, list, ...). If the LLM can't plan, a keyword/intent router with hand-written handlers answers instead. Genie never writes to ASI.

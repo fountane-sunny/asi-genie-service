@@ -3,6 +3,7 @@ package genie
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -31,7 +32,7 @@ func folioFixture(t *testing.T, reservationJSON string, posted *[]map[string]any
 			_, _ = w.Write([]byte(`{"data":[` + reservationJSON + `]}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/reservations/res-1":
 			_, _ = w.Write([]byte(`{"data":` + reservationJSON + `}`))
-		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/folio/res-1/email":
+		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/folio/email":
 			var body map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&body)
 			if posted != nil {
@@ -62,6 +63,7 @@ func TestMessageWantsFolioAction(t *testing.T) {
 		"download the folio for Smith":               true,
 		"email the registration form for room 204":   true,
 		"print the detailed folio for booking #4471": true,
+		"I want to print folio also":                 true,
 		"open folio notices":                         false, // no action verb
 		"what's the balance on this folio":           false, // no action verb
 		"download today's sales and revenue report":  false, // report, not a reservation doc
@@ -69,6 +71,38 @@ func TestMessageWantsFolioAction(t *testing.T) {
 	for msg, want := range cases {
 		if got := messageWantsFolioAction(msg); got != want {
 			t.Errorf("messageWantsFolioAction(%q) = %v, want %v", msg, got, want)
+		}
+	}
+}
+
+// The classifier still knows G-029 folio_document ("Print the folio…"), which
+// is only a navigate guide. Print/download/email must land on the dedicated
+// handlers that return a real download or confirm card.
+func TestApplyFolioIntentOverridesLegacyGuide(t *testing.T) {
+	t.Parallel()
+	legacy, ok := intents.Get("folio_document")
+	if !ok {
+		t.Fatal("folio_document missing from catalogue")
+	}
+	cases := []struct {
+		msg  string
+		want string
+	}{
+		{"I want to print folio also", "download_folio"},
+		{"print the folio for 305", "download_folio"},
+		{"download the folio for Smith", "download_folio"},
+		{"email the folio for Smith", "email_folio"},
+		{"send all the folios for Smith", "email_folio"},
+	}
+	for _, tc := range cases {
+		it, info, _ := (&Engine{}).applyFolioIntent(
+			legacy,
+			IntentInfo{ID: legacy.ID, ScenarioID: legacy.ScenarioID, ResponseType: legacy.ResponseType, Source: "llm"},
+			Slots{},
+			tc.msg,
+		)
+		if it.ID != tc.want || info.ID != tc.want || info.Source != "rule" {
+			t.Errorf("applyFolioIntent(%q) = %s source=%s, want %s rule", tc.msg, it.ID, info.Source, tc.want)
 		}
 	}
 }
@@ -124,6 +158,41 @@ func TestRouterOwnsTurnForFolioActions(t *testing.T) {
 	rc := &reqCtx{req: Request{Message: "email the folio for Smith"}}
 	if !rc.routerOwnsTurn() {
 		t.Fatal("folio action messages must stay on the dedicated router, not the generic planner")
+	}
+}
+
+func TestRouterOwnsEmailFolioConfirmation(t *testing.T) {
+	t.Parallel()
+	pending := encodeEmailFolioPending(pendingEmailFolio{})
+	rc := &reqCtx{
+		req:  Request{Message: "yes, send it"},
+		sess: &session{LastEntity: &pending},
+	}
+	if !rc.routerOwnsTurn() {
+		t.Fatal("a pending folio email confirmation must stay on the dedicated router")
+	}
+}
+
+func TestBarePrintFollowUpDownloadsStandardFolio(t *testing.T) {
+	t.Parallel()
+	rc := folioFixture(t, testReservationJSON, nil)
+	rc.req.Message = "i want to print"
+	rc.sess.LastIntent = "download_folio"
+	rc.sess.LastEntity = &Entity{Kind: "reservation", ID: "4471", Label: "John Smith"}
+	it, _ := intents.Get("download_folio")
+
+	if !rc.isBareFolioPrintFollowUp() {
+		t.Fatal("bare print after a folio card must stay on the folio flow")
+	}
+	if err := hDownloadFolio(rc, it, Slots{}); err != nil {
+		t.Fatalf("hDownloadFolio: %v", err)
+	}
+	if len(rc.resp.Cards) != 1 || len(rc.resp.Cards[0].Downloads) != 1 {
+		t.Fatalf("expected one default folio download, got %+v", rc.resp.Cards)
+	}
+	download := rc.resp.Cards[0].Downloads[0]
+	if download.Label != "Download PDF" || download.Query["doc_type"] != "folio" {
+		t.Fatalf("download = %+v, want standard folio PDF", download)
 	}
 }
 
@@ -235,6 +304,75 @@ func TestHEmailFolioConfirmThenSend(t *testing.T) {
 	}
 	if len(rc.resp.Cards) != 1 || rc.resp.Cards[0].Title != "Email sent" {
 		t.Fatalf("expected an email-sent card, got %+v", rc.resp.Cards)
+	}
+	sent, ok := decodeEmailFolioSent(rc.sess.LastEntity)
+	if !ok || sent.docType != "folio" {
+		t.Fatalf("sent email context = %+v ok=%v", sent, ok)
+	}
+}
+
+func TestHEmailFolioAllDocuments(t *testing.T) {
+	t.Parallel()
+	var posted []map[string]any
+	rc := folioFixture(t, testReservationJSON, &posted)
+	rc.req.Message = "send all the folios for Smith"
+	it, _ := intents.Get("email_folio")
+
+	if err := hEmailFolio(rc, it, Slots{GuestName: "Smith"}); err != nil {
+		t.Fatalf("hEmailFolio (confirm step): %v", err)
+	}
+	if len(posted) != 0 {
+		t.Fatal("all documents must wait for confirmation")
+	}
+	if !strings.Contains(rc.resp.Cards[0].Title, "registration form") || !strings.Contains(rc.resp.Cards[0].Title, "other charges folio") {
+		t.Fatalf("confirm message = %q", rc.resp.Cards[0].Title)
+	}
+
+	rc.resp = &Response{}
+	rc.req.Message = "yes, send them"
+	if err := hEmailFolio(rc, it, Slots{}); err != nil {
+		t.Fatalf("hEmailFolio (send step): %v", err)
+	}
+	got := make([]string, 0, len(posted))
+	for _, body := range posted {
+		got = append(got, fmt.Sprint(body["docType"]))
+	}
+	want := []string{"registration", "folio", "detailed", "other-charges"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("sent doc types = %v, want %v", got, want)
+	}
+
+	rc.resp = &Response{}
+	rc.req.Message = "all folios sent?"
+	if err := hEmailFolio(rc, it, Slots{}); err != nil {
+		t.Fatalf("hEmailFolio (status step): %v", err)
+	}
+	if !strings.HasPrefix(rc.resp.Text, "Yes.") {
+		t.Fatalf("status text = %q", rc.resp.Text)
+	}
+}
+
+func TestHEmailFolioSentStatusAnswersForSelectedDocument(t *testing.T) {
+	t.Parallel()
+	rc := folioFixture(t, testReservationJSON, nil)
+	sent := encodeEmailFolioPending(pendingEmailFolio{
+		reservationID: "res-1", docType: "folio", reservationType: "individual",
+		recipient: "poc@example.com", guestName: "John Smith",
+	})
+	sent.Kind = emailFolioSentKind
+	rc.sess.LastEntity = &sent
+	rc.sess.LastIntent = "email_folio"
+	rc.req.Message = "all folios sent?"
+	it, _ := intents.Get("email_folio")
+
+	if !rc.routerOwnsTurn() {
+		t.Fatal("email-send status questions must stay on the dedicated router")
+	}
+	if err := hEmailFolio(rc, it, Slots{}); err != nil {
+		t.Fatalf("hEmailFolio: %v", err)
+	}
+	if !strings.Contains(rc.resp.Text, "only the folio") || !strings.Contains(rc.resp.Text, "were not sent") {
+		t.Fatalf("status text = %q", rc.resp.Text)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -61,6 +62,7 @@ type GenieTurn struct {
 	ErrorCode    *string   `gorm:"type:text;index"`
 	ErrorMessage *string   `gorm:"type:text"`
 	Feedback     *string   `gorm:"type:text"` // nullable, for later
+	RetryCount   int       `gorm:"not null;default:0"`
 }
 
 func (MessageRow) TableName() string { return "messages" }
@@ -204,6 +206,66 @@ func (p *pg) AppendMessages(ctx context.Context, sessionID, userID string, prope
 	return p.db.WithContext(ctx).Create(&rows).Error
 }
 
+// ReplaceTurnMessages overwrites the saved question and reply for one turn so
+// a refresh shows the retried answer once.
+func (p *pg) ReplaceTurnMessages(ctx context.Context, sessionID, userID string, propertyID int, turnID string, userMsg, assistant Message) (bool, error) {
+	if strings.TrimSpace(turnID) == "" {
+		return false, nil
+	}
+	if err := ValidateScope(propertyID, userID); err != nil {
+		return false, err
+	}
+	var conv Conversation
+	err := p.db.WithContext(ctx).
+		Where("session_id = ? AND user_id = ? AND property_id = ?", sessionID, userID, propertyID).
+		Take(&conv).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	var assistantRow MessageRow
+	err = p.db.WithContext(ctx).
+		Where("conversation_id = ? AND role = ? AND tool_calls->>'turnId' = ?", conv.ID, "assistant", turnID).
+		Order("created_at DESC").
+		Take(&assistantRow).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	var userRow MessageRow
+	err = p.db.WithContext(ctx).
+		Where("conversation_id = ? AND role = ? AND created_at <= ?", conv.ID, "user", assistantRow.CreatedAt).
+		Order("created_at DESC").
+		Take(&userRow).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	err = p.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&userRow).Update("content", userMsg.Content).Error; err != nil {
+			return err
+		}
+		assistantUpdates := map[string]any{
+			"content":    assistant.Content,
+			"tool_calls": nilIfEmpty(assistant.ToolCalls),
+		}
+		if assistant.DurationMs > 0 {
+			assistantUpdates["duration_ms"] = assistant.DurationMs
+		}
+		return tx.Model(&assistantRow).Updates(assistantUpdates).Error
+	})
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func nilIfEmpty(b []byte) []byte {
 	if len(b) == 0 {
 		return nil
@@ -320,6 +382,40 @@ func (p *pg) LogTurn(ctx context.Context, t Turn) (string, error) {
 		return "", err
 	}
 	return row.ID, nil
+}
+
+// UpdateTurn keeps the same analytics id and records that the reply was replaced.
+func (p *pg) UpdateTurn(ctx context.Context, turnID string, t Turn) error {
+	if strings.TrimSpace(turnID) == "" {
+		return fmt.Errorf("turnId is required")
+	}
+	updates := map[string]any{
+		"message":       t.Message,
+		"reply":         t.Reply,
+		"cards":         nilIfEmpty(t.Cards),
+		"intent":        strPtr(t.Intent),
+		"scenario_id":   strPtr(t.ScenarioID),
+		"source":        strPtr(t.Source),
+		"confidence":    t.Confidence,
+		"slots":         nilIfEmpty(t.Slots),
+		"tools":         nilIfEmpty(t.Tools),
+		"llm_model":     strPtr(t.LLMModel),
+		"llm_failed":    t.LLMFailed,
+		"duration_ms":   t.DurationMs,
+		"error_code":    strPtr(t.ErrorCode),
+		"error_message": strPtr(t.ErrorMessage),
+		"retry_count":   gorm.Expr("retry_count + 1"),
+	}
+	res := p.db.WithContext(ctx).Model(&GenieTurn{}).
+		Where("id = ? AND session_id = ? AND property_id = ?", turnID, t.SessionID, t.PropertyID).
+		Updates(updates)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (p *pg) UpdateTurnFeedback(ctx context.Context, turnID, sessionID, userID string, propertyID int, feedback string) error {

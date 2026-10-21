@@ -122,7 +122,7 @@ var ReservationTools = []ToolMeta{
 	{Name: "reservation_post_folio_split", Service: "reservation", Method: "POST", Path: "/api/v1/folio/split", ReadOnly: false, Description: "Generate or email split folio PDF", Query: []QueryParam{{Name: "action", Required: false}, {Name: "email", Required: false}}},
 	{Name: "reservation_post_folio_split_v2", Service: "reservation", Method: "POST", Path: "/api/v1/folio/split-v2", ReadOnly: false, Description: "Generate or email split folio PDF (v2 layout)", Query: []QueryParam{{Name: "action", Required: false}, {Name: "email", Required: false}}},
 	{Name: "reservation_get_folio_id", Service: "reservation", Method: "GET", Path: "/api/v1/folio/{id}", ReadOnly: true, Description: "Generate PDF based on type", Query: []QueryParam{{Name: "doc_type", Required: true}, {Name: "reservation_type", Required: true}, {Name: "event_key", Required: false}}},
-	{Name: "reservation_post_folio_id_email", Service: "reservation", Method: "POST", Path: "/api/v1/folio/{id}/email", ReadOnly: false, Description: "Email PDF based on type"},
+	{Name: "reservation_post_folio_id_email", Service: "reservation", Method: "POST", Path: "/api/v1/folio/email", ReadOnly: false, Description: "Email PDF based on type"},
 	{Name: "reservation_get_group_reservations", Service: "reservation", Method: "GET", Path: "/api/v1/group-reservations", ReadOnly: true, Description: "Get all group reservations with pagination", Query: []QueryParam{{Name: "propertyId", Required: true}, {Name: "page", Required: false}, {Name: "pageSize", Required: false}, {Name: "searchKey", Required: false}, {Name: "searchBy", Required: false}, {Name: "status", Required: false}, {Name: "pocEmail", Required: false}, {Name: "pocName", Required: false}, {Name: "businessSource", Required: false}, {Name: "checkInDateStart", Required: false}, {Name: "checkInDateEnd", Required: false}, {Name: "checkoutDateStart", Required: false}, {Name: "checkoutDateEnd", Required: false}, {Name: "sortBy", Required: false}, {Name: "orderBy", Required: false}, {Name: "countOnly", Required: false}}},
 	{Name: "reservation_post_group_reservations", Service: "reservation", Method: "POST", Path: "/api/v1/group-reservations", ReadOnly: false, Description: "Save group reservation form"},
 	{Name: "reservation_get_group_reservations_available_count", Service: "reservation", Method: "GET", Path: "/api/v1/group-reservations/available-count", ReadOnly: true, Description: "Get total available rooms across all room types for a group enquiry", Query: []QueryParam{{Name: "checkIn", Required: true}, {Name: "checkOut", Required: true}, {Name: "groupEnquiryId", Required: false}}},
@@ -4266,26 +4266,24 @@ func ReservationGetFolioId(ctx context.Context, c *Client, in ReservationGetFoli
 	return toolregistry.MapToCard(tool, resp)
 }
 
-// ReservationPostFolioIdEmailInput is the input for POST /folio/{id}/email.
+// ReservationPostFolioIdEmailInput is the input for POST /folio/email.
 type ReservationPostFolioIdEmailInput struct {
-	Id   string                                  `json:"id" in:"path"`
 	Body ControllersEmailGeneratedPDFRequestBody `json:"request" in:"body"`
 }
 
-// ReservationPostFolioIdEmail calls POST /api/v1/folio/{id}/email.
+// ReservationPostFolioIdEmail calls POST /api/v1/folio/email.
 // Email PDF based on type
 func ReservationPostFolioIdEmail(ctx context.Context, c *Client, in ReservationPostFolioIdEmailInput) (any, error) {
 	const tool = "reservation_post_folio_id_email"
 	if err := toolregistry.CheckPermission(ctx, tool, toolregistry.RoleFromContext(ctx)); err != nil {
 		return nil, err
 	}
-	p := "/api/v1/folio/{id}/email"
+	p := "/api/v1/folio/email"
 	q := url.Values{}
 	h := map[string]string{}
 	form := url.Values{}
 	var body any
 	_, _, _ = q, h, form
-	p = strings.ReplaceAll(p, "{id}", url.PathEscape(toString(in.Id)))
 	body = in.Body
 	resp, err := c.Do(ctx, ReservationService, "POST", p, q, h, body)
 	if err != nil {
