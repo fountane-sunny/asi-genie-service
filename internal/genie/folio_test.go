@@ -192,6 +192,51 @@ func TestRouterOwnsEmailFolioConfirmation(t *testing.T) {
 	}
 }
 
+func TestFolioExcelFollowUpKeepsPDF(t *testing.T) {
+	t.Parallel()
+	rc := &reqCtx{
+		req:  Request{Message: "in excel?"},
+		resp: &Response{},
+		sess: &session{LastIntent: "download_folio"},
+	}
+	it, _ := intents.Get("download_folio")
+	if err := hDownloadFolio(rc, it, Slots{}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(strings.ToLower(rc.resp.Text), "wrong") || strings.Contains(strings.ToLower(rc.resp.Text), "incorrect") {
+		t.Fatalf("reply retracted the earlier download: %s", rc.resp.Text)
+	}
+	if rc.resp.Text != "Excel isn't available for this folio. The PDF download above is still ready." {
+		t.Fatalf("text=%q", rc.resp.Text)
+	}
+	if len(rc.resp.Cards) != 0 {
+		t.Fatalf("cards=%+v", rc.resp.Cards)
+	}
+}
+
+func TestFolioPDFFollowUpDownloadsPDF(t *testing.T) {
+	t.Parallel()
+	rc := folioFixture(t, testReservationJSON, nil)
+	rc.req.Message = "in pdf?"
+	rc.sess.LastIntent = "download_folio"
+	rc.sess.LastEntity = &Entity{Kind: "reservation", ID: "4471", Label: "John Smith"}
+	it, _ := intents.Get("download_folio")
+
+	if err := hDownloadFolio(rc, it, Slots{}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(strings.ToLower(rc.resp.Text), "wrong") || strings.Contains(strings.ToLower(rc.resp.Text), "incorrect") {
+		t.Fatalf("reply retracted the folio pdf: %s", rc.resp.Text)
+	}
+	if len(rc.resp.Cards) != 1 || len(rc.resp.Cards[0].Downloads) != 1 {
+		t.Fatalf("cards=%+v", rc.resp.Cards)
+	}
+	download := rc.resp.Cards[0].Downloads[0]
+	if download.Label != "Download PDF" || download.Query["doc_type"] != "folio" || !strings.HasSuffix(download.FileName, ".pdf") {
+		t.Fatalf("download=%+v", download)
+	}
+}
+
 func TestBarePrintFollowUpDownloadsStandardFolio(t *testing.T) {
 	t.Parallel()
 	rc := folioFixture(t, testReservationJSON, nil)

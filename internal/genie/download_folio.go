@@ -186,6 +186,13 @@ func folioPOCEmail(m map[string]any) string {
 }
 
 func hDownloadFolio(rc *reqCtx, it intents.Intent, s Slots) error {
+	// Folio files are PDFs. Excel or CSV does not replace the PDF already offered.
+	if rc.sess != nil && rc.sess.LastIntent == "download_folio" {
+		if format, ok := exportFormatFollowUp(rc.req.Message); ok && format != "pdf" {
+			rc.text(formatWord(format) + " isn't available for this folio. The PDF download above is still ready.")
+			return nil
+		}
+	}
 	m, err := rc.resolveReservation(s)
 	if err != nil || m == nil {
 		return err
@@ -215,7 +222,10 @@ func hDownloadFolio(rc *reqCtx, it intents.Intent, s Slots) error {
 	resType := folioReservationType(m)
 	docType, named := folioDocTypeNamed(rc.req.Message)
 	docTypes := folioDocTypesFor(resType)
-	defaultFolio := !named && messageWantsDefaultFolioDownload(rc.req.Message)
+	// "download the folio" lists every document. "in pdf" or "download pdf folio" is the folio PDF.
+	format, formatKnown := exportFormat(rc.req.Message)
+	pdfAsked := formatKnown && format == "pdf"
+	defaultFolio := !named && (messageWantsDefaultFolioDownload(rc.req.Message) || pdfAsked)
 	if named || defaultFolio {
 		if defaultFolio {
 			docType = "folio"

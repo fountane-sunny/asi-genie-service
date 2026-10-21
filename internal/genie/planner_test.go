@@ -334,6 +334,17 @@ func TestPlannerSkipsToolsThatAreNotAllowedReads(t *testing.T) {
 	}
 }
 
+func TestPlannerKeepsEarlierFileWhenAskIsUnavailable(t *testing.T) {
+	rc, _ := plannerFixture(t, &scriptedLLM{})
+	sys := rc.plannerSystem()
+	if !strings.Contains(sys, "Do not say that earlier message was wrong") {
+		t.Error("planner prompt should keep an earlier download when the new ask is unavailable")
+	}
+	if !strings.Contains(answerPrompt(), "Do not say an earlier download or export was wrong") {
+		t.Error("answer prompt should keep an earlier download when the new ask is unavailable")
+	}
+}
+
 func TestPlannerSystemOffersEveryAllowedRead(t *testing.T) {
 	rc, _ := plannerFixture(t, &scriptedLLM{})
 	rc.req.Message = "daily collection by payment type for today"

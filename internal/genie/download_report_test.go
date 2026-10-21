@@ -1,8 +1,10 @@
 package genie
 
 import (
+	"strings"
 	"testing"
 
+	"asi-genie-poc/internal/cards"
 	"asi-genie-poc/internal/intents"
 )
 
@@ -79,6 +81,138 @@ func TestFindExportToolKnownReports(t *testing.T) {
 		if service == "" || path == "" || path == tool.Path {
 			t.Fatalf("%s client path service=%s path=%s", tc.key, service, path)
 		}
+	}
+}
+
+func TestExportFormatFollowUp(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		msg    string
+		format string
+		ok     bool
+	}{
+		{"in pdf?", "pdf", true},
+		{"as excel", "xlsx", true},
+		{"pdf?", "pdf", true},
+		{"what about pdf?", "pdf", true},
+		{"can I get it in pdf?", "pdf", true},
+		{"download Guest Arrival Report in pdf", "", false},
+		{"what is a pdf?", "", false},
+	}
+	for _, tc := range cases {
+		format, ok := exportFormatFollowUp(tc.msg)
+		if ok != tc.ok || format != tc.format {
+			t.Errorf("%q: format=%q ok=%v", tc.msg, format, ok)
+		}
+	}
+}
+
+func TestRouterOwnsFormatFollowUpAfterExport(t *testing.T) {
+	t.Parallel()
+	rc := &reqCtx{
+		req:  Request{Message: "in pdf?"},
+		resp: &Response{},
+		sess: &session{LastIntent: "download_report"},
+	}
+	if !rc.routerOwnsTurn() {
+		t.Fatal("a format follow-up after an export must stay off the planner")
+	}
+	rc.sess = &session{}
+	if rc.routerOwnsTurn() {
+		t.Fatal("a format question with no earlier file is not an export follow-up")
+	}
+}
+
+func TestReservationsPDFFollowUpKeepsExcel(t *testing.T) {
+	t.Parallel()
+	rc := &reqCtx{
+		e:    &Engine{},
+		pid:  9,
+		req:  Request{Message: "in pdf?", PropertyID: 9},
+		resp: &Response{},
+		sess: &session{
+			LastIntent: "download_report",
+			LastExport: &offeredExport{Title: "Reservations", Slug: "reservations", Start: "2026-10-10", End: "2026-10-16"},
+		},
+	}
+	it, info, slots := rc.applyExportFormatFollowUp(intents.Intent{}, IntentInfo{}, Slots{})
+	if it.ID != "download_report" || slots.Report != "Reservations" || slots.StartDate != "2026-10-10" || slots.EndDate != "2026-10-16" {
+		t.Fatalf("it=%s slots=%+v info=%+v", it.ID, slots, info)
+	}
+	if err := hDownloadReport(rc, it, slots); err != nil {
+		t.Fatal(err)
+	}
+	lower := strings.ToLower(rc.resp.Text)
+	for _, banned := range []string{"wrong", "incorrect", "no file"} {
+		if strings.Contains(lower, banned) {
+			t.Fatalf("reply retracted the earlier export: %s", rc.resp.Text)
+		}
+	}
+	if rc.resp.Text != "PDF isn't available for the Reservations export. The Excel file for 2026-10-10 to 2026-10-16 is still ready." {
+		t.Fatalf("text=%q", rc.resp.Text)
+	}
+	if len(rc.resp.Cards) != 1 || len(rc.resp.Cards[0].Downloads) != 1 || rc.resp.Cards[0].Downloads[0].Label != "Download Excel" {
+		t.Fatalf("cards=%+v", rc.resp.Cards)
+	}
+	if rc.resp.Cards[0].Downloads[0].Query["exportType"] != "xlsx" {
+		t.Fatalf("exportType=%s", rc.resp.Cards[0].Downloads[0].Query["exportType"])
+	}
+}
+
+func TestReportFormatFollowUpOffersBothFiles(t *testing.T) {
+	t.Parallel()
+	prior := offeredExport{Title: "Guest Arrival Report", Slug: "guest-arrival", Start: "2026-10-01", End: "2026-10-15"}
+	cases := []struct {
+		message string
+		label   string
+		export  string
+	}{
+		{"in pdf?", "Download PDF", "pdf"},
+		{"in excel?", "Download Excel", "xlsx"},
+	}
+	for _, tc := range cases {
+		rc := &reqCtx{
+			e:    &Engine{},
+			pid:  9,
+			req:  Request{Message: tc.message, PropertyID: 9},
+			resp: &Response{},
+			sess: &session{LastIntent: "download_report", LastExport: &prior},
+		}
+		it, _ := intents.Get("download_report")
+		it, _, slots := rc.applyExportFormatFollowUp(it, IntentInfo{}, Slots{})
+		if err := hDownloadReport(rc, it, slots); err != nil {
+			t.Fatalf("%s: %v", tc.message, err)
+		}
+		lower := strings.ToLower(rc.resp.Text)
+		for _, banned := range []string{"wrong", "incorrect", "isn't available", "no file"} {
+			if strings.Contains(lower, banned) {
+				t.Fatalf("%s retracted a supported format: %s", tc.message, rc.resp.Text)
+			}
+		}
+		if len(rc.resp.Cards) != 1 || len(rc.resp.Cards[0].Downloads) != 1 {
+			t.Fatalf("%s cards=%+v", tc.message, rc.resp.Cards)
+		}
+		download := rc.resp.Cards[0].Downloads[0]
+		if download.Label != tc.label || download.Query["exportType"] != tc.export || download.Path != "/reports/guest-arrival/export" {
+			t.Fatalf("%s download=%+v", tc.message, download)
+		}
+	}
+}
+
+func TestReportExportOffersPDFAndExcel(t *testing.T) {
+	t.Parallel()
+	rc := &reqCtx{e: &Engine{}, pid: 9, req: Request{Message: "download Guest Arrival Report"}, resp: &Response{}, sess: &session{}}
+	it, _ := intents.Get("download_report")
+	err := rc.offerExport(it, "Guest Arrival Report", "guest-arrival", "", false, Slots{StartDate: "2026-10-01", EndDate: "2026-10-15"}, cards.Link{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rc.resp.Cards) != 1 || len(rc.resp.Cards[0].Downloads) != 2 {
+		t.Fatalf("cards=%+v", rc.resp.Cards)
+	}
+	got := rc.resp.Cards[0].Downloads[0].Query["exportType"] + "," + rc.resp.Cards[0].Downloads[1].Query["exportType"]
+	if got != "pdf,xlsx" {
+		t.Fatalf("formats=%s", got)
 	}
 }
 

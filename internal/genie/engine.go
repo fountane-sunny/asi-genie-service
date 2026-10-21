@@ -87,6 +87,7 @@ type session struct {
 	PropertyID   int
 	PropertyName string
 	LastEntity   *Entity
+	LastExport   *offeredExport
 	LastIntent   string
 	LastSeen     time.Time
 	PrevSeen     time.Time
@@ -344,6 +345,8 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 	it, info, slots = e.applyDownloadIntent(it, info, slots, rc.req.Message)
 	// print/download/email folio must not stay on the folio_document navigate guide.
 	it, info, slots = e.applyFolioIntent(it, info, slots, rc.req.Message)
+	// "in pdf?" after a real file must not be replanned into "my earlier message was wrong".
+	it, info, slots = rc.applyExportFormatFollowUp(it, info, slots)
 	rc.intent = it
 	info.Slots = slots
 	rc.setIntent(info)

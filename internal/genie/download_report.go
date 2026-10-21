@@ -8,6 +8,7 @@ import (
 
 	"asi-genie-poc/internal/cards"
 	"asi-genie-poc/internal/intents"
+	genillm "asi-genie-poc/llm"
 	"asi-genie-poc/toolregistry/generated"
 )
 
@@ -34,7 +35,25 @@ var (
 	structuredDownloadAs = regexp.MustCompile(`(?i)^download\s+(.+?)\s+as\s+(pdf|excel|xlsx|csv)\s+from\s+(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})\s*$`)
 	structuredDownload   = regexp.MustCompile(`(?i)^download\s+(.+?)\s+from\s+(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})\s*$`)
 	isoDate              = regexp.MustCompile(`\d{4}-\d{2}-\d{2}`)
+	// A format-only follow-up ("in pdf?") after a file was already offered. A full
+	// "download the arrivals report in pdf" does not match.
+	exportFormatFollowUpRe = regexp.MustCompile(`(?i)^\s*(?:(?:what|how)\s+about\s+|(?:please|can i|could i|can you|could you)(?:\s+(?:get|have|download|export))?\s+|(?:i want|i need|give me|get me|make it|send it)\s+)?(?:(?:it|this|that|the file|the export|the download)\s+)?(?:(?:in|as|to|into)\s+)?(?:an?\s+)?(pdf|excel|xlsx|csv)(?:\s+(?:please|instead|format|file|version))?\s*\??\s*$`)
+	offeredExportSentence  = regexp.MustCompile(`(?i)here's your (.+?) export for (\d{4}-\d{2}-\d{2})(?: to (\d{4}-\d{2}-\d{2}))?`)
 )
+
+// Reservations list export rejects PDF. Other exports keep pdf and xlsx.
+var limitedExportFormats = map[string][]string{
+	"reservations": {"csv", "xlsx"},
+}
+
+// The file already handed to the user. A later "in pdf?" must not retract it.
+type offeredExport struct {
+	Title string
+	Slug  string
+	Start string
+	End   string
+	Open  cards.Link
+}
 
 type downloadCommand struct {
 	name   string
@@ -80,6 +99,22 @@ func (e *Engine) applyDownloadIntent(it intents.Intent, info IntentInfo, slots S
 
 func hDownloadReport(rc *reqCtx, it intents.Intent, s Slots) error {
 	format, formatKnown := exportFormat(rc.req.Message)
+	// "in pdf?" / "in excel?" keeps the report already exported and switches the file format.
+	if followFormat, followUp := exportFormatFollowUp(rc.req.Message); followUp {
+		if prior, ok := rc.priorOfferedExport(); ok && prior.Slug != "" {
+			if s.StartDate == "" {
+				s.StartDate = prior.Start
+			}
+			if s.EndDate == "" {
+				s.EndDate = prior.End
+			}
+			title := prior.Title
+			if title == "" {
+				title = prior.Slug
+			}
+			return rc.offerExport(it, title, prior.Slug, followFormat, true, s, prior.Open)
+		}
+	}
 	phrase := strings.TrimSpace(s.Report)
 	if phrase == "" && rc.sess.LastEntity != nil && rc.sess.LastEntity.Kind == "report" {
 		phrase = rc.sess.LastEntity.Label
@@ -134,13 +169,18 @@ func (rc *reqCtx) offerExport(it intents.Intent, title, slug, format string, for
 		return nil
 	}
 	start, end, datesOK := exportWindow(s)
+	if formatKnown && !exportFormatAllowed(slug, format) {
+		// The earlier file is real. Say this format isn't offered and keep that file.
+		rc.replyExportFormatUnavailable(it, title, slug, format, s, open)
+		return nil
+	}
 	if !datesOK {
 		rc.askExportDuration(it, title, format)
 		return nil
 	}
 	formats := []string{format}
 	if !formatKnown {
-		formats = []string{"pdf", "xlsx"}
+		formats = defaultExportFormats(slug)
 	}
 	downloads := make([]cards.Download, 0, len(formats))
 	for _, f := range formats {
@@ -164,8 +204,201 @@ func (rc *reqCtx) offerExport(it intents.Intent, title, slug, format string, for
 		card.Link = &open
 	}
 	rc.add(card)
+	rc.rememberExport(offeredExport{Title: title, Slug: slug, Start: start, End: end, Open: open})
 	rc.text("Here's your " + title + " export for " + revenueDateLabel(start, end) + ".")
 	return nil
+}
+
+func (rc *reqCtx) applyExportFormatFollowUp(it intents.Intent, info IntentInfo, slots Slots) (intents.Intent, IntentInfo, Slots) {
+	if _, ok := exportFormatFollowUp(rc.req.Message); !ok {
+		return it, info, slots
+	}
+	if rc.sess != nil && rc.sess.LastIntent == "download_folio" {
+		next, ok := intents.Get("download_folio")
+		if !ok {
+			return it, info, slots
+		}
+		return next, downloadFollowUpInfo(next, slots), slots
+	}
+	prior, ok := rc.priorOfferedExport()
+	if !ok {
+		return it, info, slots
+	}
+	next, found := intents.Get("download_report")
+	if !found {
+		return it, info, slots
+	}
+	if strings.TrimSpace(prior.Title) != "" {
+		slots.Report = prior.Title
+	}
+	if prior.Start != "" {
+		slots.StartDate = prior.Start
+		if prior.End == "" {
+			prior.End = prior.Start
+		}
+		slots.EndDate = prior.End
+	}
+	return next, downloadFollowUpInfo(next, slots), slots
+}
+
+func downloadFollowUpInfo(it intents.Intent, slots Slots) IntentInfo {
+	return IntentInfo{
+		ID:           it.ID,
+		ScenarioID:   it.ScenarioID,
+		ResponseType: it.ResponseType,
+		Handler:      "dedicated",
+		Source:       "rule",
+		Confidence:   1,
+		Slots:        slots,
+	}
+}
+
+func (rc *reqCtx) replyExportFormatUnavailable(it intents.Intent, title, slug, format string, s Slots, open cards.Link) {
+	kept := preferredKeptFormat(slug)
+	start, end, datesOK := exportWindow(s)
+	_, followUp := exportFormatFollowUp(rc.req.Message)
+	msg := unavailableExportFormatText(title, format, kept, start, end, followUp)
+	cardMessage := "Here's your export."
+	if followUp {
+		cardMessage = formatWord(kept) + " file is still ready."
+	}
+	rc.text(msg)
+	if !datesOK {
+		return
+	}
+	tool, ok := findExportTool(slug)
+	if !ok {
+		return
+	}
+	download, ok := exportDownload(tool, title, kept, rc.pidStr(), start, end)
+	if !ok {
+		return
+	}
+	card := cards.Card{
+		Type:      cards.TypeData,
+		Intent:    it.ID,
+		Title:     title,
+		Subtitle:  exportSubtitle(start, end, []string{kept}),
+		Message:   cardMessage,
+		Downloads: []cards.Download{download},
+	}
+	if open.Route != "" {
+		open.Label = navigateActionOpenReport
+		card.Link = &open
+	}
+	rc.add(card)
+	rc.rememberExport(offeredExport{Title: title, Slug: slug, Start: start, End: end, Open: open})
+}
+
+func unavailableExportFormatText(title, asked, kept, start, end string, followUp bool) string {
+	window := ""
+	if start != "" && end != "" {
+		window = " for " + revenueDateLabel(start, end)
+	}
+	// A follow-up must keep the file already offered. A first ask gets that file instead.
+	if followUp {
+		if window == "" {
+			return fmt.Sprintf("%s isn't available for the %s export. The %s file above is still ready.", formatWord(asked), title, formatWord(kept))
+		}
+		return fmt.Sprintf("%s isn't available for the %s export. The %s file%s is still ready.", formatWord(asked), title, formatWord(kept), window)
+	}
+	if window == "" {
+		return fmt.Sprintf("%s isn't available for the %s export. I can download %s instead.", formatWord(asked), title, formatWord(kept))
+	}
+	return fmt.Sprintf("%s isn't available for the %s export. Here's the %s file%s.", formatWord(asked), title, formatWord(kept), window)
+}
+
+func (rc *reqCtx) rememberExport(exp offeredExport) {
+	if rc.e == nil || rc.sess == nil {
+		return
+	}
+	rc.e.mu.Lock()
+	rc.sess.LastExport = &exp
+	rc.e.mu.Unlock()
+}
+
+func (rc *reqCtx) hasPriorFileOffer() bool {
+	if rc.sess != nil && (rc.sess.LastExport != nil || rc.sess.LastIntent == "download_report" || rc.sess.LastIntent == "download_folio") {
+		return true
+	}
+	_, ok := offeredExportFromText(rc.recentTurns())
+	return ok
+}
+
+func (rc *reqCtx) priorOfferedExport() (offeredExport, bool) {
+	if rc.sess != nil && rc.e != nil {
+		rc.e.mu.Lock()
+		cached := rc.sess.LastExport
+		rc.e.mu.Unlock()
+		if cached != nil {
+			return *cached, true
+		}
+	} else if rc.sess != nil && rc.sess.LastExport != nil {
+		return *rc.sess.LastExport, true
+	}
+	return offeredExportFromText(rc.recentTurns())
+}
+
+func offeredExportFromText(messages []genillm.Message) (offeredExport, bool) {
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role != genillm.RoleAssistant {
+			continue
+		}
+		match := offeredExportSentence.FindStringSubmatch(messages[i].Content)
+		if match == nil {
+			continue
+		}
+		end := match[3]
+		if end == "" {
+			end = match[2]
+		}
+		title := strings.TrimSpace(match[1])
+		exp := offeredExport{Title: title, Start: match[2], End: end}
+		if list, ok := matchListExport(title); ok {
+			exp.Slug = list.slug
+			exp.Title = list.title
+		}
+		return exp, true
+	}
+	return offeredExport{}, false
+}
+
+func exportFormatFollowUp(message string) (string, bool) {
+	match := exportFormatFollowUpRe.FindStringSubmatch(strings.TrimSpace(message))
+	if match == nil {
+		return "", false
+	}
+	return exportFormat(match[1])
+}
+
+func exportFormatAllowed(slug, format string) bool {
+	allowed, limited := limitedExportFormats[slug]
+	if !limited {
+		return true
+	}
+	for _, candidate := range allowed {
+		if candidate == format {
+			return true
+		}
+	}
+	return false
+}
+
+func defaultExportFormats(slug string) []string {
+	if !exportFormatAllowed(slug, "pdf") {
+		return []string{"xlsx"}
+	}
+	return []string{"pdf", "xlsx"}
+}
+
+func preferredKeptFormat(slug string) string {
+	if exportFormatAllowed(slug, "xlsx") {
+		return "xlsx"
+	}
+	if allowed := limitedExportFormats[slug]; len(allowed) > 0 {
+		return allowed[0]
+	}
+	return "xlsx"
 }
 
 func (rc *reqCtx) askExportDuration(it intents.Intent, title, format string) {

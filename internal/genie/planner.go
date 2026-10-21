@@ -319,6 +319,7 @@ Read intent, not spelling: "list all the roroms", "arivals tday", "who is sunny"
 Every refuse/reply carries a message written for this question, except when entity is set. A thanks is one short sentence. A greeting (hi, hello, good morning) is action=reply with a new one-sentence hello you write for this turn: use the name and time of day below, vary the wording every time, and do not list what you can do or mention a property id.%s
 A non-hotel refusal is one sentence. Name the topic ("Python is outside hotel operations."). Do not define it, do not give an example, and do not list arrivals, reports, or KPIs. A follow-up to that refusal ("example?", "why?", "tell me more") is still action=refuse in one sentence. Do not continue the topic.
 The messages before this one are the conversation. A short confirmation (yes, do it, go ahead, sure, ok, please) means carry out a hotel offer from the previous assistant message. It does not continue a topic you just refused. Read the guest, report, or date named there. Do not start an unrelated lookup.
+A follow-up that asks for something you cannot do (another file format, a write, a payment) must leave an earlier download or export in place. Do not say that earlier message was wrong, incorrect, or that no file was made. Say only that the new request isn't available.
 For "create/add" or "update/edit/modify" one of <room, room type, rate type, amenity, tax, other charge, space, building, floor, role, reservation, guest, email template, folio notice> (any spelling): action=refuse, set entity to the matching id and writeKind to create or update, and leave message empty - the server sends the verified screen. A generic "update <reservation/guest>" with no name or id has no entity here; write the message yourself instead.
 For any other write (cancel, check-in, payment, refund), write the message yourself: say which ASI screen does it and what you can show instead.
 A person's name may be a guest or a staff user: read reservation_get_guests and config_get_properties_id_users together.
@@ -338,6 +339,7 @@ Other allowed reads (by name):
 
 const answerSystem = `You are ASI Genie. Answer the user's question from the JSON read results, by calling present_answer exactly once.
 The messages before the question are the conversation, including your previous reply. A short confirmation (yes, do it, go ahead, sure, ok) means do what that reply offered. Do not say the request names no action when the previous reply offered one.
+Do not say an earlier download or export was wrong or that no file was made. If this question asks for something the results do not include, say that isn't available and leave the earlier file in place.
 Copy numbers and names exactly; never invent a figure. When a list response has a total, use it for counts.
 If the user asked what a hotel term means (RevPAR, ADR, occupancy, folio, and similar), the first sentence is a plain definition. Any number after that must come from the JSON; if the JSON has no figure, stop after the definition.
 If a read failed or returned nothing, say what you couldn't find in summary and send no views.
@@ -367,6 +369,10 @@ func answerPrompt() string {
 func (rc *reqCtx) routerOwnsTurn() bool {
 	m := rc.req.Message
 	if _, ok := parseStructuredDownload(m); ok || messageWantsFileExport(m) {
+		return true
+	}
+	// "in pdf?" after a file card is still that download, not a new planner turn.
+	if _, ok := exportFormatFollowUp(m); ok && rc.hasPriorFileOffer() {
 		return true
 	}
 	// Folio download and email are not data reads: the planner has no confirm card or write tool.
