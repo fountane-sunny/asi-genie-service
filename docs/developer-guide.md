@@ -188,7 +188,7 @@ curl -s -X POST localhost:8090/chat \
 | Server | `PORT` (8090), `APP_ENV`, `GENIE_CORS_ORIGIN` |
 | Postgres (required) | `POSTGRES_HOST/PORT/USER/PASSWORD/DB/SSLMODE` or `DATABASE_URL`; `POSTGRES_HOST_PORT` for compose (5434) |
 | ASI (all required) | `ASI_CONFIG_BASE_URL`, `ASI_AUTH_BASE_URL`, `ASI_REPORTING_BASE_URL`, `ASI_RESERVATION_BASE_URL` |
-| LLM | `LLM_PROVIDER` (`none` · `openai` · `anthropic` · `gemini`), `LLM_MODEL`, `LLM_FALLBACK_MODEL`, `*_API_KEY`, `*_MODEL`, `LLM_TIMEOUT` (30s per chat), `LLM_ATTEMPT_TIMEOUT`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS` |
+| LLM | `LLM_PROVIDER` (`none` · `openai` · `anthropic` · `gemini`), `LLM_MODEL`, `LLM_FALLBACK_MODEL`, `*_API_KEY`, `*_MODEL`, `LLM_TIMEOUT` (30s per chat), `LLM_ATTEMPT_TIMEOUT`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS`, `GENIE_SUGGESTIONS` (`true` adds a follow-up model call and suggestion chips; default off) |
 | Logging | `LOG_LEVEL`, `LOG_BODIES`, `LOG_BODY_MAX`, `LOG_COLOR` |
 
 Startup fails if Postgres is unreachable, an ASI URL is missing, or a real LLM provider has no key. Default models: `gpt-4o`, `claude-sonnet-4-5`, `gemini-2.5-flash`. `none` = keyword routing only.

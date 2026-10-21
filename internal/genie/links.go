@@ -9,14 +9,11 @@ import (
 	"asi-genie-poc/internal/cards"
 )
 
-// Deep links mirror asi-frontend/apps/web/app/constants.ts ROUTES.
-// Routes marked "assumed" have no ROUTES constant yet.
-
 func p(pid int, suffix string) string { return fmt.Sprintf("/property/%d%s", pid, suffix) }
 
 type routeDef struct {
 	label   string
-	suffix  string // appended to /property/{id}
+	suffix  string
 	module  string
 	feature string
 	words   []string
@@ -44,7 +41,6 @@ var routeTable = []routeDef{
 	{"Open property", "", "Property Configuration", "Property Overview", []string{"property"}},
 }
 
-// findRoute maps a free-text destination to a route definition.
 func findRoute(dest string) (routeDef, bool) {
 	d := strings.ToLower(dest)
 	if d == "" {
@@ -64,7 +60,6 @@ func (r routeDef) link(pid int, params map[string]string) cards.Link {
 	return cards.Link{Label: r.label, Route: p(pid, r.suffix), Params: params}
 }
 
-// moduleLink is the default "take me there" for a catalogue module.
 func moduleLink(module string, pid int) cards.Link {
 	if pid == 0 {
 		return cards.Link{Label: "Open ASI", Route: "/"}
@@ -103,8 +98,7 @@ func slug(s string) string {
 	return strings.Trim(nonSlug.ReplaceAllString(strings.ToLower(s), "-"), "-")
 }
 
-// reservationCreatePrefillParams matches asi-frontend ReservationForm searchParams:
-// checkInDate, checkOutDate, roomTypeId, guestId.
+// Query keys must match asi-frontend ReservationForm searchParams.
 func reservationCreatePrefillParams(checkInDate, checkOutDate, roomTypeID, guestID string) map[string]string {
 	params := map[string]string{}
 	if checkInDate != "" {

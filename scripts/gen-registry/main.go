@@ -1,8 +1,3 @@
-// Command gen-registry generates typed HTTP tool functions for every
-// operation in the ASI service Swagger 2.0 specs.
-//
-//	go run ./scripts/gen-registry                 # reads sibling repos under -root (default "..")
-//	go run ./scripts/gen-registry -specs-dir specs # reads specs/<service>.swagger.json
 package main
 
 import (
@@ -21,10 +16,10 @@ import (
 )
 
 type service struct {
-	Name    string // config
-	Repo    string // asi-config-service
-	RelSpec string // src/docs/swagger.json
-	EnvVar  string // ASI_CONFIG_BASE_URL
+	Name    string
+	Repo    string
+	RelSpec string
+	EnvVar  string
 }
 
 var services = []service{
@@ -165,8 +160,6 @@ func generate(svc service, s *spec) ([]byte, int) {
 	return out.Bytes(), n
 }
 
-// queryMeta renders the ", Query: ..." ToolMeta field so callers (the planner)
-// know which query params a read takes; empty when it takes none.
 func queryMeta(params []param) string {
 	var parts []string
 	seen := map[string]bool{}
@@ -197,14 +190,7 @@ var (
 	enumIdentifierRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
 )
 
-// commaFilterValues extracts the full value set of a comma-separated filter
-// param from its swagger description, e.g. "Comma-separated payment methods
-// filter (creditCard, debitCard, cash, ...)" -> [creditCard debitCard cash ...].
-// Leaving such a param unset makes some reports return an empty result (it
-// means "match nothing") rather than "don't filter"; the planner uses this
-// list to default the param to every value instead, and only narrows it when
-// the user names specific ones. Returns nil for anything that isn't a clean,
-// exhaustive enum (free text, dates, "etc." placeholders).
+// An unset comma-separated filter makes some reports match nothing, so callers send every documented value. Nil unless the list is an exhaustive identifier enum.
 func commaFilterValues(desc string) []string {
 	lower := strings.ToLower(desc)
 	if !strings.Contains(lower, "comma-separated") && !strings.Contains(lower, "comma separated") {
@@ -220,7 +206,7 @@ func commaFilterValues(desc string) []string {
 	for _, v := range raw {
 		v = strings.TrimSpace(v)
 		if !enumIdentifierRe.MatchString(v) || strings.EqualFold(v, "etc") {
-			return nil // not a clean, exhaustive enum
+			return nil // not an exhaustive enum
 		}
 		vals = append(vals, v)
 	}
@@ -243,7 +229,7 @@ type field struct {
 }
 
 func (g *fileGen) operation(w *bytes.Buffer, fn, toolName, method, path string, op operation) {
-	// Colon-style path params (":id") that the spec may not declare.
+	// Specs sometimes use ":id" and omit the parameter declaration.
 	path = colonParam.ReplaceAllString(path, "{$1}")
 	used := map[string]bool{}
 	var fields []field
@@ -264,7 +250,7 @@ func (g *fileGen) operation(w *bytes.Buffer, fn, toolName, method, path string, 
 		f := field{JSON: pr.Name, In: pr.In, Required: pr.Required}
 		tag := pr.Name
 		if usedTags[tag] {
-			tag = pr.Name + "_" + pr.In // same name in path and query, etc.
+			tag = pr.Name + "_" + pr.In // path and query can share a name
 		}
 		usedTags[tag] = true
 		f.Tag = tag
@@ -332,7 +318,6 @@ func (g *fileGen) operation(w *bytes.Buffer, fn, toolName, method, path string, 
 	fmt.Fprintf(w, "resp, err := c.Do(ctx, %sService, %q, p, q, h, body)\nif err != nil {\nreturn nil, err\n}\nreturn toolregistry.MapToCard(tool, resp)\n}\n\n", exported(g.svc.Name), method)
 }
 
-// bodyType resolves a simple body schema into a named struct; otherwise map[string]any.
 func (g *fileGen) bodyType(fn string, s *schema) string {
 	if s == nil {
 		return "map[string]any"
@@ -408,8 +393,7 @@ func joinPath(base, p string) string {
 	return strings.TrimSuffix(base, "/") + p
 }
 
-// swaggerToolPath joins Swagger basePath with a path key without duplicating basePath
-// when the spec already embeds it (reservation service mixes "/api/v1/..." and "/reports/...").
+// Reservation specs mix paths that already include basePath with paths that do not.
 func swaggerToolPath(basePath, p string) string {
 	bp := strings.TrimSuffix(basePath, "/")
 	if bp == "" || bp == "/" {

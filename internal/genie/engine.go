@@ -1,7 +1,3 @@
-// Package genie is the Phase 1 (read-only, deterministic) Genie engine:
-// LLM intent classification + slot extraction → deterministic
-// handler (fixed GET reads with the user's token, server-side composition) →
-// typed cards. RBAC is enforced by the ASI APIs (401/403 → Denied card).
 package genie
 
 import (
@@ -35,42 +31,36 @@ const (
 	contextTurns = 6
 )
 
-// Request is the /chat request body.
 type Request struct {
-	SessionID    string            `json:"sessionId,omitempty"`
-	Message      string            `json:"message"`
-	GroupID      int               `json:"groupId,omitempty"`      // rejected: no group chat
-	PropertyID   int               `json:"propertyId,omitempty"`   // required: the property the user is on (body or X-Property-Id)
-	BusinessDate string            `json:"businessDate,omitempty"` // YYYY-MM-DD (optional; read from night-audit working date)
-	LocalHour    *int              `json:"localHour,omitempty"`    // 0-23 on the user's clock, for greetings
-	Screen       string            `json:"screen,omitempty"`       // current route (optional)
-	History      []genillm.Message `json:"history,omitempty"`
-	// ReplaceTurnID is the analytics id of the reply the user asked to retry.
-	// The new reply overwrites that turn instead of appending another copy.
-	ReplaceTurnID string `json:"replaceTurnId,omitempty"`
+	SessionID     string            `json:"sessionId,omitempty"`
+	Message       string            `json:"message"`
+	GroupID       int               `json:"groupId,omitempty"` // rejected: no group chat
+	PropertyID    int               `json:"propertyId,omitempty"`
+	BusinessDate  string            `json:"businessDate,omitempty"`
+	LocalHour     *int              `json:"localHour,omitempty"`
+	Screen        string            `json:"screen,omitempty"`
+	History       []genillm.Message `json:"history,omitempty"`
+	ReplaceTurnID string            `json:"replaceTurnId,omitempty"`
 }
 
-// IntentInfo reports how the message was understood.
 type IntentInfo struct {
 	ID           string  `json:"id"`
 	ScenarioID   string  `json:"scenarioId,omitempty"`
 	ResponseType string  `json:"responseType,omitempty"`
-	Handler      string  `json:"handler"` // dedicated | generic | navigate | guide | fallback
+	Handler      string  `json:"handler"`
 	Confidence   float64 `json:"confidence,omitempty"`
-	Source       string  `json:"source"` // llm | keyword | rule
+	Source       string  `json:"source"`
 	Slots        Slots   `json:"slots,omitempty"`
 }
 
-// ToolCallStatus reports a backend read made for this reply.
 type ToolCallStatus struct {
 	Name       string          `json:"name"`
 	Args       json.RawMessage `json:"args"`
-	Status     string          `json:"status"`          // executed | error | skipped
-	Error      string          `json:"error,omitempty"` // error code only (raw errors are logged, never returned)
+	Status     string          `json:"status"`
+	Error      string          `json:"error,omitempty"` // error code only; raw errors stay in the logs
 	DurationMs int64           `json:"durationMs"`
 }
 
-// Response is the /chat response body (see docs/response-contract.md).
 type Response struct {
 	SessionID    string           `json:"sessionId,omitempty"`
 	Text         string           `json:"text"`
@@ -81,15 +71,14 @@ type Response struct {
 	PropertyID   int              `json:"propertyId,omitempty"`
 	BusinessDate string           `json:"businessDate,omitempty"`
 	ToolCalls    []ToolCallStatus `json:"toolCalls,omitempty"`
-	Notice       string           `json:"notice,omitempty"` // e.g. "The AI is busy, I used quick matching"
-	CreatedAt    time.Time        `json:"createdAt"`        // when the reply was produced (UTC, ISO 8601)
-	DurationMs   int64            `json:"durationMs"`       // server time to answer
-	TurnID       string           `json:"turnId,omitempty"` // analytics row for feedback
+	Notice       string           `json:"notice,omitempty"`
+	CreatedAt    time.Time        `json:"createdAt"`
+	DurationMs   int64            `json:"durationMs"`
+	TurnID       string           `json:"turnId,omitempty"`
 }
 
-// Entity is the last thing the conversation referred to (context carry, G-097).
 type Entity struct {
-	Kind  string `json:"kind"` // reservation | guest | room
+	Kind  string `json:"kind"`
 	ID    string `json:"id"`
 	Label string `json:"label"`
 }
@@ -103,18 +92,17 @@ type session struct {
 	PrevSeen     time.Time
 }
 
-// Engine wires everything together. Create with New.
 type Engine struct {
 	LLM      genillm.LLMClient
 	HTTP     *generated.Client
-	Tools    map[string]generated.ToolMeta // GET read-only tools only
+	Tools    map[string]generated.ToolMeta // GET reads only; writes are not visible to the model
 	Selector *ToolSelector
 	Store    store.Store
 
 	mu       sync.Mutex
 	sessions map[string]*session
 	users    map[string]userInfo
-	Model    string // LLM model name, recorded per turn
+	Model    string
 	bizDates map[int]dateEntry
 	handlers map[string]handlerFunc
 }
@@ -124,8 +112,6 @@ type dateEntry struct {
 	at   time.Time
 }
 
-// New builds an engine. Writes and sensitive GETs (admin, impersonation,
-// invite, internal, audit-log, export) are dropped and can never be called.
 func New(client genillm.LLMClient, st store.Store) *Engine {
 	read := []generated.ToolMeta{}
 	by := map[string]generated.ToolMeta{}
@@ -143,13 +129,12 @@ func New(client genillm.LLMClient, st store.Store) *Engine {
 	return e
 }
 
-// reqCtx carries per-request state.
 type reqCtx struct {
 	mu             sync.Mutex
-	llmDeadline    time.Time // shared LLM budget for this request
-	llmFailed      bool      // classifier LLM failed: don't call the LLM again this request
+	llmDeadline    time.Time
+	llmFailed      bool // don't call the LLM again after it failed this request
 	start          time.Time
-	lastErrService string // service of the last failed ASI call (for error wording)
+	lastErrService string
 	errCode        string
 	errMsg         string
 	e              *Engine
@@ -163,8 +148,7 @@ type reqCtx struct {
 	intent         intents.Intent
 }
 
-// session returns the in-memory context for id. A session is bound to one
-// property: if the property changes, its context starts fresh.
+// A session is bound to one property; a property change starts fresh.
 func (e *Engine) session(id string, pid int) *session {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -178,10 +162,6 @@ func (e *Engine) session(id string, pid int) *session {
 	}
 	return s
 }
-
-// ---- PCI (G-095) ----
-
-// ---- analytics turn ----
 
 type userInfo struct {
 	id, name, email, role string
@@ -198,15 +178,11 @@ func (u userInfo) allows(propertyID int) bool {
 	return false
 }
 
-// currentUser returns the caller, cached 10 min per token. Errors are ignored;
-// Authorize uses loadCaller when a failure must be returned to the client.
 func (rc *reqCtx) currentUser() userInfo {
 	u, _ := rc.loadCaller()
 	return u
 }
 
-// loadCaller reads auth current-user and the property ids on GET /permissions.
-// A successful result is cached for 10 minutes. Failures are not cached.
 func (rc *reqCtx) loadCaller() (userInfo, error) {
 	if strings.TrimSpace(rc.token) == "" {
 		return userInfo{}, ErrUnauthenticated
@@ -300,13 +276,10 @@ func (e *Engine) logTurn(rc *reqCtx) string {
 	return id
 }
 
-// maskPAN replaces card-number-like sequences; reports whether any were found.
 func maskPAN(s string) (string, bool) { return logx.MaskPAN(s) }
 
-// ErrPropertyRequired: /chat needs the property the user is on (no group chat).
 var ErrPropertyRequired = errors.New("propertyId is required: Genie is property-specific (group chat isn't supported)")
 
-// Handle answers one chat turn.
 func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Response, error) {
 	req.Message = strings.TrimSpace(req.Message)
 	if req.PropertyID > 0 && req.SessionID == "" {
@@ -318,7 +291,7 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 	sess.PrevSeen, sess.LastSeen = sess.LastSeen, time.Now()
 	e.mu.Unlock()
 
-	// 1) PCI: never send card numbers to the model or the store.
+	// Never send card numbers to the model or the store.
 	masked, hasPAN := maskPAN(req.Message)
 	if hasPAN {
 		rc.req.Message = masked
@@ -332,14 +305,12 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 		return rc.resp, nil
 	}
 
-	// 2) Active property: required (Genie is property-specific; no group chat).
 	if req.PropertyID <= 0 {
 		return nil, ErrPropertyRequired
 	}
 	rc.pid = req.PropertyID
 	rc.resp.PropertyID = rc.pid
-	// Keyword refusals only when no model is configured; otherwise the planner
-	// reads the question and writes a reply that fits it.
+	// Keyword refusals only when no model is configured; otherwise the planner writes the reply.
 	if e.LLM == nil && isReadOnlyRefusal(rc.req.Message) {
 		rc.setIntent(IntentInfo{ID: intents.UnsupportedID, Handler: "fallback", Source: "rule"})
 		rc.add(cards.NotSupported(intents.UnsupportedID, "", nil))
@@ -347,13 +318,12 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 		e.persist(rc)
 		return rc.resp, nil
 	}
-	// Working date before routing so "today" is the night-audit date, not the server clock.
+	// "today" is the night-audit working date, not the server clock.
 	rc.bizDate = e.businessDate(rc)
 	rc.resp.BusinessDate = rc.bizDate
 
-	// 3) Model-first: the LLM plans the reads and writes the answer. The intent
-	// router below only runs when the planner can't (LLM error, exports, clarify replies).
 	if e.LLM != nil && !rc.routerOwnsTurn() && e.planAndAnswer(rc) {
+		rc.attachSuggestions()
 		e.mu.Lock()
 		sess.LastIntent = rc.resp.Intent.ID
 		e.mu.Unlock()
@@ -362,7 +332,6 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 		return rc.resp, nil
 	}
 
-	// 4) Understand: intent + slots.
 	it, info, slots := e.classify(rc)
 	if gid := parseGuestIDFromLookupMessage(rc.req.Message); gid != "" {
 		if it2, ok := intents.Get("lookup_guest"); ok {
@@ -373,18 +342,15 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 	rc.applyContext(&slots)
 	it, info, slots = e.resolveFollowUpIntent(rc, it, info, slots)
 	it, info, slots = e.applyDownloadIntent(it, info, slots, rc.req.Message)
-	// After classify: "print/download/email folio" must not stay on the
-	// legacy folio_document navigate guide (G-029).
+	// print/download/email folio must not stay on the folio_document navigate guide.
 	it, info, slots = e.applyFolioIntent(it, info, slots, rc.req.Message)
 	rc.intent = it
 	info.Slots = slots
 	rc.setIntent(info)
 	rc.resp.Intent.Slots = slots
 
-	// 7) Dispatch.
 	if err := e.dispatch(rc, it, slots, info); err != nil {
-		// Never a raw error: a readable error card (401 → session expired,
-		// 403 → no access, timeouts → service didn't respond), raw text to the logs.
+		// Raw errors stay in the logs; the client gets an error card.
 		log.Printf("genie: handler %s: %v", it.ID, err)
 		rc.resp.Cards = nil
 		link := moduleLink(it.Module, rc.pid)
@@ -397,6 +363,7 @@ func (e *Engine) Handle(ctx context.Context, token string, req Request) (*Respon
 		}
 	}
 	rc.phraseResponse()
+	rc.attachSuggestions()
 	if rc.llmFailed {
 		rc.resp.Notice = llmBusyNote
 	}
@@ -448,7 +415,6 @@ func (rc *reqCtx) remember(ent Entity) {
 	rc.e.mu.Unlock()
 }
 
-// businessDate returns the property's working (business) date, cached 10 min.
 func (e *Engine) businessDate(rc *reqCtx) string {
 	if d := rc.req.BusinessDate; len(d) == 10 {
 		return d
@@ -492,10 +458,6 @@ func firstDate(v any) string {
 
 func (rc *reqCtx) pidStr() string { return strconv.Itoa(rc.pid) }
 
-// ---- backend reads ----
-
-// LLMTimeout is the total LLM budget per /chat request (LLM_TIMEOUT, default
-// 30s), shared by the classifier and the generic handler.
 var LLMTimeout = envDuration("LLM_TIMEOUT", 30*time.Second)
 
 func envDuration(k string, def time.Duration) time.Duration {
@@ -505,7 +467,6 @@ func envDuration(k string, def time.Duration) time.Duration {
 	return def
 }
 
-// llmCtx returns a context bounded by this request's shared LLM budget.
 func (rc *reqCtx) llmCtx() (context.Context, context.CancelFunc) {
 	if rc.llmDeadline.IsZero() {
 		rc.llmDeadline = time.Now().Add(LLMTimeout)
@@ -515,7 +476,6 @@ func (rc *reqCtx) llmCtx() (context.Context, context.CancelFunc) {
 
 var errNoTool = errors.New("no read endpoint available")
 
-// isAuthErr reports whether an ASI call failed with 401/403 (generated client error text).
 func isAuthErr(err error) bool {
 	if err == nil {
 		return false
@@ -524,7 +484,6 @@ func isAuthErr(err error) bool {
 	return strings.Contains(m, "HTTP 401") || strings.Contains(m, "HTTP 403")
 }
 
-// get calls a generated GET tool by name with the caller's token.
 func (rc *reqCtx) get(toolName string, pathParams map[string]string, q url.Values) (any, error) {
 	b, err := rc.getRaw(toolName, pathParams, q)
 	if err != nil {
@@ -572,11 +531,8 @@ func (rc *reqCtx) getRaw(toolName string, pathParams map[string]string, q url.Va
 	return b, err
 }
 
-// phraseResponse turns deterministic card JSON into a concise lead-in without
-// exposing endpoint schemas or giving the model any tools to call.
 func (rc *reqCtx) phraseResponse() {
-	// A handler that already wrote the sentence keeps it. Replacing it repeats
-	// the card text in the chat bubble.
+	// Keep a sentence the handler already wrote so the card text is not repeated.
 	if strings.TrimSpace(rc.resp.Text) != "" {
 		return
 	}
@@ -604,7 +560,6 @@ func (rc *reqCtx) phraseResponse() {
 	}
 }
 
-// execTool performs one GET with timeout + token passthrough and logs it.
 func (e *Engine) execTool(ctx context.Context, sessionID, token string, t generated.ToolMeta, p string, q url.Values, args json.RawMessage) ([]byte, error) {
 	if !IsReadTool(t) {
 		return nil, fmt.Errorf("%s is not a read-only tool", t.Name)
@@ -619,7 +574,7 @@ func (e *Engine) execTool(ctx context.Context, sessionID, token string, t genera
 	}
 	tctx, cancel := context.WithTimeout(logx.WithTool(ctx, t.Name), ToolTimeout)
 	defer cancel()
-	body, err := e.HTTP.Do(tctx, svc, t.Method, p, q, headers, nil) // logged by the client (logx)
+	body, err := e.HTTP.Do(tctx, svc, t.Method, p, q, headers, nil)
 	ex := store.ToolExecution{SessionID: sessionID, ToolName: t.Name, Method: t.Method, Path: p, Args: args, Status: "executed"}
 	if err != nil {
 		ex.Status = "error"
@@ -633,9 +588,6 @@ func (e *Engine) execTool(ctx context.Context, sessionID, token string, t genera
 	return body, err
 }
 
-// findTool returns any generated tool by name, read-only or not. Unlike
-// e.Tools (GET read-only tools only — what the LLM planner and ToolSelector
-// see), this also finds the single write tool IsAllowedWriteTool permits.
 func findTool(name string) (generated.ToolMeta, bool) {
 	for _, t := range generated.AllTools() {
 		if t.Name == name {
@@ -645,13 +597,6 @@ func findTool(name string) (generated.ToolMeta, bool) {
 	return generated.ToolMeta{}, false
 }
 
-// execWriteTool runs one of the small, explicitly allowlisted write tools
-// (IsAllowedWriteTool) with the caller's token. It is only ever reached from a
-// dedicated handler after the user has explicitly confirmed the action in
-// this chat turn (e.g. hEmailFolio) — never from the generic planner or the
-// tool selector, which only ever see e.Tools (GET, read-only). Logged via
-// store.LogToolExecution exactly like a read, so it shows in the turn's tool
-// history and audit trail.
 func (e *Engine) execWriteTool(ctx context.Context, sessionID, token string, t generated.ToolMeta, p string, body any, args json.RawMessage) ([]byte, error) {
 	if !IsAllowedWriteTool(t) {
 		return nil, fmt.Errorf("%s is not an allowed write tool", t.Name)
@@ -666,7 +611,7 @@ func (e *Engine) execWriteTool(ctx context.Context, sessionID, token string, t g
 	}
 	tctx, cancel := context.WithTimeout(logx.WithTool(ctx, t.Name), ToolTimeout)
 	defer cancel()
-	respBody, err := e.HTTP.Do(tctx, svc, t.Method, p, nil, headers, body) // logged by the client (logx)
+	respBody, err := e.HTTP.Do(tctx, svc, t.Method, p, nil, headers, body)
 	ex := store.ToolExecution{SessionID: sessionID, ToolName: t.Name, Method: t.Method, Path: p, Args: args, Status: "executed"}
 	if err != nil {
 		ex.Status = "error"
@@ -680,9 +625,6 @@ func (e *Engine) execWriteTool(ctx context.Context, sessionID, token string, t g
 	return respBody, err
 }
 
-// post calls an explicitly allowlisted write tool (IsAllowedWriteTool) with
-// the caller's token. Callers must have already gotten the user's explicit
-// confirmation earlier in this same chat turn flow.
 func (rc *reqCtx) post(toolName string, pathParams map[string]string, body any) (any, error) {
 	t, ok := findTool(toolName)
 	if !ok || !IsAllowedWriteTool(t) {
@@ -717,8 +659,6 @@ func (rc *reqCtx) post(toolName string, pathParams map[string]string, body any) 
 	return decode(b), nil
 }
 
-// ---- persistence & analytics ----
-
 func (e *Engine) persist(rc *reqCtx) {
 	rc.resp.CreatedAt = time.Now().UTC()
 	rc.resp.DurationMs = time.Since(rc.start).Milliseconds()
@@ -728,7 +668,7 @@ func (e *Engine) persist(rc *reqCtx) {
 	}
 	var meta json.RawMessage
 	if turnID != "" || rc.resp.Intent != nil || len(rc.resp.Cards) > 0 || rc.resp.Notice != "" || len(rc.resp.Citations) > 0 || len(rc.resp.Chips) > 0 {
-		meta, _ = json.Marshal(map[string]any{
+		saved := map[string]any{
 			"turnId":    turnID,
 			"intent":    rc.resp.Intent,
 			"cards":     rc.resp.Cards,
@@ -736,7 +676,12 @@ func (e *Engine) persist(rc *reqCtx) {
 			"notice":    rc.resp.Notice,
 			"citations": rc.resp.Citations,
 			"chips":     rc.resp.Chips,
-		})
+		}
+		// The confirm payload has to survive a new server process.
+		if ent := rc.sess.LastEntity; ent != nil && (ent.Kind == emailFolioPendingKind || ent.Kind == emailFolioSentKind) {
+			saved["pendingEmail"] = ent
+		}
+		meta, _ = json.Marshal(saved)
 	}
 	userMsg := store.Message{Role: genillm.RoleUser, Content: rc.req.Message, CreatedAt: rc.start.UTC()}
 	assistantMsg := store.Message{Role: genillm.RoleAssistant, Content: rc.resp.Text, ToolCalls: meta, CreatedAt: rc.resp.CreatedAt, DurationMs: rc.resp.DurationMs}

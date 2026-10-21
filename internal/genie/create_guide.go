@@ -6,51 +6,26 @@ import (
 	"asi-genie-poc/internal/cards"
 )
 
-// Write kinds the create/update guide tells apart. Both land a user on a real
-// ASI screen instead of a path the model guesses.
 const (
 	writeKindCreate = "create"
 	writeKindUpdate = "update"
 )
 
-// createGuide names one create/update write Genie can't perform, and the real
-// ASI screen that does it. The model names the entity (by id, in plan_reads)
-// and the write kind from the user's question - the same NLU that already
-// reads intent through typos elsewhere in the planner - and this table only
-// supplies the verified route and copy. Every path takes the propertyId.
-//
-// Most entities edit in place on the same screen they're added from
-// (addPath/addLabel cover both). A few (email templates, folio notices,
-// roles) open a numbered record to edit, which Genie has no id for from a
-// generic "update X" question, so editPath/editLabel point at the list
-// screen instead; set only when it differs from the add screen.
 type createGuide struct {
-	id        string // plan_reads "entity" enum value
-	entity    string // used in the message, e.g. "a room type"
-	addTitle  string // navigate card title for create, e.g. "Add a room type"
-	addLabel  string // link button text for create, e.g. "Open room types"
+	id        string
+	entity    string
+	addTitle  string
+	addLabel  string
 	addPath   string
-	editTitle string // navigate card title for update; defaults to addTitle
-	editLabel string // link button text for update; defaults to addLabel
-	editPath  string // defaults to addPath (same screen edits in place)
-	canUpdate bool   // false when "update" has no generic (id-less) answer here
-	readTool  string // planner-index read the refusal can offer instead
-	what      string // what readTool shows, e.g. "the current room types"
+	editTitle string
+	editLabel string
+	editPath  string
+	canUpdate bool
+	readTool  string
+	what      string
 }
 
-// createGuideTable mirrors the tabs on the property details screen
-// (asi-frontend PropertyTabs.tsx), the email template and folio notice list
-// screens, and the dedicated create screens for reservations, guests and
-// roles (asi-frontend constants.ts ROUTES).
-//
-// Reservations and guests are create-only here: updating a specific one
-// needs its id, which the existing guest/reservation lookup handlers already
-// resolve and link to - a generic "update a reservation" question falls back
-// to the model's own message rather than guessing which one.
-//
-// Users and group reservations are left out entirely: neither has a verified
-// stand-alone create screen in asi-frontend, so a guessed link would repeat
-// the bug this table fixes.
+// Users and group reservations are omitted: asi-frontend has no verified stand-alone create screen for them. editPath is set only when update opens a different screen.
 var createGuideTable = []createGuide{
 	{id: "reservation", entity: "a reservation", addTitle: "New reservation", addLabel: "Open new reservation",
 		addPath: "/property/%d/reservation/create", canUpdate: false,
@@ -100,8 +75,6 @@ var createGuideByID = func() map[string]createGuide {
 	return m
 }()
 
-// createGuideEntityEnum is the plan_reads "entity" enum: the ids the model
-// may pick when action=refuse is a create/update for one of these screens.
 func createGuideEntityEnum() []any {
 	out := make([]any, 0, len(createGuideTable))
 	for _, g := range createGuideTable {
@@ -110,9 +83,6 @@ func createGuideEntityEnum() []any {
 	return out
 }
 
-// matches reports whether this guide has a generic (id-less) answer for the
-// requested write kind - true for every create, and for update only where
-// editing happens without first looking up a specific record.
 func (g createGuide) matches(writeKind string) bool {
 	return writeKind != writeKindUpdate || g.canUpdate
 }
@@ -132,8 +102,6 @@ func (g createGuide) title(writeKind string) string {
 	return g.addTitle
 }
 
-// message is the refusal sentence: what Genie can't do, where it's really
-// done, and the read it can offer instead, when one exists.
 func (g createGuide) message(writeKind string) string {
 	verb, screen := "create", g.addLabel
 	action := "add one"

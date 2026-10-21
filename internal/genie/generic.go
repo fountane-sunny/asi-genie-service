@@ -10,7 +10,6 @@ import (
 	"asi-genie-poc/toolregistry/generated"
 )
 
-// generic handles P1/P2 capabilities by catalogue response type.
 func (e *Engine) generic(rc *reqCtx, it intents.Intent, s Slots) error {
 	switch it.ResponseType {
 	case intents.RTNavigate:
@@ -50,8 +49,6 @@ func (e *Engine) generic(rc *reqCtx, it intents.Intent, s Slots) error {
 	return e.genericRead(rc, it, s)
 }
 
-// genericRead only executes an audited intent binding. Unmapped catalogue
-// entries navigate instead of guessing an endpoint from catalogue prose.
 func (e *Engine) genericRead(rc *reqCtx, it intents.Intent, s Slots) error {
 	link := moduleLink(it.Module, rc.pid)
 	bound := toolsForIntent(it.ID, s)
@@ -75,7 +72,6 @@ func (e *Engine) genericRead(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
-// genericReadFromTool executes one read tool and renders a list/data card for the intent.
 func (e *Engine) genericReadFromTool(rc *reqCtx, it intents.Intent, slots Slots, link cards.Link, t generated.ToolMeta, argsJSON json.RawMessage) error {
 	argsJSON = forceProperty(t.Path, argsJSON, rc.pidStr())
 	args, perr := parseArgs(t, argsJSON)
@@ -148,8 +144,6 @@ func (e *Engine) genericReadFromTool(rc *reqCtx, it intents.Intent, slots Slots,
 	return nil
 }
 
-// guideFallback: Phase 1 has no help-doc corpus, so how-to questions get an
-// honest "not supported yet" plus the screen where the task is done.
 func (e *Engine) guideFallback(rc *reqCtx, it intents.Intent) error {
 	link := navigateLinkAction(moduleLink(it.Module, rc.pid))
 	if r, ok := findRoute(rc.req.Message); ok && rc.pid > 0 {
@@ -203,7 +197,6 @@ func applySessionNames(rows []map[string]any, callerID, callerName string, looku
 	}
 }
 
-// clarifyReportDates asks for a range instead of letting a report API default one.
 func (rc *reqCtx) clarifyReportDates(it intents.Intent) {
 	biz := rc.bizDate
 	if len(biz) != 10 {
@@ -216,9 +209,7 @@ func (rc *reqCtx) clarifyReportDates(it intents.Intent) {
 	))
 }
 
-// forceProperty pins property path and query params to the property the user
-// is on. {id} is the property only on /properties/{id}/...; a reservation or
-// guest {id} is left as the model sent it.
+// {id} is the property only on /properties/{id}; other ids stay as the model sent them.
 func forceProperty(path string, raw json.RawMessage, pid string) json.RawMessage {
 	m := map[string]any{}
 	_ = json.Unmarshal(raw, &m)

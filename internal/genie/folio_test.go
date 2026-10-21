@@ -9,9 +9,11 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"asi-genie-poc/internal/cards"
 	"asi-genie-poc/internal/intents"
+	genillm "asi-genie-poc/llm"
 	"asi-genie-poc/toolregistry/generated"
 )
 
@@ -20,10 +22,6 @@ const (
 	testReservationNoPOCJSON = `{"id":"res-1","reservationNumber":"4471","guestName":"John Smith","type":"INDIVIDUAL"}`
 )
 
-// folioFixture serves fake reservation-service reads (search + by id) and
-// records any POST /folio/{id}/email body, for download_folio / email_folio
-// handler tests. reservationJSON backs both the search result and the detail
-// lookup resolveReservation makes once it finds exactly one match.
 func folioFixture(t *testing.T, reservationJSON string, posted *[]map[string]any) *reqCtx {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -75,9 +73,6 @@ func TestMessageWantsFolioAction(t *testing.T) {
 	}
 }
 
-// The classifier still knows G-029 folio_document ("Print the folio…"), which
-// is only a navigate guide. Print/download/email must land on the dedicated
-// handlers that return a real download or confirm card.
 func TestApplyFolioIntentOverridesLegacyGuide(t *testing.T) {
 	t.Parallel()
 	legacy, ok := intents.Get("folio_document")
@@ -137,9 +132,6 @@ func TestFolioReservationType(t *testing.T) {
 	}
 }
 
-// Folio actions must never be hijacked into download_report (which only
-// knows the Reports catalogue) or sent to the generic read-only planner
-// (which has no download/confirm card and no write tool).
 func TestApplyDownloadIntentSkipsFolioMessages(t *testing.T) {
 	t.Parallel()
 	it, info, slots := (&Engine{}).applyDownloadIntent(
@@ -158,6 +150,33 @@ func TestRouterOwnsTurnForFolioActions(t *testing.T) {
 	rc := &reqCtx{req: Request{Message: "email the folio for Smith"}}
 	if !rc.routerOwnsTurn() {
 		t.Fatal("folio action messages must stay on the dedicated router, not the generic planner")
+	}
+}
+
+func TestYesSendThemUsesConfirmInHistory(t *testing.T) {
+	t.Parallel()
+	var posted []map[string]any
+	rc := folioFixture(t, testReservationJSON, &posted)
+	rc.req.Message = "yes, send them"
+	rc.req.History = []genillm.Message{{
+		Role:    "assistant",
+		Content: "Shown: Email the registration form, folio, detailed folio, and other charges folio for John Smith to poc@example.com — send them?",
+	}}
+	it, _ := intents.Get("email_folio")
+
+	if !rc.routerOwnsTurn() {
+		t.Fatal("a folio email confirmation in history must stay off the planner")
+	}
+	if err := hEmailFolio(rc, it, Slots{}); err != nil {
+		t.Fatalf("hEmailFolio: %v", err)
+	}
+	got := make([]string, 0, len(posted))
+	for _, body := range posted {
+		got = append(got, fmt.Sprint(body["docType"]))
+	}
+	want := []string{"registration", "folio", "detailed", "other-charges"}
+	if strings.Join(got, ",") != strings.Join(want, ",") || posted[0]["email"] != "poc@example.com" {
+		t.Fatalf("posted = %+v", posted)
 	}
 }
 
@@ -265,8 +284,6 @@ func TestHDownloadFolioDocTypeFromMessage(t *testing.T) {
 	}
 }
 
-// First turn resolves the reservation and asks for confirmation without
-// sending anything; the second turn only sends on an explicit "yes".
 func TestHEmailFolioConfirmThenSend(t *testing.T) {
 	t.Parallel()
 	var posted []map[string]any
@@ -350,6 +367,9 @@ func TestHEmailFolioAllDocuments(t *testing.T) {
 	if !strings.HasPrefix(rc.resp.Text, "Yes.") {
 		t.Fatalf("status text = %q", rc.resp.Text)
 	}
+	if !strings.Contains(rc.resp.Text, "reservation 4471") || !strings.Contains(rc.resp.Text, "sent at") {
+		t.Fatalf("status text = %q, want reservation number and send time", rc.resp.Text)
+	}
 }
 
 func TestHEmailFolioSentStatusAnswersForSelectedDocument(t *testing.T) {
@@ -373,6 +393,105 @@ func TestHEmailFolioSentStatusAnswersForSelectedDocument(t *testing.T) {
 	}
 	if !strings.Contains(rc.resp.Text, "only the folio") || !strings.Contains(rc.resp.Text, "were not sent") {
 		t.Fatalf("status text = %q", rc.resp.Text)
+	}
+}
+
+func TestHEmailFolioAlreadySentSkipsAnotherSend(t *testing.T) {
+	t.Parallel()
+	var posted []map[string]any
+	rc := folioFixture(t, testReservationJSON, &posted)
+	it, _ := intents.Get("email_folio")
+
+	rc.req.Message = "email the folio for Smith"
+	if err := hEmailFolio(rc, it, Slots{GuestName: "Smith"}); err != nil {
+		t.Fatalf("confirm: %v", err)
+	}
+	rc.resp = &Response{}
+	rc.req.Message = "yes, send it"
+	if err := hEmailFolio(rc, it, Slots{}); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if len(posted) != 1 {
+		t.Fatalf("POST calls = %d, want 1", len(posted))
+	}
+
+	rc.resp = &Response{}
+	rc.req.Message = "email the folio for Smith"
+	if err := hEmailFolio(rc, it, Slots{GuestName: "Smith"}); err != nil {
+		t.Fatalf("repeat: %v", err)
+	}
+	if len(posted) != 1 {
+		t.Fatalf("repeat must not email again, POST calls = %d", len(posted))
+	}
+	if len(rc.resp.Cards) != 1 || rc.resp.Cards[0].Title != "Folio already sent" {
+		t.Fatalf("cards = %+v", rc.resp.Cards)
+	}
+	if !strings.Contains(rc.resp.Text, "already sent") || !strings.Contains(rc.resp.Text, "reservation 4471") || !strings.Contains(rc.resp.Text, "sent at") {
+		t.Fatalf("text = %q", rc.resp.Text)
+	}
+
+	rc.resp = &Response{}
+	rc.req.Message = "yes, send it"
+	if err := hEmailFolio(rc, it, Slots{}); err != nil {
+		t.Fatalf("second yes: %v", err)
+	}
+	if len(posted) != 1 {
+		t.Fatalf("second yes must not email again, POST calls = %d", len(posted))
+	}
+	if !strings.Contains(rc.resp.Text, "already sent") {
+		t.Fatalf("text = %q", rc.resp.Text)
+	}
+}
+
+func TestHEmailFolioAlreadySentIncludesSender(t *testing.T) {
+	t.Parallel()
+	var posted []map[string]any
+	rc := folioFixture(t, testReservationJSON, &posted)
+	sentAt := time.Date(2026, 10, 21, 8, 56, 0, 0, time.UTC)
+	sent := encodeEmailFolioPending(pendingEmailFolio{
+		reservationID: "res-1", docType: "folio", reservationType: "individual",
+		recipient: "poc@example.com", guestName: "John Smith",
+		reservationNumber: "4471", sentAt: sentAt, sentBy: "Sunny Sahsi",
+	})
+	sent.Kind = emailFolioSentKind
+	rc.sess.LastEntity = &sent
+	rc.req.Message = "send the folio for Smith"
+	it, _ := intents.Get("email_folio")
+
+	if err := hEmailFolio(rc, it, Slots{GuestName: "Smith"}); err != nil {
+		t.Fatalf("hEmailFolio: %v", err)
+	}
+	if len(posted) != 0 {
+		t.Fatal("an already-sent folio must not be emailed again")
+	}
+	for _, want := range []string{"already sent", "reservation 4471", "Oct 21, 2026 8:56 AM UTC", "Sunny Sahsi"} {
+		if !strings.Contains(rc.resp.Text, want) {
+			t.Fatalf("text = %q, missing %q", rc.resp.Text, want)
+		}
+	}
+}
+
+func TestHEmailFolioSendAgainStillConfirms(t *testing.T) {
+	t.Parallel()
+	var posted []map[string]any
+	rc := folioFixture(t, testReservationJSON, &posted)
+	sent := encodeEmailFolioPending(pendingEmailFolio{
+		reservationID: "res-1", docType: "folio", reservationType: "individual",
+		recipient: "poc@example.com", guestName: "John Smith", reservationNumber: "4471",
+	})
+	sent.Kind = emailFolioSentKind
+	rc.sess.LastEntity = &sent
+	rc.req.Message = "email the folio again"
+	it, _ := intents.Get("email_folio")
+
+	if err := hEmailFolio(rc, it, Slots{GuestName: "Smith"}); err != nil {
+		t.Fatalf("hEmailFolio: %v", err)
+	}
+	if len(posted) != 0 {
+		t.Fatal("send again must wait for confirmation")
+	}
+	if len(rc.resp.Cards) != 1 || rc.resp.Cards[0].Type != cards.TypeClarify {
+		t.Fatalf("cards = %+v", rc.resp.Cards)
 	}
 }
 
@@ -403,7 +522,6 @@ func TestHEmailFolioCancelDoesNotSend(t *testing.T) {
 	}
 }
 
-// An unrelated reply after the confirm card must also cancel, never send.
 func TestHEmailFolioUnclearReplyDoesNotSend(t *testing.T) {
 	t.Parallel()
 	var posted []map[string]any
@@ -445,9 +563,7 @@ func TestHEmailFolioMissingPOCEmail(t *testing.T) {
 	}
 }
 
-// A confirmation search must hit searchKey. The service ignores the swagger
-// name "key", and an empty searchKey returns a page of current stays — which
-// is why every folio number looked like several reservations.
+// A confirmation search must use searchKey. The service ignores swagger's "key", and an empty searchKey browses current stays.
 func TestResolveReservationUsesSearchKeyAndExactNumber(t *testing.T) {
 	t.Parallel()
 	const confirmation = "F20261015075416"

@@ -13,7 +13,6 @@ import (
 
 const presentTool = "present_answer"
 
-// Card intents for planner answers; the panel picks a layout per intent.
 const (
 	agentStatsIntent  = "agent_stats"
 	agentDetailIntent = "agent_detail"
@@ -22,7 +21,6 @@ const (
 	agentChartIntent  = "agent_chart"
 )
 
-// Caps keep a model-shaped card readable in the chat panel.
 const (
 	maxPresentColumns = 8
 	maxPresentRows    = 50
@@ -73,12 +71,13 @@ type presentedFacts struct {
 }
 
 type presentedAnswer struct {
-	Summary string          `json:"summary"`
-	Stats   *presentedFacts `json:"stats,omitempty"`
-	Chart   *presentedChart `json:"chart,omitempty"`
-	Table   *presentedTable `json:"table,omitempty"`
-	List    *presentedList  `json:"list,omitempty"`
-	Detail  *presentedFacts `json:"detail,omitempty"`
+	Summary     string            `json:"summary"`
+	Stats       *presentedFacts   `json:"stats,omitempty"`
+	Chart       *presentedChart   `json:"chart,omitempty"`
+	Table       *presentedTable   `json:"table,omitempty"`
+	List        *presentedList    `json:"list,omitempty"`
+	Detail      *presentedFacts   `json:"detail,omitempty"`
+	Suggestions []suggestedAction `json:"suggestions,omitempty"`
 }
 
 func presentToolDef() genillm.Tool {
@@ -92,46 +91,57 @@ func presentToolDef() genillm.Tool {
 		"properties": map[string]any{"key": str, "label": str, "align": map[string]any{"type": "string", "enum": []any{"left", "right", "center"}}}}
 	series := map[string]any{"type": "object", "required": []string{"key", "label"},
 		"properties": map[string]any{"key": str, "label": str}}
+	properties := map[string]any{
+		"summary": map[string]any{"type": "string", "description": "one or two plain sentences"},
+		"stats":   facts,
+		"detail":  facts,
+		"chart": map[string]any{"type": "object", "required": []string{"title", "kind", "xKey", "series", "data"},
+			"properties": map[string]any{
+				"title":  viewTitle,
+				"kind":   map[string]any{"type": "string", "enum": []any{cards.ChartBar, cards.ChartLine, cards.ChartArea, cards.ChartPie}},
+				"xKey":   map[string]any{"type": "string", "description": "data field holding the category or date label"},
+				"series": map[string]any{"type": "array", "maxItems": maxChartSeries, "items": series},
+				"data":   map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "one object per point: {xKey: label, seriesKey: number}"},
+				"unit":   map[string]any{"type": "string", "description": "e.g. % or $"},
+			}},
+		"table": map[string]any{"type": "object", "required": []string{"title", "columns", "rows"},
+			"properties": map[string]any{
+				"title":   viewTitle,
+				"columns": map[string]any{"type": "array", "maxItems": maxPresentColumns, "items": column},
+				"rows":    map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "one object per row keyed by column key"},
+				"total":   map[string]any{"type": "integer", "description": "full count when rows are a subset"},
+			}},
+		"list": map[string]any{"type": "object", "required": []string{"title", "items"},
+			"properties": map[string]any{
+				"title": viewTitle,
+				"items": map[string]any{"type": "array", "items": map[string]any{"type": "object", "required": []string{"title"},
+					"properties": map[string]any{"title": str, "subtitle": str, "badges": map[string]any{"type": "array", "items": str}}}},
+				"total": map[string]any{"type": "integer"},
+			}},
+	}
+	if suggestionsEnabled() {
+		properties["suggestions"] = map[string]any{
+			"type":        "array",
+			"maxItems":    maxSuggestions,
+			"description": "2 or 3 next requests the user can send. Each message is performed when tapped.",
+			"items": map[string]any{"type": "object", "required": []string{"label", "message"},
+				"properties": map[string]any{
+					"label":   map[string]any{"type": "string", "description": "short chip text"},
+					"message": map[string]any{"type": "string", "description": "full request, copied names only, at most 160 characters"},
+				}},
+		}
+	}
 	return genillm.Tool{
 		Name:        presentTool,
 		Description: "Show the answer: a short summary plus optional stats, chart, table, list or detail views built only from the read results.",
 		Parameters: map[string]any{
-			"type":     "object",
-			"required": []string{"summary"},
-			"properties": map[string]any{
-				"summary": map[string]any{"type": "string", "description": "one or two plain sentences"},
-				"stats":   facts,
-				"detail":  facts,
-				"chart": map[string]any{"type": "object", "required": []string{"title", "kind", "xKey", "series", "data"},
-					"properties": map[string]any{
-						"title":  viewTitle,
-						"kind":   map[string]any{"type": "string", "enum": []any{cards.ChartBar, cards.ChartLine, cards.ChartArea, cards.ChartPie}},
-						"xKey":   map[string]any{"type": "string", "description": "data field holding the category or date label"},
-						"series": map[string]any{"type": "array", "maxItems": maxChartSeries, "items": series},
-						"data":   map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "one object per point: {xKey: label, seriesKey: number}"},
-						"unit":   map[string]any{"type": "string", "description": "e.g. % or $"},
-					}},
-				"table": map[string]any{"type": "object", "required": []string{"title", "columns", "rows"},
-					"properties": map[string]any{
-						"title":   viewTitle,
-						"columns": map[string]any{"type": "array", "maxItems": maxPresentColumns, "items": column},
-						"rows":    map[string]any{"type": "array", "items": map[string]any{"type": "object"}, "description": "one object per row keyed by column key"},
-						"total":   map[string]any{"type": "integer", "description": "full count when rows are a subset"},
-					}},
-				"list": map[string]any{"type": "object", "required": []string{"title", "items"},
-					"properties": map[string]any{
-						"title": viewTitle,
-						"items": map[string]any{"type": "array", "items": map[string]any{"type": "object", "required": []string{"title"},
-							"properties": map[string]any{"title": str, "subtitle": str, "badges": map[string]any{"type": "array", "items": str}}}},
-						"total": map[string]any{"type": "integer"},
-					}},
-			},
+			"type":       "object",
+			"required":   []string{"summary"},
+			"properties": properties,
 		},
 	}
 }
 
-// present turns a present_answer call into reply text and cards. It reports
-// false when there is nothing to show so the caller can use plain text.
 func (rc *reqCtx) present(a presentedAnswer) bool {
 	summary := strings.TrimSpace(a.Summary)
 	fillViewTitles(&a, subjectFromQuestion(rc.req.Message))
@@ -145,6 +155,9 @@ func (rc *reqCtx) present(a presentedAnswer) bool {
 	for _, c := range built {
 		rc.add(c)
 	}
+	if suggestionsEnabled() {
+		rc.applySuggestions(a.Suggestions)
+	}
 	return true
 }
 
@@ -154,9 +167,6 @@ var (
 	viewTitleReport = regexp.MustCompile(`(?i)\s+report\s*$`)
 )
 
-// fillViewTitles replaces a missing or generic view title ("ASI Genie",
-// "Table") with the subject of the question, so the panel header names what
-// the card shows.
 func fillViewTitles(a *presentedAnswer, fallback string) {
 	if isGenericViewTitle(fallback) {
 		return
@@ -194,8 +204,6 @@ func isGenericViewTitle(title string) bool {
 	}
 }
 
-// subjectFromQuestion turns "show Daily Collection by Payment Type Report in
-// table" into "Daily Collection by Payment Type".
 func subjectFromQuestion(msg string) string {
 	s := strings.TrimSpace(msg)
 	if s == "" {
@@ -235,7 +243,6 @@ func capitalizeTitle(s string) string {
 	return string(rs)
 }
 
-// presentCards orders views headline-first: stats, chart, table, list, detail.
 func presentCards(a presentedAnswer) []cards.Card {
 	var out []cards.Card
 	if c, ok := factsCard(a.Stats, agentStatsIntent, maxPresentStats); ok {
@@ -337,8 +344,7 @@ func listCard(l *presentedList) (cards.Card, bool) {
 		Items: items, Total: max(l.Total, len(items))}, true
 }
 
-// chartCard keeps only points whose series values are numbers, so the panel
-// never plots a value the model formatted as text.
+// Drop points the model sent as text; the panel only plots numbers.
 func chartCard(ch *presentedChart) (cards.Card, bool) {
 	if ch == nil || strings.TrimSpace(ch.XKey) == "" {
 		return cards.Card{}, false

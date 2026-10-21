@@ -8,8 +8,6 @@ import (
 	genillm "asi-genie-poc/llm"
 )
 
-// resolveFollowUpIntent treats the user's message as the missing slot when the
-// previous turn ended in a clarify/disambiguation for the same capability.
 func (e *Engine) resolveFollowUpIntent(rc *reqCtx, it intents.Intent, info IntentInfo, slots Slots) (intents.Intent, IntentInfo, Slots) {
 	pending := rc.sess.LastIntent
 	if pending == "" {
@@ -19,8 +17,7 @@ func (e *Engine) resolveFollowUpIntent(rc *reqCtx, it intents.Intent, info Inten
 		return it, info, slots
 	}
 	msg := strings.TrimSpace(rc.req.Message)
-	// A status question follows a completed email action but looks like a new
-	// question. Keep it on email_folio so the recorded send result is used.
+	// A status question after a sent folio stays on email_folio so the recorded result is used.
 	if pending == "email_folio" {
 		if _, ok := decodeEmailFolioSent(rc.sess.LastEntity); ok && messageAsksFolioEmailStatus(msg) {
 			it2, found := intents.Get(pending)
@@ -61,9 +58,7 @@ func (e *Engine) resolveFollowUpIntent(rc *reqCtx, it intents.Intent, info Inten
 	return it2, info, slots
 }
 
-// isBareFolioPrintFollowUp keeps "print it" on the folio flow after Genie has
-// shown a folio card. It has no document or guest name, so treating it as a
-// missing reservation slot would search for the words "I want to print".
+// A bare "print it" has no guest name; using it as a search slot would look up those words.
 func (rc *reqCtx) isBareFolioPrintFollowUp() bool {
 	if rc.sess.LastIntent != "download_folio" || messageWantsFolioAction(rc.req.Message) {
 		return false
@@ -93,12 +88,9 @@ func fillFollowUpSlot(pendingIntent, message string, s *Slots) bool {
 		s.Report = message
 		return true
 	case "download_report":
-		// Keep the report from the previous turn; dates are read from this message.
 		return true
 	case "download_folio":
 		if strings.Contains(strings.ToLower(message), "print") || strings.Contains(strings.ToLower(message), "download") {
-			// hDownloadFolio uses the remembered reservation and defaults the
-			// document to the standard Folio for a bare print/download request.
 			return true
 		}
 		if s.GuestName != "" || s.Confirmation != "" || s.Room != "" {
@@ -107,8 +99,7 @@ func fillFollowUpSlot(pendingIntent, message string, s *Slots) bool {
 		s.GuestName = message
 		return true
 	case "email_folio":
-		// Covers both the "which reservation?" follow-up and the yes/no
-		// confirm reply; hEmailFolio tells them apart via rc.sess.LastEntity.
+		// Confirm replies and "which reservation?" both continue; LastEntity tells them apart.
 		return true
 	default:
 		return false
@@ -139,10 +130,6 @@ func looksLikeNewQuestion(message string) bool {
 	return false
 }
 
-// shouldSendConversationContext is true only for a continuation: a short reply
-// to a clarify, or a message that points at the previous guest/booking ("her",
-// "that room"). A new question is classified on its own so earlier turns are
-// not sent to the model.
 func shouldSendConversationContext(message string) bool {
 	if strings.TrimSpace(message) == "" {
 		return false

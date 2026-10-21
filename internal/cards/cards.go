@@ -1,5 +1,3 @@
-// Package cards defines the typed Phase 1 Genie response contract.
-// Every reply is one or more cards; see docs/response-contract.md.
 package cards
 
 import (
@@ -7,25 +5,23 @@ import (
 	"strings"
 )
 
-// Card types (one per catalogue Phase 1 response type).
 const (
-	TypeText           = "text"           // Text answer
-	TypeData           = "data"           // Data card
-	TypeList           = "list"           // List card
-	TypeComparison     = "comparison"     // Comparison card
-	TypeChecklist      = "checklist"      // Checklist / readiness card
-	TypeNavigate       = "navigate"       // Navigate (deep link)
-	TypeGuide          = "guide"          // Guide + citation
-	TypeClarify        = "clarify"        // Clarifying question
-	TypeDisambiguation = "disambiguation" // Disambiguation
-	TypeError          = "error"          // readable failure: title, message, retry hint (never raw errors)
-	TypeDenied         = "denied"         // Denied (RBAC)
-	TypeNotSupported   = "not_supported"  // Not supported (captured)
-	TypeTable          = "table"          // Columnar rows (any read result)
-	TypeChart          = "chart"          // Bar / line / area / pie series
+	TypeText           = "text"
+	TypeData           = "data"
+	TypeList           = "list"
+	TypeComparison     = "comparison"
+	TypeChecklist      = "checklist"
+	TypeNavigate       = "navigate"
+	TypeGuide          = "guide"
+	TypeClarify        = "clarify"
+	TypeDisambiguation = "disambiguation"
+	TypeError          = "error" // never raw errors, stack traces, URLs, or tokens
+	TypeDenied         = "denied"
+	TypeNotSupported   = "not_supported"
+	TypeTable          = "table"
+	TypeChart          = "chart"
 )
 
-// Chart kinds the panel can draw.
 const (
 	ChartBar  = "bar"
 	ChartLine = "line"
@@ -33,43 +29,37 @@ const (
 	ChartPie  = "pie"
 )
 
-// Column is one table column; Key indexes TableData.Rows.
 type Column struct {
 	Key   string `json:"key"`
 	Label string `json:"label"`
-	Align string `json:"align,omitempty"` // left | right | center
+	Align string `json:"align,omitempty"`
 }
 
-// TableData is a generic grid: rows are display strings keyed by Column.Key.
 type TableData struct {
 	Columns []Column            `json:"columns"`
 	Rows    []map[string]string `json:"rows"`
 }
 
-// ChartSeries is one plotted value; Key indexes ChartData.Data.
 type ChartSeries struct {
 	Key   string `json:"key"`
 	Label string `json:"label"`
 }
 
-// ChartData is a categorical chart: Data rows hold XKey (label) plus one number per series.
 type ChartData struct {
 	Kind   string           `json:"kind"`
 	XKey   string           `json:"xKey"`
 	Series []ChartSeries    `json:"series"`
 	Data   []map[string]any `json:"data"`
-	Unit   string           `json:"unit,omitempty"` // e.g. "%", "$"
+	Unit   string           `json:"unit,omitempty"`
 }
 
-// Link is a frontend deep link. Route is an asi-frontend path; Params become query params.
 type Link struct {
 	Label  string            `json:"label"`
 	Route  string            `json:"route"`
 	Params map[string]string `json:"params,omitempty"`
 }
 
-// Download is a file export the chat panel fetches from an existing ASI export API.
-// Path is relative to that service's public base URL (reservation /api/v1 or config /v1).
+// Path is relative to the service's public base URL, not an absolute URL.
 type Download struct {
 	Label    string            `json:"label"`
 	FileName string            `json:"fileName"`
@@ -78,31 +68,27 @@ type Download struct {
 	Query    map[string]string `json:"query,omitempty"`
 }
 
-// Field is an ordered label/value pair.
 type Field struct {
 	Label string `json:"label"`
 	Value string `json:"value"`
-	Hint  string `json:"hint,omitempty"` // e.g. "+4 vs yesterday"
+	Hint  string `json:"hint,omitempty"`
 }
 
-// ListItem is one row in a list card or disambiguation pick-list.
 type ListItem struct {
 	ID       string   `json:"id,omitempty"`
 	Title    string   `json:"title"`
 	Subtitle string   `json:"subtitle,omitempty"`
 	Badges   []string `json:"badges,omitempty"`
-	Image    string   `json:"image,omitempty"` // profile photo URL when the source record has one
+	Image    string   `json:"image,omitempty"`
 	Link     *Link    `json:"link,omitempty"`
 }
 
-// Period is one side of a comparison.
 type Period struct {
 	Label   string   `json:"label"`
 	Value   *float64 `json:"value,omitempty"`
 	Display string   `json:"display"`
 }
 
-// Comparison holds two periods and server-computed deltas.
 type Comparison struct {
 	Metric   string   `json:"metric"`
 	Current  Period   `json:"current"`
@@ -111,7 +97,6 @@ type Comparison struct {
 	DeltaPct *float64 `json:"deltaPct,omitempty"`
 }
 
-// Check statuses.
 const (
 	CheckOK      = "ok"
 	CheckWarn    = "warn"
@@ -119,7 +104,6 @@ const (
 	CheckUnknown = "unknown" // could not be read (missing permission or API error)
 )
 
-// CheckItem is one checklist/readiness row.
 type CheckItem struct {
 	Label  string `json:"label"`
 	Status string `json:"status"`
@@ -127,15 +111,13 @@ type CheckItem struct {
 	Link   *Link  `json:"link,omitempty"`
 }
 
-// Option is a clarifying-question / disambiguation choice. Sending Message back
-// as the next chat message (or Value as the slot) resolves the question.
+// Sending Message back as the next chat message resolves the question.
 type Option struct {
 	Label   string `json:"label"`
 	Value   string `json:"value"`
 	Message string `json:"message"`
 }
 
-// Citation names the help/policy source of a guide answer.
 type Citation struct {
 	ID      string `json:"id"`
 	Source  string `json:"source"`
@@ -143,17 +125,14 @@ type Citation struct {
 	Snippet string `json:"snippet,omitempty"`
 }
 
-// Card is the single typed card shape. Only the fields relevant to Type are set.
-//
-// Fields (map) is kept for backwards compatibility with the first chat panel,
-// which renders `fields` as key/value pairs; new clients should use Rows/Items/etc.
+// Fields is kept so the first chat panel can still render key/value pairs.
 type Card struct {
 	Type       string            `json:"type"`
 	Intent     string            `json:"intent,omitempty"`
 	Title      string            `json:"title"`
 	Subtitle   string            `json:"subtitle,omitempty"`
 	Message    string            `json:"message,omitempty"`
-	Image      string            `json:"image,omitempty"` // profile photo; the panel shows name initials when this is empty
+	Image      string            `json:"image,omitempty"` // empty: the panel shows name initials
 	Rows       []Field           `json:"rows,omitempty"`
 	Items      []ListItem        `json:"items,omitempty"`
 	Total      int               `json:"total,omitempty"`
@@ -165,21 +144,19 @@ type Card struct {
 	Link       *Link             `json:"link,omitempty"`
 	Downloads  []Download        `json:"downloads,omitempty"`
 	Captured   bool              `json:"captured,omitempty"`
-	Code       string            `json:"code,omitempty"`  // error: session_expired | forbidden | service_unavailable | service_error | not_found | llm_busy
-	Retry      string            `json:"retry,omitempty"` // error: what the user can do next
+	Code       string            `json:"code,omitempty"`
+	Retry      string            `json:"retry,omitempty"`
 	Fields     map[string]string `json:"fields,omitempty"`
 	Data       any               `json:"data,omitempty"`
 	Table      *TableData        `json:"table,omitempty"`
 	Chart      *ChartData        `json:"chart,omitempty"`
 }
 
-// Chip is a follow-up suggestion; clicking sends Message.
 type Chip struct {
 	Label   string `json:"label"`
 	Message string `json:"message"`
 }
 
-// Finalize fills the legacy Fields map from the typed content.
 func (c *Card) Finalize() {
 	if c.Fields != nil {
 		return
@@ -235,15 +212,13 @@ func (c *Card) Finalize() {
 	}
 }
 
-// Helpers.
-
 func Text(msg string) Card { return Card{Type: TypeText, Title: "Genie", Message: msg} }
 
 func Navigate(intent, title string, link Link) Card {
 	return Card{Type: TypeNavigate, Intent: intent, Title: title, Link: &link}
 }
 
-// Denied never includes data or hints; it names who can help.
+// Never includes data or hints.
 func Denied(intent, feature string) Card {
 	msg := "That isn't available for your role."
 	if feature != "" {
@@ -252,7 +227,6 @@ func Denied(intent, feature string) Card {
 	return Card{Type: TypeDenied, Intent: intent, Title: "Not available for your role", Message: msg}
 }
 
-// Error is a readable failure card (no stack traces, URLs or tokens).
 func Error(intent, code, title, message, retry string, link *Link) Card {
 	return Card{Type: TypeError, Intent: intent, Code: code, Title: title, Message: message, Retry: retry, Link: link}
 }

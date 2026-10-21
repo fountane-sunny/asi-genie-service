@@ -1,5 +1,4 @@
-// Package asienv reads the ASI service base URLs from the environment.
-// Each ASI_*_BASE_URL is required. The process does not invent hosts or ports.
+// Every ASI_*_BASE_URL is required. Hosts and ports are never invented.
 package asienv
 
 import (
@@ -15,7 +14,6 @@ var baseURLEnvVars = []string{
 	"ASI_RESERVATION_BASE_URL",
 }
 
-// Apply returns the effective ASI base URLs. Startup fails if any is unset.
 func Apply() ([]string, error) {
 	lines := make([]string, 0, len(baseURLEnvVars))
 	var missing []string

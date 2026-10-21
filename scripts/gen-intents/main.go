@@ -1,9 +1,3 @@
-// Command gen-intents reads the Genie scenario catalogue (Scenarios.csv) and
-// emits internal/intents/catalog_gen.go with every Phase 1 (In/Partial) scenario.
-//
-//	go run ./scripts/gen-intents [Scenarios.csv] [internal/intents/catalog_gen.go]
-//
-// scripts/gen-intents/gen_intents.py produces identical output without Go.
 package main
 
 import (

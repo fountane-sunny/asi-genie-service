@@ -17,8 +17,6 @@ import (
 
 type handlerFunc func(rc *reqCtx, it intents.Intent, s Slots) error
 
-// dedicatedHandlers maps every P0 capability (plus compare_metrics) to a
-// deterministic handler: fixed GET reads, server-side composition, typed card.
 func (e *Engine) dedicatedHandlers() map[string]handlerFunc {
 	return map[string]handlerFunc{
 		"property_snapshot":                hPropertySnapshot,
@@ -72,8 +70,7 @@ func (e *Engine) dispatch(rc *reqCtx, it intents.Intent, s Slots, info IntentInf
 	switch it.ID {
 	case intents.SmallTalkID:
 		rc.resp.Intent.Handler = "fallback"
-		// Only reached when the model is down. A greeting is still a hello;
-		// the wording is the model's job whenever it can answer.
+		// Only reached when the model is down.
 		if isGreeting(rc.req.Message) {
 			rc.text("Hello.")
 			return nil
@@ -116,8 +113,6 @@ func q(kv ...string) url.Values {
 	}
 	return v
 }
-
-// ---- Dashboard ----
 
 func hPropertySnapshot(rc *reqCtx, it intents.Intent, s Slots) error {
 	d := rc.dayOr(s)
@@ -250,7 +245,7 @@ func hCompareMetrics(rc *reqCtx, it intents.Intent, s Slots) error {
 	if okB {
 		cmp.Previous.Value = &vB
 	}
-	if okA && okB { // deterministic server-side delta
+	if okA && okB {
 		d := vA - vB
 		cmp.Delta = &d
 		if vB != 0 {
@@ -268,8 +263,6 @@ func hCompareMetrics(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
-// ---- Reservations ----
-
 func statusOf(m map[string]any) string {
 	return str(m, "status", "rezStatus", "reservationStatus", "statusName")
 }
@@ -280,7 +273,7 @@ func isInHouse(m map[string]any) bool {
 }
 
 func (rc *reqCtx) reservationItems(list []map[string]any, max int, flag func(map[string]any) string) []cards.ListItem {
-	names := true // ASI APIs decide what the user can see
+	names := true // Names stay: ASI already filtered what this role can see.
 	var items []cards.ListItem
 	for _, m := range list {
 		id := recordID(m)
@@ -482,8 +475,6 @@ func hOccupancyForecast(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
-// resolveReservation finds exactly one reservation or renders a clarify /
-// disambiguation card (returns nil, nil in that case).
 func (rc *reqCtx) resolveReservation(s Slots) (map[string]any, error) {
 	key := s.Confirmation
 	if key == "" {
@@ -499,9 +490,7 @@ func (rc *reqCtx) resolveReservation(s Slots) (map[string]any, error) {
 		rc.add(cards.Clarify(rc.intent.ID, "Which reservation do you mean? Give me a guest name, room or confirmation number."))
 		return nil, nil
 	}
-	// The search endpoint binds searchKey. Swagger calls that param "key", which
-	// the service ignores — an empty searchKey returns a browse of current stays
-	// and reports, so every confirmation looked ambiguous.
+	// The service binds searchKey. Swagger's "key" is ignored, and an empty searchKey browses current stays.
 	v, err := rc.get("reservation_get_reservations_search", nil, q(
 		"propertyId", rc.pidStr(),
 		"searchKey", key,
@@ -562,8 +551,7 @@ func (rc *reqCtx) resolveReservation(s Slots) (map[string]any, error) {
 	return m, nil
 }
 
-// reservationChoices drops report rows. Search mixes reports into the same
-// list, and a report has no reservation to open or print.
+// Search mixes report rows into the list; a report has no reservation to open.
 func reservationChoices(list []map[string]any) []map[string]any {
 	out := make([]map[string]any, 0, len(list))
 	for _, m := range list {
@@ -575,9 +563,7 @@ func reservationChoices(list []map[string]any) []map[string]any {
 	return out
 }
 
-// exactReservationChoice returns the one row whose confirmation equals key.
-// Search is a substring match, so a full confirmation can sit next to other
-// hits; one exact number is the reservation the user named.
+// Search is a substring match, so one exact confirmation wins over the other hits.
 func exactReservationChoice(list []map[string]any, key string) map[string]any {
 	key = strings.TrimSpace(key)
 	if key == "" {
@@ -880,8 +866,6 @@ func hLateCheckout(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
-// ---- Guest ----
-
 func hLookupGuest(rc *reqCtx, it intents.Intent, s Slots) error {
 	if gid := parseGuestIDFromLookupMessage(rc.req.Message); gid != "" {
 		return rc.renderGuestProfile(it, gid)
@@ -900,7 +884,7 @@ func hLookupGuest(rc *reqCtx, it intents.Intent, s Slots) error {
 	}
 	list := dedupeGuestRecords(findList(v))
 	if len(list) == 0 {
-		// Staff ("Who is Sunny?") are property users, not guest profiles.
+		// Staff are property users, not guest profiles.
 		rendered, uerr := rc.renderPropertyUser(it, name)
 		if uerr != nil {
 			slog.Warn("property user lookup failed", "err", uerr, "propertyId", rc.pid)
@@ -956,8 +940,6 @@ func (rc *reqCtx) renderGuestProfile(it intents.Intent, gid string) error {
 	rc.text("Here's the guest profile.")
 	return nil
 }
-
-// ---- Housekeeping ----
 
 func hRoomStatusSummary(rc *reqCtx, it intents.Intent, s Slots) error {
 	v, err := rc.get("config_get_room_statuses_summary", nil, q("propertyId", rc.pidStr()))
@@ -1053,8 +1035,6 @@ func hUpdateRoomStatusNav(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
-// ---- Rates ----
-
 func hRateQuery(rc *reqCtx, it intents.Intent, s Slots) error {
 	v, err := rc.get("config_get_rate_types", nil, q("propertyId", rc.pidStr(), "pageSize", "20", "searchKey", s.RoomType))
 	if err != nil {
@@ -1075,8 +1055,6 @@ func hRateQuery(rc *reqCtx, it intents.Intent, s Slots) error {
 	rc.text("Here are the rate types.")
 	return nil
 }
-
-// ---- Audit ----
 
 func hNightAuditStatus(rc *reqCtx, it intents.Intent, s Slots) error {
 	v, err := rc.get("reservation_get_night_audit_status", nil, q("propertyId", rc.pidStr()))
@@ -1127,7 +1105,6 @@ func (rc *reqCtx) nightAuditChecklist() []cards.CheckItem {
 		rc.countCheck("Unposted OTA reservations", "Reservation", "Reservation", "reservation_get_reservations_properties_property_id_unposted_reservations",
 			map[string]string{"propertyId": pid}, q("countOnly", "true"), true, manage),
 	}
-	// Due-outs still in house (computed from the departures list).
 	{
 		if v, err := rc.get("reservation_get_reservations", nil, q("propertyId", pid, "checkoutDateStart", d, "checkoutDateEnd", d, "pageSize", "200")); err == nil {
 			rows := findList(v)
@@ -1202,8 +1179,6 @@ func hNightAuditWalkthrough(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
-// ---- Reports ----
-
 func hViewReport(rc *reqCtx, it intents.Intent, s Slots) error {
 	phrase := strings.TrimSpace(s.Report)
 	if phrase == "" && messageRequestsSpecificReport(rc.req.Message) {
@@ -1247,9 +1222,7 @@ type revenueMetric struct {
 	avg   bool
 }
 
-// revenueFacts reads summaryRows dailyValues for the requested dates.
-// Missing keys are omitted. A present zero is kept only when some other
-// metric for the range is non-zero. All zeros or all absent is an empty result.
+// A present zero is kept only when some other metric in the range is non-zero.
 func revenueFacts(payload any, from, to string) ([]cards.Field, bool) {
 	rowsByKey := map[string]map[string]any{}
 	for _, row := range summaryRowList(payload) {
@@ -1396,8 +1369,6 @@ func formatRevenueValue(spec revenueMetric, value float64) string {
 	}
 }
 
-// ---- Policies / guides ----
-
 func hPolicyLookup(rc *reqCtx, it intents.Intent, s Slots) error {
 	v, err := rc.get("config_get_cancellation_policies", nil, q("propertyId", rc.pidStr(), "pageSize", "20"))
 	if err != nil {
@@ -1421,8 +1392,6 @@ func hPolicyLookup(rc *reqCtx, it intents.Intent, s Slots) error {
 func hGuide(rc *reqCtx, it intents.Intent, s Slots) error {
 	return rc.e.guideFallback(rc, it)
 }
-
-// ---- Genie meta ----
 
 func hCapabilities(rc *reqCtx, it intents.Intent, s Slots) error {
 	var items []cards.ListItem
@@ -1497,7 +1466,7 @@ func hNavigateEntity(rc *reqCtx, it intents.Intent, s Slots) error {
 }
 
 func hDeniedIntent(rc *reqCtx, it intents.Intent, s Slots) error {
-	// Reaching here means the RBAC gate passed (user has KPIs READ).
+	// The RBAC gate already passed, so this user can read KPIs.
 	if s.CompareStart != "" {
 		return hCompareMetrics(rc, it, s)
 	}
@@ -1530,7 +1499,7 @@ func hContextCarry(rc *reqCtx, it intents.Intent, s Slots) error {
 }
 
 func hPropertyScope(rc *reqCtx, it intents.Intent, s Slots) error {
-	// Unreachable as a question: the property always comes from the screen.
+	// The property always comes from the screen, so this is not a user question.
 	rc.text(fmt.Sprintf("I'm answering for the property you're on (#%d). Switch property in ASI to ask about another one.", rc.pid))
 	return nil
 }

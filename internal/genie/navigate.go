@@ -12,7 +12,6 @@ const (
 	navigateActionOpenReservation = "Open reservation"
 )
 
-// navigateScreen builds a navigate card: title names the destination, link label is a short action.
 func navigateScreen(intentID, title, action string, link cards.Link) cards.Card {
 	if strings.TrimSpace(title) == "" {
 		title = linkScreenTitle(link)

@@ -13,8 +13,6 @@ import (
 	"asi-genie-poc/internal/cards"
 )
 
-// Helpers for reading loosely-typed ASI JSON responses.
-
 func decode(b []byte) any {
 	var v any
 	if len(b) == 0 || json.Unmarshal(b, &v) != nil {
@@ -28,7 +26,6 @@ func obj(v any) map[string]any {
 	return m
 }
 
-// lookup returns m[key] matching case-insensitively.
 func lookup(m map[string]any, key string) (any, bool) {
 	if m == nil {
 		return nil, false
@@ -44,7 +41,6 @@ func lookup(m map[string]any, key string) (any, bool) {
 	return nil, false
 }
 
-// path walks dotted keys: path(v, "data", "items").
 func path(v any, keys ...string) any {
 	for _, k := range keys {
 		x, ok := lookup(obj(v), k)
@@ -78,7 +74,6 @@ func scalarString(v any) string {
 	return ""
 }
 
-// str returns the first non-empty scalar among keys.
 func str(m map[string]any, keys ...string) string {
 	for _, k := range keys {
 		if v, ok := lookup(m, k); ok {
@@ -110,7 +105,6 @@ func num(m map[string]any, keys ...string) (float64, bool) {
 
 var listKeys = []string{"data", "items", "results", "rows", "reservations", "records", "list", "content", "guests", "values"}
 
-// findList extracts the main array of objects from a response.
 func findList(v any) []map[string]any {
 	return findListDepth(v, 0)
 }
@@ -139,7 +133,6 @@ func findListDepth(v any, depth int) []map[string]any {
 	return nil
 }
 
-// explicitTotal is a pagination total the API actually sent.
 func explicitTotal(v any) (int, bool) {
 	m := obj(v)
 	for _, cand := range []map[string]any{m, obj(path(v, "data")), obj(path(v, "pagination")), obj(path(v, "meta")), obj(path(v, "pageInfo"))} {
@@ -150,9 +143,7 @@ func explicitTotal(v any) (int, bool) {
 	return 0, false
 }
 
-// pageCount distinguishes a real total from a full page. known is false when
-// the API sent no total and the page is full, so listLen must not be shown as
-// the complete count. note is set when the card shows only the first rows.
+// known is false when a full page has no API total, so listLen is not the complete count.
 func pageCount(v any, listLen, pageSize, shown int) (total int, known bool, note string) {
 	if shown > listLen {
 		shown = listLen
@@ -172,7 +163,6 @@ func pageCount(v any, listLen, pageSize, shown int) (total int, known bool, note
 	return listLen, true, ""
 }
 
-// findTotal returns a total count from common pagination shapes, or fallback.
 func findTotal(v any, fallback int) int {
 	m := obj(v)
 	for _, cand := range []map[string]any{m, obj(path(v, "data")), obj(path(v, "pagination")), obj(path(v, "meta")), obj(path(v, "pageInfo"))} {
@@ -183,7 +173,6 @@ func findTotal(v any, fallback int) int {
 	return fallback
 }
 
-// deepFind returns the first value whose key matches pred (depth-first, bounded).
 func deepFind(v any, pred func(string) bool, depth int) (any, bool) {
 	if depth > 4 {
 		return nil, false
@@ -227,7 +216,6 @@ func deepStr(v any, keys ...string) string {
 	return ""
 }
 
-// metricValue reads a number from a scalar or a metric object.
 func metricValue(v any, keys ...string) string {
 	if s := scalarString(v); s != "" {
 		return s
@@ -252,7 +240,6 @@ func humanize(k string) string {
 
 var skipKeyRe = regexp.MustCompile(`(?i)(password|token|secret|card ?number|cvv|pan$|^id$|uuid|createdBy|updatedBy|deletedAt)`)
 
-// scalarRows turns top-level scalar fields into ordered rows (stable, limited).
 func scalarRows(m map[string]any, limit int) []cards.Field {
 	keys := make([]string, 0, len(m))
 	for k, v := range m {
@@ -274,7 +261,6 @@ func scalarRows(m map[string]any, limit int) []cards.Field {
 	return out
 }
 
-// personName extracts a guest/person display name from a record.
 func personName(m map[string]any) string {
 	if s := str(m, "guestName", "primaryGuestName", "fullName", "pocName", "name", "displayName"); s != "" {
 		return s

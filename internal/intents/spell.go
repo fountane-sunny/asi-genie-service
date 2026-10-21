@@ -5,18 +5,14 @@ import (
 	"sync"
 )
 
-// Vocabulary is built once from the catalogue: every word in an intent id,
-// example, or module. Unknown words in a message are snapped to the nearest
-// vocabulary word, so typos route without a per-word rule.
 var (
 	vocabOnce sync.Once
 	vocab     map[string]bool
-	vocabFreq map[string]int // how often each word appears in the catalogue; breaks ties
+	vocabFreq map[string]int
 	vocabList []string
 )
 
-// extraVocab are domain words that appear in handlers but not in the
-// catalogue examples, so a typo of them still corrects.
+// Words used by handlers that never appear in catalogue examples.
 var extraVocab = []string{
 	"room", "rooms", "guest", "guests", "user", "users", "rate", "rates", "report", "reports",
 	"arrival", "arrivals", "departure", "departures", "today", "tomorrow", "tonight", "weekend",
@@ -51,11 +47,6 @@ func buildVocab() {
 	}
 }
 
-// CorrectSpelling returns the message with each unknown word replaced by the
-// closest vocabulary word, and whether anything changed. A word is replaced
-// only when one candidate is within a small edit distance (1 for short words,
-// 2 for words of 6+ letters) and starts with the same letter, which keeps
-// names and ids unchanged.
 func CorrectSpelling(message string) (string, bool) {
 	vocabOnce.Do(buildVocab)
 	changed := false
@@ -66,19 +57,18 @@ func CorrectSpelling(message string) (string, bool) {
 		if isNumeric(w) {
 			return w
 		}
-		// A known word with a trailing "s" (or a known plural) is not a typo.
+		// A known singular or plural is not a typo.
 		if vocab[strings.TrimSuffix(w, "s")] || vocab[w+"s"] {
 			return w
 		}
 		best, bestDist := "", 3
 		for _, cand := range vocabList {
+			// Same first letter only, so names and ids are left alone.
 			if cand[0] != w[0] || abs(len(cand)-len(w)) > 2 {
 				continue
 			}
 			d := editDistance(w, cand)
-			// Ties: a same-length candidate first (a slipped key, "roomw" →
-			// "rooms"), then the more common catalogue word, then the longer
-			// one ("cheking" → "checking", not "checkin").
+			// Tie: closer length ("roomw" → "rooms"), then the more common catalogue word, then the longer one ("cheking" → "checking", not "checkin").
 			better := d < bestDist
 			if d == bestDist && best != "" {
 				cl, bl := abs(len(cand)-len(w)), abs(len(best)-len(w))
@@ -125,8 +115,7 @@ func abs(n int) int {
 	return n
 }
 
-// editDistance is Damerau-Levenshtein with adjacent transposition, so a
-// swapped pair ("roroms" → "rooms") costs one edit.
+// Adjacent transposition counts as one edit.
 func editDistance(a, b string) int {
 	ra, rb := []rune(a), []rune(b)
 	la, lb := len(ra), len(rb)

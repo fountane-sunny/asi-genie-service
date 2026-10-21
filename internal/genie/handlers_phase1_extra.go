@@ -9,12 +9,6 @@ import (
 	"asi-genie-poc/internal/intents"
 )
 
-// Dedicated handlers for the P0 scenarios whose catalogue scope carries a
-// qualifier ("Partial (prefill)", "In (read-only clarification)", ...).
-// All are read-only: GET reads plus deep links / prefilled forms the user submits.
-
-// G-017 create_reservation: never books. With dates it shows availability and a
-// prefilled New Reservation link; without dates it asks for the missing slots.
 func hCreateReservation(rc *reqCtx, it intents.Intent, s Slots) error {
 	if s.StartDate == "" && s.Date == "" {
 		return hCreateReservationSlots(rc, it, s)
@@ -26,8 +20,6 @@ func hCreateReservation(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
-// G-173 create_reservation_slots: fill what we know (guest from context), ask
-// for every missing slot in one pass, and offer the prefilled form.
 func hCreateReservationSlots(rc *reqCtx, it intents.Intent, s Slots) error {
 	guest := s.GuestName
 	if guest == "" && rc.sess.LastEntity != nil && rc.sess.LastEntity.Kind == "guest" {
@@ -90,8 +82,6 @@ func hCreateReservationSlots(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
-// G-044 log_service_request: parse type/location/issue and open the task form
-// prefilled (Type = Maintenance). Looks up the room's current status (GET) when given.
 func hLogServiceRequest(rc *reqCtx, it intents.Intent, s Slots) error {
 	c := cards.Card{Type: cards.TypeNavigate, Intent: it.ID, Title: "New maintenance request", Subtitle: "Prefilled - review and submit it yourself."}
 	params := map[string]string{"type": "Maintenance", "issue": truncateStr(rc.req.Message, 200)}
@@ -112,8 +102,6 @@ func hLogServiceRequest(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
-// G-101 clarify_slot: deterministic date validation. Missing or past dates get
-// one clarifying question; a valid date continues to availability.
 func hClarifySlot(rc *reqCtx, it intents.Intent, s Slots) error {
 	d := s.StartDate
 	if d == "" {
@@ -157,14 +145,12 @@ func addMonth(d string) string {
 	return fmt.Sprintf("%04d-%02d-%02d", y, m, day)
 }
 
-// G-175 late_checkout_fee_tier: reads the policy and the booking, asks which
-// tier, and quotes only - it never posts the fee.
 func hLateCheckoutFeeTier(rc *reqCtx, it intents.Intent, s Slots) error {
 	if err := hLateCheckout(rc, it, s); err != nil {
 		return err
 	}
 	if len(rc.resp.Cards) > 0 && rc.resp.Cards[len(rc.resp.Cards)-1].Type == cards.TypeDisambiguation {
-		return nil // reservation must be chosen first
+		return nil
 	}
 	who := s.Room
 	if who == "" {

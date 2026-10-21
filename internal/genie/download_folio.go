@@ -8,14 +8,9 @@ import (
 	"asi-genie-poc/internal/intents"
 )
 
-// folioActionVerbs are the verbs that, together with a folio document word,
-// mark a message as a reservation-document action (download_folio /
-// email_folio) rather than a generic question or a report export.
 var folioActionVerbs = []string{"download", "export", "print", "email", "mail", "send"}
 
-// folioDocWords name the reservation documents /folio/{id} can generate (see
-// asi-frontend DocumentType in apps/web/app/apis/reservations.ts). Checked in
-// order: more specific phrases must come before "folio" itself.
+// More specific phrases must come before "folio".
 var folioDocWords = []string{
 	"registration form", "registration card", "reg card", "reg form", "registration",
 	"other charge", "other-charge",
@@ -25,8 +20,6 @@ var folioDocWords = []string{
 	"folio",
 }
 
-// folioDocTypes maps a matched folioDocWords entry to the doc_type value the
-// GET /folio/{id} endpoint expects.
 var folioDocTypeByWord = map[string]string{
 	"registration form": "registration", "registration card": "registration", "reg card": "registration",
 	"reg form": "registration", "registration": "registration",
@@ -38,8 +31,6 @@ var folioDocTypeByWord = map[string]string{
 	"folio":           "folio",
 }
 
-// messageWantsFolioAction reports whether message is asking Genie to produce
-// (download/print) or send (email) a reservation document.
 func messageWantsFolioAction(message string) bool {
 	lower := strings.ToLower(message)
 	hasVerb := false
@@ -60,9 +51,6 @@ func messageWantsFolioAction(message string) bool {
 	return false
 }
 
-// messageWantsAllFolioDocs reports a request for every document on the Print
-// Folio menu, such as "email all the folios". A plain "folio" remains the
-// summary folio only.
 func messageWantsAllFolioDocs(message string) bool {
 	lower := strings.ToLower(message)
 	if strings.Contains(lower, "notice") {
@@ -73,9 +61,6 @@ func messageWantsAllFolioDocs(message string) bool {
 		strings.Contains(lower, "each folio")
 }
 
-// messageWantsEmailFolio reports whether a folio-action message should email
-// the document rather than download/print it. "Send the folio" is an email
-// request; print, download, and export stay on the download path.
 func messageWantsEmailFolio(message string) bool {
 	lower := strings.ToLower(message)
 	if strings.Contains(lower, "email") || strings.Contains(lower, "e-mail") ||
@@ -89,9 +74,6 @@ func messageWantsEmailFolio(message string) bool {
 	return strings.Contains(lower, "send")
 }
 
-// messageWantsDefaultFolioDownload detects a bare print/download continuation.
-// The previous folio card established the reservation; in that context the
-// standard Folio is the least surprising document to download.
 func messageWantsDefaultFolioDownload(message string) bool {
 	lower := strings.ToLower(message)
 	if strings.Contains(lower, "folio") || strings.Contains(lower, "registration") ||
@@ -102,10 +84,7 @@ func messageWantsDefaultFolioDownload(message string) bool {
 	return strings.Contains(lower, "print") || strings.Contains(lower, "download")
 }
 
-// applyFolioIntent steers print/download/email folio requests onto the
-// dedicated handlers. The catalogue still has G-029 folio_document (a navigate
-// guide whose UserSees text is a spec note), and the classifier often picks it
-// for "print folio" — that must never reach the generic navigate path.
+// G-029 folio_document is a navigate guide; print/download/email must not land there.
 func (e *Engine) applyFolioIntent(it intents.Intent, info IntentInfo, slots Slots, message string) (intents.Intent, IntentInfo, Slots) {
 	if !messageWantsFolioAction(message) {
 		return it, info, slots
@@ -133,8 +112,6 @@ func (e *Engine) applyFolioIntent(it intents.Intent, info IntentInfo, slots Slot
 	return next, info, slots
 }
 
-// folioDocType infers the /folio/{id} doc_type query param from the message.
-// Defaults to "folio" when the message names no specific document.
 func folioDocType(message string) string {
 	if docType, ok := folioDocTypeNamed(message); ok {
 		return docType
@@ -142,8 +119,7 @@ func folioDocType(message string) string {
 	return "folio"
 }
 
-// folioDocTypeNamed reports whether the message names one document. The word
-// "folio" on its own is the generic request, not a choice of the standard folio.
+// "folio" alone is the generic request, not a choice of the standard folio.
 func folioDocTypeNamed(message string) (string, bool) {
 	lower := strings.ToLower(message)
 	for _, w := range folioDocWords {
@@ -157,9 +133,7 @@ func folioDocTypeNamed(message string) (string, bool) {
 	return "", false
 }
 
-// folioDocTypesFor is the Print Folio menu that GET /folio/{id} can generate.
-// Split folio and payment receipt need extra choices on the reservation
-// screen, so they are not offered as a single download.
+// Split folio and payment receipt need extra on-screen choices, so they are not a single download.
 func folioDocTypesFor(reservationType string) []string {
 	if reservationType == "group" {
 		return []string{"folio", "detailed", "other-charges", "group-status-report"}
@@ -167,8 +141,6 @@ func folioDocTypesFor(reservationType string) []string {
 	return []string{"registration", "folio", "detailed", "other-charges"}
 }
 
-// folioDocLabel is the human-facing name for a doc_type, matching the labels
-// asi-frontend shows on the Print Folio / Email Folio menus.
 func folioDocLabel(docType string) string {
 	switch docType {
 	case "detailed":
@@ -186,10 +158,7 @@ func folioDocLabel(docType string) string {
 	}
 }
 
-// folioReservationType mirrors asi-frontend's getReservationTypeFromTableData
-// (apps/web/app/utils/folioPDF.ts): a group parent reports type "GROUP", a
-// reservation with a groupReservationId is a child of one, everything else is
-// an individual reservation.
+// GROUP is a parent; a groupReservationId marks a child. Matches asi-frontend folioPDF.
 func folioReservationType(m map[string]any) string {
 	if strings.EqualFold(str(m, "type", "reservationType"), "GROUP") {
 		return "group"
@@ -200,8 +169,7 @@ func folioReservationType(m map[string]any) string {
 	return "individual"
 }
 
-// folioFileName is the suggested download filename; the frontend corrects the
-// extension from the response Content-Type, so only the stem matters here.
+// The frontend replaces the extension from Content-Type; only the stem matters.
 func folioFileName(docType string, m map[string]any) string {
 	name := reservationNumber(m)
 	if name == "" {
@@ -213,15 +181,10 @@ func folioFileName(docType string, m map[string]any) string {
 	return fmt.Sprintf("%s - %s.pdf", folioDocLabel(docType), name)
 }
 
-// folioPOCEmail is the recipient the Email Folio endpoint defaults to when no
-// custom address is given.
 func folioPOCEmail(m map[string]any) string {
 	return str(m, "pocEmail", "contactEmail", "guestEmail", "email")
 }
 
-// hDownloadFolio (G-242): resolve the reservation, infer which document the
-// user wants, and hand the frontend the same non-mutating GET /folio/{id}
-// endpoint the Print Folio menu uses — Genie never renders or stores the PDF.
 func hDownloadFolio(rc *reqCtx, it intents.Intent, s Slots) error {
 	m, err := rc.resolveReservation(s)
 	if err != nil || m == nil {

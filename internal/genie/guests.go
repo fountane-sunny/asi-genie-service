@@ -18,7 +18,6 @@ func parseGuestIDFromLookupMessage(message string) string {
 	return strings.TrimSpace(m[1])
 }
 
-// dedupeGuestRecords keeps one row per guest id (search APIs often return duplicates).
 func dedupeGuestRecords(list []map[string]any) []map[string]any {
 	seen := map[string]map[string]any{}
 	order := make([]string, 0, len(list))

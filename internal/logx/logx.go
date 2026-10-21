@@ -1,12 +1,4 @@
-// Package logx prints readable, boxed log blocks for every Genie call:
-// inbound /chat, LLM calls and ASI calls. Secrets and card numbers are masked.
-//
-// Env:
-//
-//	LOG_LEVEL   debug|info   debug shows bodies (default debug when APP_ENV=local, else info)
-//	LOG_BODIES  true|false   force bodies on/off regardless of level
-//	LOG_BODY_MAX             max chars per body (default 4000)
-//	LOG_COLOR   false        disable ANSI colours (also off when stderr isn't a TTY)
+// Secrets and card numbers are masked before they are printed.
 package logx
 
 import (
@@ -60,8 +52,6 @@ func isTTY() bool {
 	return err == nil && fi.Mode()&os.ModeCharDevice != 0
 }
 
-// ---- masking ----
-
 func luhn(d string) bool {
 	sum, alt := 0, false
 	for i := len(d) - 1; i >= 0; i-- {
@@ -77,7 +67,6 @@ func luhn(d string) bool {
 	return sum%10 == 0
 }
 
-// MaskPAN replaces Luhn-valid card numbers with "•••• •••• •••• 1234".
 func MaskPAN(s string) (string, bool) {
 	found := false
 	out := panRe.ReplaceAllStringFunc(s, func(m string) string {
@@ -91,7 +80,6 @@ func MaskPAN(s string) (string, bool) {
 	return out, found
 }
 
-// Mask hides tokens, API keys, cookies, passwords and card numbers.
 func Mask(s string) string {
 	s = bearerRe.ReplaceAllString(s, "Bearer ***")
 	s = keyRe.ReplaceAllString(s, "***")
@@ -106,9 +94,6 @@ func Mask(s string) string {
 	return s
 }
 
-// ---- formatting ----
-
-// Pretty returns masked, indented JSON (or masked text), truncated to LOG_BODY_MAX.
 func Pretty(v any) string {
 	setup()
 	var raw []byte
@@ -145,7 +130,6 @@ func Pretty(v any) string {
 	return s
 }
 
-// Trunc shortens s to n runes (for system prompts etc.).
 func Trunc(s string, n int) string {
 	r := []rune(s)
 	if len(r) <= n {
@@ -154,18 +138,15 @@ func Trunc(s string, n int) string {
 	return string(r[:n]) + fmt.Sprintf(" … [+%d chars]", len(r)-n)
 }
 
-// Field is one labelled line or section of a block.
 type Field struct {
 	Label string
-	Value string // single line
-	Body  string // multi-line (only printed when bodies are on)
-	Force bool   // print Body even at info level
+	Value string
+	Body  string
+	Force bool // print Body even when bodies are off
 }
 
-// F builds a one-line field.
 func F(label string, v any) Field { return Field{Label: label, Value: Mask(fmt.Sprint(v))} }
 
-// B builds a body section (shown at debug level / LOG_BODIES=true).
 func B(label string, v any) Field { return Field{Label: label, Body: Pretty(v)} }
 
 const (
@@ -189,8 +170,6 @@ func paint(c, s string) string {
 
 var kindColor = map[string]string{"CHAT": cCyan, "LLM": cMag, "ASI": cBlue}
 
-// Block prints one boxed entry: "── KIND ▶ title ─── status · duration".
-// ok=false paints the status red.
 func Block(kind, title, status string, d time.Duration, ok bool, fields ...Field) {
 	setup()
 	var b strings.Builder
@@ -226,23 +205,18 @@ func Block(kind, title, status string, d time.Duration, ok bool, fields ...Field
 	writeMu.Unlock()
 }
 
-// Line prints a single short log line (e.g. non-chat HTTP requests).
 func Line(format string, args ...any) {
 	writeMu.Lock()
 	fmt.Fprintf(os.Stderr, "%s %s\n", time.Now().Format("15:04:05.000"), Mask(fmt.Sprintf(format, args...)))
 	writeMu.Unlock()
 }
 
-// ---- context: which tool an ASI call belongs to ----
-
 type toolKey struct{}
 
-// WithTool tags ctx so the HTTP client can name the tool in its log block.
 func WithTool(ctx context.Context, name string) context.Context {
 	return context.WithValue(ctx, toolKey{}, name)
 }
 
-// Tool returns the tool name set by WithTool.
 func Tool(ctx context.Context) string {
 	s, _ := ctx.Value(toolKey{}).(string)
 	return s

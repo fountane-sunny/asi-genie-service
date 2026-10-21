@@ -13,11 +13,10 @@ import (
 	genillm "asi-genie-poc/llm"
 )
 
-// Slots are the parameters extracted from the message (never computed values).
 type Slots struct {
-	Date         string `json:"date,omitempty"`      // YYYY-MM-DD
-	StartDate    string `json:"startDate,omitempty"` // YYYY-MM-DD
-	EndDate      string `json:"endDate,omitempty"`   // YYYY-MM-DD
+	Date         string `json:"date,omitempty"`
+	StartDate    string `json:"startDate,omitempty"`
+	EndDate      string `json:"endDate,omitempty"`
 	CompareStart string `json:"compareStartDate,omitempty"`
 	CompareEnd   string `json:"compareEndDate,omitempty"`
 	GuestName    string `json:"guestName,omitempty"`
@@ -25,10 +24,10 @@ type Slots struct {
 	Room         string `json:"roomNumber,omitempty"`
 	RoomType     string `json:"roomType,omitempty"`
 	Report       string `json:"reportName,omitempty"`
-	Destination  string `json:"destination,omitempty"` // screen name for navigate
-	Metric       string `json:"metric,omitempty"`      // adr | occupancy | revpar | revenue
-	Topic        string `json:"topic,omitempty"`       // how-to topic for guide answers
-	UsesContext  bool   `json:"usesContext,omitempty"` // message refers to an earlier entity ("her", "that booking")
+	Destination  string `json:"destination,omitempty"`
+	Metric       string `json:"metric,omitempty"`
+	Topic        string `json:"topic,omitempty"`
+	UsesContext  bool   `json:"usesContext,omitempty"`
 	Unsupported  string `json:"unsupportedWhat,omitempty"`
 }
 
@@ -111,20 +110,14 @@ func mustWeekday(d string) string {
 	return t.Weekday().String()
 }
 
-// classify uses the LLM as a router (function call over the intent list),
-// falling back to deterministic keyword matching when the LLM is unavailable.
 func (e *Engine) classify(rc *reqCtx) (intents.Intent, IntentInfo, Slots) {
 	var slots Slots
-	// Snap misspelled words to catalogue vocabulary before any routing, so
-	// "arivals tday" and "list the roroms" route like the corrected text.
-	// Names and numbers are left alone (see intents.CorrectSpelling).
 	routeText := rc.req.Message
 	if corrected, changed := intents.CorrectSpelling(rc.req.Message); changed {
 		routeText = corrected
 		log.Printf("genie: spelling corrected %q -> %q", rc.req.Message, corrected)
 	}
-	// These questions are not in the catalogue. Without a rule the router
-	// marks them unsupported or sends them to a navigate card.
+	// These questions are not in the catalogue, so a rule routes them before the model marks them unsupported.
 	if id, ruleSlots, ok := ruleRoute(routeText); ok {
 		slots = ruleSlots
 		if it, found := intents.Get(id); found {
@@ -132,7 +125,6 @@ func (e *Engine) classify(rc *reqCtx) (intents.Intent, IntentInfo, Slots) {
 		}
 		return intents.Intent{ID: id, Module: "Genie"}, IntentInfo{ID: id, Handler: "dedicated", Confidence: 1, Source: "rule"}, slots
 	}
-	// Skip when the planner's LLM call already failed this request.
 	if e.LLM != nil && !rc.llmFailed {
 		var prior []genillm.Message
 		if shouldSendConversationContext(rc.req.Message) {
@@ -176,8 +168,6 @@ var (
 	whoIsRe        = regexp.MustCompile(`(?i)^who(?:'s| is)\s+(.+)$`)
 )
 
-// ruleRoute covers questions the intent catalogue does not name, matching the
-// mobile assistant: the signed-in user, a person on the property, and a room list.
 func ruleRoute(message string) (string, Slots, bool) {
 	lower := strings.ToLower(strings.TrimSpace(message))
 	lower = strings.TrimRight(lower, " ?.!")
@@ -239,8 +229,6 @@ func whoIsPerson(message string) (string, bool) {
 	return name, true
 }
 
-// classifierMessages is the router transcript. Continuations keep the recent
-// turns; a new question is only the current message.
 func classifierMessages(message string, prior []genillm.Message) []genillm.Message {
 	current := genillm.Message{Role: genillm.RoleUser, Content: message}
 	if !shouldSendConversationContext(message) || len(prior) == 0 {
@@ -252,10 +240,6 @@ func classifierMessages(message string, prior []genillm.Message) []genillm.Messa
 	return out
 }
 
-// recentTurns returns the last contextTurns user and assistant messages.
-// Stored history is used when it includes the assistant replies. When it does
-// not, the transcript sent with the request is used, so a follow-up such as
-// "do it" still sees what the assistant just offered.
 func (rc *reqCtx) recentTurns() []genillm.Message {
 	stored := clipTurns(rc.turnsFromStore())
 	client := clipTurns(rc.req.History)
@@ -319,8 +303,7 @@ func clipTurn(s string) string {
 	return string(r[:maxTurnRunes]) + "…"
 }
 
-// appendUserTurn adds the current user message without two user messages in a
-// row, which the model API rejects.
+// The model API rejects two user messages in a row.
 func appendUserTurn(prior []genillm.Message, content string) []genillm.Message {
 	if len(prior) > 0 && prior[len(prior)-1].Role == genillm.RoleUser {
 		prior[len(prior)-1].Content += "\n" + content
@@ -336,7 +319,6 @@ func validDate(s string) string {
 	return ""
 }
 
-// resolveSlotDates validates dates; a single date fills an empty range.
 func (rc *reqCtx) resolveSlotDates(s *Slots) {
 	s.Date, s.StartDate, s.EndDate = validDate(s.Date), validDate(s.StartDate), validDate(s.EndDate)
 	s.CompareStart, s.CompareEnd = validDate(s.CompareStart), validDate(s.CompareEnd)
@@ -351,8 +333,7 @@ func (rc *reqCtx) resolveSlotDates(s *Slots) {
 	}
 }
 
-// applyContext fills entity slots from the previous turn (G-097).
-// A new question does not reuse that entity.
+// A new question does not reuse the previous entity.
 func (rc *reqCtx) applyContext(s *Slots) {
 	if !shouldSendConversationContext(rc.req.Message) {
 		return
@@ -374,9 +355,7 @@ func (rc *reqCtx) applyContext(s *Slots) {
 	}
 }
 
-// parseRouteIntent reads a route_intent call. The model sometimes puts date
-// (and the other slot fields) next to intent instead of under slots. Nested
-// slots win when both are present. An empty date here is not filled in.
+// The model sometimes puts slot fields beside intent. Nested slots win.
 func parseRouteIntent(raw json.RawMessage) (intentID string, confidence float64, slots Slots, ok bool) {
 	var head struct {
 		Intent     string  `json:"intent"`
@@ -440,9 +419,7 @@ func mergeSlots(primary, fallback Slots) Slots {
 	return primary
 }
 
-// revenueWindow is the sales-and-revenue range. A single date is that day and
-// is never widened. ok is false when the user gave no date, so the handler
-// asks instead of calling the report with a default window.
+// A single date is that day and is never widened. With no date, ask instead of using a default window.
 func revenueWindow(s Slots) (from, to string, ok bool) {
 	from, to = s.StartDate, s.EndDate
 	if from == "" && to == "" {
@@ -460,9 +437,6 @@ func revenueWindow(s Slots) (from, to string, ok bool) {
 	return from, to, true
 }
 
-// explicitReportDates requires both ends of a report range. Slots win over the
-// model's query. A single slots.date is that day. ok is false when the path is
-// a report and either date is still missing.
 func explicitReportDates(path string, slots Slots, queryStart, queryEnd string) (start, end string, report bool, ok bool) {
 	if !strings.Contains(path, "/reports/") {
 		return "", "", false, true
@@ -480,7 +454,6 @@ func explicitReportDates(path string, slots Slots, queryStart, queryEnd string) 
 	return start, end, true, start != "" && end != ""
 }
 
-// dayOr returns s.Date, else the business date.
 func (rc *reqCtx) dayOr(s Slots) string {
 	if s.Date != "" {
 		return s.Date

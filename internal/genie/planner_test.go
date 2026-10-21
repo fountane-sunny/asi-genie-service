@@ -17,7 +17,6 @@ import (
 	"asi-genie-poc/toolregistry/generated"
 )
 
-// scriptedLLM returns one reply per call, in order, and records each call.
 type scriptedLLM struct {
 	mu      sync.Mutex
 	replies []genillm.Response
@@ -45,7 +44,6 @@ func (s *scriptedLLM) SendMessage(_ context.Context, system string, msgs []genil
 	return genillm.Response{}, errors.New("no scripted reply")
 }
 
-// logOnlyStore satisfies store.Store for execTool; other methods are unused.
 type logOnlyStore struct{ store.Store }
 
 func (logOnlyStore) LogToolExecution(context.Context, store.ToolExecution) error { return nil }
@@ -61,7 +59,6 @@ func toolCall(t *testing.T, name string, args any) genillm.Response {
 
 func planCall(t *testing.T, p readPlan) genillm.Response { return toolCall(t, planTool, p) }
 
-// plannerFixture serves fake ASI reads and records each request.
 func plannerFixture(t *testing.T, llm *scriptedLLM) (*reqCtx, *[]*http.Request) {
 	t.Helper()
 	var mu sync.Mutex
@@ -183,7 +180,6 @@ func TestPlannerRefusalMakesNoAPICalls(t *testing.T) {
 	if len(*seen) != 0 || len(rc.resp.ToolCalls) != 0 {
 		t.Errorf("refusal made API calls: %d", len(*seen))
 	}
-	// A write outside the create-guide table: the reply is the model's, written for this question.
 	if rc.resp.Text != written {
 		t.Errorf("text = %q", rc.resp.Text)
 	}
@@ -210,9 +206,6 @@ func TestPlannerRefusalWithoutMessageFallsBackToConstant(t *testing.T) {
 	}
 }
 
-// The model classifies "create X" by entity id, not by matching the raw text
-// against a keyword list, so a typo ("rooom") still resolves correctly - the
-// same way the planner already reads intent through typos elsewhere.
 func TestPlannerCreateEntityRefusalUsesVerifiedScreenNotModelText(t *testing.T) {
 	llm := &scriptedLLM{replies: []genillm.Response{
 		planCall(t, readPlan{Action: planActionRefuse, Entity: "room_type", Message: "ignored: add one under Settings > Rooms"}),
@@ -238,8 +231,6 @@ func TestPlannerCreateEntityRefusalUsesVerifiedScreenNotModelText(t *testing.T) 
 	}
 }
 
-// An entity with no planner read to offer (amenities aren't in the index)
-// still gets a single, screen-only sentence.
 func TestPlannerCreateEntityRefusalWithoutReadOffer(t *testing.T) {
 	llm := &scriptedLLM{replies: []genillm.Response{
 		planCall(t, readPlan{Action: planActionRefuse, Entity: "amenity"}),
@@ -256,8 +247,6 @@ func TestPlannerCreateEntityRefusalWithoutReadOffer(t *testing.T) {
 	}
 }
 
-// Update for an id-based screen (email templates) lands on the list, not the
-// "new" screen, since a generic "update email templates" has no template id.
 func TestPlannerUpdateEntityRefusalUsesListScreen(t *testing.T) {
 	llm := &scriptedLLM{replies: []genillm.Response{
 		planCall(t, readPlan{Action: planActionRefuse, Entity: "email_template", WriteKind: writeKindUpdate}),
@@ -277,8 +266,6 @@ func TestPlannerUpdateEntityRefusalUsesListScreen(t *testing.T) {
 	}
 }
 
-// Update for a tab-based screen (room types) edits in place, so it reuses the
-// same route as create.
 func TestPlannerUpdateEntityRefusalReusesTabScreen(t *testing.T) {
 	llm := &scriptedLLM{replies: []genillm.Response{
 		planCall(t, readPlan{Action: planActionRefuse, Entity: "room_type", WriteKind: writeKindUpdate}),
@@ -298,8 +285,6 @@ func TestPlannerUpdateEntityRefusalReusesTabScreen(t *testing.T) {
 	}
 }
 
-// A generic "update a reservation" has no id to deep link to, so it falls
-// back to the model's own message rather than guessing which reservation.
 func TestPlannerUpdateReservationFallsBackToModelMessage(t *testing.T) {
 	const written = "I can't update a reservation from chat; search for it, then open it to edit."
 	llm := &scriptedLLM{replies: []genillm.Response{
@@ -391,9 +376,7 @@ func TestPlannerRunsReportOutsideCoreWithBusinessDate(t *testing.T) {
 	}
 	want := map[string]string{
 		"/api/v1/reports/advance-deposit-ledger": "endDate=2026-10-20&propertyId=42&startDate=2026-10-20",
-		// paymentMethods/status are comma-separated filters: left unset by the
-		// model, they default to every value (fillEnumDefaults) instead of
-		// the API's own "unset = match nothing" behavior.
+		// An unset comma-separated filter is sent as every value; a missing param matches nothing.
 		"/api/v1/reports/daily-collection-by-payment-type": "date=2026-10-20&paymentMethods=creditCard%2CdebitCard%2Ccash%2Ccheck%2CbadDebts%2CbusinessSource&propertyId=42&status=IN_HOUSE%2CCHECKED_OUT%2CCONFIRMED%2CUNCONFIRMED%2CTRANSFER_OUT%2CCANCELLED%2CNO_SHOW",
 		"/api/v1/reports/housekeeping-task-summary":        "endDate=2026-10-01&propertyId=42&startDate=2026-10-01",
 	}
@@ -436,7 +419,7 @@ func TestFillEnumDefaultsSendsAllUnlessModelNarrowed(t *testing.T) {
 	tool := generated.ToolMeta{Query: []generated.QueryParam{
 		{Name: "paymentMethods", AllValues: []string{"creditCard", "debitCard", "cash"}},
 		{Name: "status", AllValues: []string{"IN_HOUSE", "CHECKED_OUT"}},
-		{Name: "date"}, // no AllValues: untouched
+		{Name: "date"},
 	}}
 
 	unset := url.Values{}

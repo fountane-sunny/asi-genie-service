@@ -7,8 +7,6 @@ import (
 	genillm "asi-genie-poc/llm"
 )
 
-// conceptRule is one hotel term that must not be refused as trivia.
-// tool is the read that holds this property's figure; empty means explain only.
 type conceptRule struct {
 	phrases []string
 	tool    string
@@ -31,8 +29,6 @@ var conceptRules = []conceptRule{
 	}, ""},
 }
 
-// hotelConceptRead is the property read for a refused "what is RevPAR?" style
-// question. ok is false when the term has no live figure, or is not a hotel term.
 func hotelConceptRead(message, bizDate string) (plannedRead, bool) {
 	rule, ok := matchConcept(message)
 	if !ok || rule.tool == "" {
@@ -73,7 +69,6 @@ Answer in two short sentences: what the term means in a hotel, then how someone 
 Do not invent this property's numbers, guest names, or dates.
 If the question is not about hotel operations, say you can only help with this property.`
 
-// explainHotelConcept answers a hotel-term question that has no property read.
 func (e *Engine) explainHotelConcept(rc *reqCtx) bool {
 	ctx, cancel := rc.llmCtx()
 	res, err := e.LLM.SendMessage(ctx, hotelTermSystem, []genillm.Message{{

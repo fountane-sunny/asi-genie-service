@@ -1,6 +1,3 @@
-// Postgres backend, mirroring asi-reservation-service: GORM + gorm.io/driver/postgres
-// (pgx underneath), key=value DSN from POSTGRES_* env, and the schema defined by
-// Go models below and applied with GORM AutoMigrate at startup (no SQL files).
 package store
 
 import (
@@ -15,8 +12,6 @@ import (
 	"gorm.io/gorm/clause"
 	gormLogger "gorm.io/gorm/logger"
 )
-
-// ---- models (schema source of truth) ----
 
 type Conversation struct {
 	ID         string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
@@ -34,11 +29,10 @@ type MessageRow struct {
 	Role           string    `gorm:"type:text;not null"`
 	Content        string    `gorm:"type:text"`
 	ToolCalls      []byte    `gorm:"type:jsonb"`
-	DurationMs     *int64    `gorm:""` // assistant replies: server time to answer
+	DurationMs     *int64    `gorm:""`
 	CreatedAt      time.Time `gorm:"not null;default:now();index"`
 }
 
-// GenieTurn: one analytics row per /chat turn (exported via GET /analytics/turns).
 type GenieTurn struct {
 	ID           string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	CreatedAt    time.Time `gorm:"not null;default:now();index:idx_genie_turns_prop_created,priority:2;index"`
@@ -47,7 +41,7 @@ type GenieTurn struct {
 	UserID       *string   `gorm:"type:text;index"`
 	UserName     *string   `gorm:"type:text"`
 	UserEmail    *string   `gorm:"type:text"`
-	Message      string    `gorm:"type:text"` // PAN-masked
+	Message      string    `gorm:"type:text"` // PAN-masked before it is stored
 	Reply        string    `gorm:"type:text"`
 	Cards        []byte    `gorm:"type:jsonb"`
 	Intent       *string   `gorm:"type:text;index"`
@@ -61,7 +55,7 @@ type GenieTurn struct {
 	DurationMs   int64     `gorm:""`
 	ErrorCode    *string   `gorm:"type:text;index"`
 	ErrorMessage *string   `gorm:"type:text"`
-	Feedback     *string   `gorm:"type:text"` // nullable, for later
+	Feedback     *string   `gorm:"type:text"`
 	RetryCount   int       `gorm:"not null;default:0"`
 }
 
@@ -93,12 +87,10 @@ type GenieEvent struct {
 	CreatedAt  time.Time `gorm:"not null;default:now();index:idx_genie_events_kind_created,priority:2"`
 }
 
-// Models lists everything AutoMigrate manages.
 var Models = []any{&Conversation{}, &MessageRow{}, &ToolExecutionRow{}, &GenieEvent{}, &GenieTurn{}}
 
 type pg struct{ db *gorm.DB }
 
-// NewPostgres opens the DB and auto-migrates the models.
 func NewPostgres(dsn string) (Store, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: gormLogger.Default.LogMode(gormLogger.Silent)})
 	if err != nil {
@@ -138,10 +130,8 @@ func intPtr(n int) *int {
 	return &n
 }
 
-// conversation returns the id of sessionID's conversation for propertyID. A
-// conversation is bound to one property: if the session's existing row is for
-// another property, that row is archived (propertyID 0 = any; used by tool logs) (session_id gets a "~p<old>-<unix>"
-// suffix) and a new conversation is started under sessionID.
+// A session belongs to one user and property. A mismatch archives the old row
+// under a "~p<old>-<unix>" session id and starts a new one.
 func (p *pg) conversation(ctx context.Context, sessionID, userID string, propertyID int) (string, error) {
 	db := p.db.WithContext(ctx)
 	var cur Conversation
@@ -150,13 +140,12 @@ func (p *pg) conversation(ctx context.Context, sessionID, userID string, propert
 		return "", err
 	}
 	if cur.ID != "" {
-		// Tool logs look up the session without a property (propertyID 0).
+		// propertyID 0 is a tool-log lookup and must not rebind the session.
 		if propertyID <= 0 {
 			err = db.Model(&cur).Update("updated_at", gorm.Expr("NOW()")).Error
 			return cur.ID, err
 		}
-		// Reuse only a row already owned by this user at this property.
-		// A null user_id is not adopted: that would claim an orphaned chat.
+		// A null user_id is not adopted; that would claim an orphaned chat.
 		if cur.UserID != nil && *cur.UserID == userID && cur.PropertyID != nil && *cur.PropertyID == propertyID {
 			err = db.Model(&cur).Update("updated_at", gorm.Expr("NOW()")).Error
 			return cur.ID, err
@@ -194,7 +183,7 @@ func (p *pg) AppendMessages(ctx context.Context, sessionID, userID string, prope
 	for i, m := range msgs {
 		ts := m.CreatedAt
 		if ts.IsZero() {
-			ts = now.Add(time.Duration(i) * time.Microsecond) // keep order within a turn
+			ts = now.Add(time.Duration(i) * time.Microsecond) // preserve order inside one turn
 		}
 		row := MessageRow{ConversationID: convID, Role: m.Role, Content: m.Content, ToolCalls: nilIfEmpty(m.ToolCalls), CreatedAt: ts}
 		if m.DurationMs > 0 {
@@ -206,8 +195,6 @@ func (p *pg) AppendMessages(ctx context.Context, sessionID, userID string, prope
 	return p.db.WithContext(ctx).Create(&rows).Error
 }
 
-// ReplaceTurnMessages overwrites the saved question and reply for one turn so
-// a refresh shows the retried answer once.
 func (p *pg) ReplaceTurnMessages(ctx context.Context, sessionID, userID string, propertyID int, turnID string, userMsg, assistant Message) (bool, error) {
 	if strings.TrimSpace(turnID) == "" {
 		return false, nil
@@ -384,7 +371,6 @@ func (p *pg) LogTurn(ctx context.Context, t Turn) (string, error) {
 	return row.ID, nil
 }
 
-// UpdateTurn keeps the same analytics id and records that the reply was replaced.
 func (p *pg) UpdateTurn(ctx context.Context, turnID string, t Turn) error {
 	if strings.TrimSpace(turnID) == "" {
 		return fmt.Errorf("turnId is required")

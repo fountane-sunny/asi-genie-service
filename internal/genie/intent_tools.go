@@ -1,7 +1,5 @@
 package genie
 
-// intentTools is the small, audited read surface for each deterministic intent.
-// Tool names are generated registry names, never model-selected endpoint prose.
 var intentTools = map[string][]string{
 	"todays_arrivals":      {"reservation_get_reservations"},
 	"todays_departures":    {"reservation_get_reservations"},

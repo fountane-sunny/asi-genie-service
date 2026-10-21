@@ -15,20 +15,16 @@ import (
 	"asi-genie-poc/toolregistry/generated"
 )
 
-// ---- tool selection ----
-
 var (
 	wordRe      = regexp.MustCompile(`[a-z0-9]+`)
 	pathParamRe = regexp.MustCompile(`\{([^}]+)\}`)
 	stopWords   = map[string]bool{"the": true, "a": true, "an": true, "is": true, "of": true, "for": true, "to": true, "me": true, "my": true, "and": true, "in": true, "on": true, "what": true, "show": true, "get": true, "list": true, "all": true, "please": true, "how": true, "many": true, "are": true, "there": true, "i": true, "can": true, "you": true, "with": true, "api": true, "v1": true, "do": true, "we": true, "have": true, "today": true, "this": true, "that": true, "give": true, "tell": true, "find": true}
-	// domain hints boost tools in a service when these words appear.
 	domainHints = map[string][]string{
 		"reservation": {"reservation", "booking", "guest", "arrival", "departure", "checkin", "checkout", "occupancy", "folio", "stay", "ledger", "deposit", "housekeeping", "shift", "collection", "audit", "noshow"},
 		"config":      {"room", "rate", "property", "building", "tax", "config", "setting", "amenity", "floor", "plan", "season"},
 		"auth":        {"user", "role", "permission", "login", "invite", "member", "staff"},
 		"reporting":   {"report", "email", "send", "schedule"},
 	}
-	// synonyms expand user words to vocabulary used in tool names/paths.
 	synonyms = map[string][]string{
 		"booking":   {"reservation"},
 		"bookings":  {"reservation"},
@@ -47,7 +43,6 @@ var (
 	}
 )
 
-// singular trims a trailing "s" so "reservations" matches "reservation".
 func singular(w string) string {
 	switch {
 	case len(w) > 4 && strings.HasSuffix(w, "ies"):
@@ -82,13 +77,11 @@ func queryTerms(s string) []string {
 
 type indexedTool struct {
 	meta  generated.ToolMeta
-	words map[string]bool // singularized words from name/path/description
+	words map[string]bool
 	hay   string
-	isExp bool // export/download endpoints (rarely what a chat user wants)
+	isExp bool
 }
 
-// toolSelector scores read-only tools with IDF-weighted term overlap and
-// caches results per normalized query.
 type ToolSelector struct {
 	tools []indexedTool
 	idf   map[string]float64
@@ -96,7 +89,6 @@ type ToolSelector struct {
 	cache map[string][]generated.ToolMeta
 }
 
-// NewToolSelector indexes the given (read-only) tools.
 func NewToolSelector(all []generated.ToolMeta) *ToolSelector {
 	s := &ToolSelector{idf: map[string]float64{}, cache: map[string][]generated.ToolMeta{}}
 	df := map[string]int{}
@@ -140,7 +132,7 @@ func (s *ToolSelector) score(t indexedTool, terms []string, wantsExport bool) fl
 		return 0
 	}
 	if matched > 1 {
-		score *= 1 + 0.15*float64(matched-1) // reward covering several query terms
+		score *= 1 + 0.15*float64(matched-1)
 	}
 	if t.isExp && !wantsExport {
 		score *= 0.5
@@ -196,8 +188,6 @@ func (s *ToolSelector) Select(query string, n int) []generated.ToolMeta {
 	return out
 }
 
-// toLLMTool builds a generic JSON schema: path params as required strings and
-// a free-form "query" object. Only GET tools are ever offered (Phase 1).
 func toLLMTool(t generated.ToolMeta) genillm.Tool {
 	props := map[string]any{}
 	required := []string{}
@@ -222,8 +212,6 @@ func toLLMTool(t generated.ToolMeta) genillm.Tool {
 	desc := fmt.Sprintf("[%s] %s %s — %s", t.Service, t.Method, t.Path, descText)
 	return genillm.Tool{Name: t.Name, Description: desc, Parameters: params}
 }
-
-// ---- tool execution ----
 
 var services = map[string]generated.Service{
 	"auth":        generated.AuthService,
@@ -262,7 +250,6 @@ func parseArgs(t generated.ToolMeta, raw json.RawMessage) (toolArgs, error) {
 	return out, nil
 }
 
-// asJSON returns b if it is valid JSON, otherwise b encoded as a JSON string.
 func asJSON(b []byte) json.RawMessage {
 	if len(b) == 0 {
 		return nil
@@ -274,11 +261,9 @@ func asJSON(b []byte) json.RawMessage {
 	return j
 }
 
-// IsReadTool reports whether t is a GET, read-only tool.
 func IsReadTool(t generated.ToolMeta) bool { return t.Method == http.MethodGet && t.ReadOnly }
 
-// blockedReadFragments are GET tools Genie must not offer the model.
-// Matched against the tool name and path, lowercased.
+// Name or path fragments that must never be offered to the model.
 var blockedReadFragments = []string{
 	"admin",
 	"impersonat",
@@ -288,8 +273,6 @@ var blockedReadFragments = []string{
 	"export",
 }
 
-// IsAllowedReadTool is the chat allow-list: a read-only GET whose name and path
-// are outside admin, impersonation, invite, internal, audit-log, and export.
 func IsAllowedReadTool(t generated.ToolMeta) bool {
 	if !IsReadTool(t) {
 		return false
@@ -305,16 +288,11 @@ func IsAllowedReadTool(t generated.ToolMeta) bool {
 
 const MaxResultBytes = 8000
 
-// allowedWriteTools is the complete, explicit list of non-GET tools Genie may
-// ever call. Every entry must be driven by a dedicated handler that gets the
-// user's explicit confirmation in the same chat turn flow before calling it
-// (see hEmailFolio) — this is never offered to the LLM planner or ToolSelector.
+// Writes Genie may call, and only from a handler after the user confirms. Never offered to the model.
 var allowedWriteTools = map[string]bool{
 	"reservation_post_folio_id_email": true, // email_folio (G-243), confirmed send only
 }
 
-// IsAllowedWriteTool reports whether t is one of the small set of writes
-// Genie is allowed to perform, always behind an explicit confirm step.
 func IsAllowedWriteTool(t generated.ToolMeta) bool {
 	return t.Method == http.MethodPost && !t.ReadOnly && allowedWriteTools[t.Name]
 }

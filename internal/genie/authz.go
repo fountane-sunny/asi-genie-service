@@ -7,21 +7,16 @@ import (
 	"strings"
 )
 
-// ErrUnauthenticated means the token is missing or auth rejected it.
 var ErrUnauthenticated = errors.New("unauthenticated")
 
-// ErrForbidden means the token is valid but does not include this property.
 var ErrForbidden = errors.New("forbidden")
 
-// Caller is the signed-in user, resolved from auth with their own token.
 type Caller struct {
 	UserID string
 	Name   string
 	Email  string
 }
 
-// Authorize checks the caller's token and that propertyID is one of the
-// property ids returned by auth GET /permissions. The JWT itself has no property.
 func (e *Engine) Authorize(ctx context.Context, token string, propertyID int) (Caller, error) {
 	if strings.TrimSpace(token) == "" {
 		return Caller{}, ErrUnauthenticated
@@ -46,7 +41,6 @@ func (e *Engine) Authorize(ctx context.Context, token string, propertyID int) (C
 	return Caller{UserID: u.id, Name: u.name, Email: u.email}, nil
 }
 
-// propertyIDsOf collects every positive propertyId in an auth permissions payload.
 func propertyIDsOf(v any) []int {
 	seen := map[int]bool{}
 	var out []int

@@ -9,13 +9,10 @@ import (
 	"asi-genie-poc/internal/intents"
 )
 
-// Friendly, user-facing error text. Raw errors only go to the logs.
-
 var serviceLabel = map[string]string{
 	"reservation": "reservation", "config": "property settings", "auth": "sign-in", "reporting": "reporting",
 }
 
-// what describes an intent for messages ("today's arrivals").
 func what(it intents.Intent) string {
 	s := strings.ReplaceAll(it.ID, "_", " ")
 	switch {
@@ -27,7 +24,6 @@ func what(it intents.Intent) string {
 	return s
 }
 
-// errorCode classifies a tool/handler error.
 func errorCode(err error) string {
 	if err == nil {
 		return ""
@@ -51,7 +47,6 @@ func errorCode(err error) string {
 	return "unexpected"
 }
 
-// errorCard turns err into a readable card + one-line reply.
 func errorCard(it intents.Intent, err error, service string, link *cards.Link) (cards.Card, string) {
 	w := what(it)
 	svc := serviceLabel[service]
@@ -79,11 +74,8 @@ func errorCard(it intents.Intent, err error, service string, link *cards.Link) (
 	return cards.Error(it.ID, code, title, msg, retry, link), msg + " " + retry
 }
 
-// llmBusyNote is added when the assistant model failed and a simpler match was used.
 const llmBusyNote = "The assistant is busy right now. Try again in a moment if this answer looks off."
 
-// outageCard is the reply when every planned read failed because ASI could
-// not be reached. The model is not asked to narrate a total outage.
 func outageCard(results []readResult) (cards.Card, string, bool) {
 	if len(results) == 0 {
 		return cards.Card{}, "", false

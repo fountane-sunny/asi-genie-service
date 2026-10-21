@@ -1,5 +1,4 @@
-// Package llm provides provider-agnostic LLM clients (OpenAI, Anthropic, Gemini)
-// with tool/function calling. API keys are read ONLY from environment variables.
+// API keys are read only from environment variables.
 package llm
 
 import (
@@ -12,43 +11,37 @@ import (
 	"time"
 )
 
-// Roles used in Message.Role.
 const (
 	RoleUser      = "user"
 	RoleAssistant = "assistant"
 	RoleTool      = "tool"
 )
 
-// Message is one turn of conversation history.
 type Message struct {
 	Role       string     `json:"role"`
 	Content    string     `json:"content"`
-	ToolCallID string     `json:"toolCallId,omitempty"` // for Role=tool: the call this result answers
-	ToolName   string     `json:"toolName,omitempty"`   // for Role=tool: needed by Gemini
-	ToolCalls  []ToolCall `json:"toolCalls,omitempty"`  // for Role=assistant
+	ToolCallID string     `json:"toolCallId,omitempty"`
+	ToolName   string     `json:"toolName,omitempty"` // Gemini tool results require the name
+	ToolCalls  []ToolCall `json:"toolCalls,omitempty"`
 }
 
-// Tool describes a callable function; Parameters is a JSON schema object.
 type Tool struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	Parameters  map[string]any `json:"parameters"`
 }
 
-// ToolCall is a model request to invoke a tool.
 type ToolCall struct {
 	ID        string          `json:"id"`
 	Name      string          `json:"name"`
 	Arguments json.RawMessage `json:"arguments"`
 }
 
-// Usage holds token counts.
 type Usage struct {
 	InputTokens  int `json:"inputTokens"`
 	OutputTokens int `json:"outputTokens"`
 }
 
-// Response is the model output.
 type Response struct {
 	Text       string     `json:"text"`
 	ToolCalls  []ToolCall `json:"toolCalls,omitempty"`
@@ -56,27 +49,23 @@ type Response struct {
 	Usage      Usage      `json:"usage"`
 }
 
-// LLMClient is implemented by every provider.
 type LLMClient interface {
 	SendMessage(ctx context.Context, systemPrompt string, messages []Message, tools []Tool) (Response, error)
 }
 
-// Config selects provider and generation settings. The API key is intentionally
-// NOT part of Config; it is read from the provider's env var.
+// The API key is not stored here; it is read from the provider env var.
 type Config struct {
 	Provider string
 	Model    string
-	// FallbackModel (same provider) is tried after retries on Model fail; "" = none.
+	// Empty means no fallback. Tried only after retries on Model fail.
 	FallbackModel string
-	// AttemptTimeout bounds each single provider call (LLM_ATTEMPT_TIMEOUT, default 12s);
-	// every retry gets a fresh one, within the caller's overall context.
+	// Each retry gets a fresh deadline inside the caller's context.
 	AttemptTimeout time.Duration
 	Temperature    float64
 	MaxTokens      int
 }
 
-// Providers, their key env vars and per-provider model env vars.
-// There is deliberately NO default provider or model: both come from env.
+// No default provider or model; both come from the environment.
 var (
 	keyEnv = map[string]string{
 		"openai":    "OPENAI_API_KEY",
@@ -90,13 +79,8 @@ var (
 	}
 )
 
-// ProviderNone disables the LLM (deterministic keyword routing only).
 const ProviderNone = "none"
 
-// ConfigFromEnv reads LLM_PROVIDER (required: openai|anthropic|gemini|none),
-// the model from LLM_MODEL or the provider's own var (OPENAI_MODEL /
-// ANTHROPIC_MODEL / GEMINI_MODEL; required unless provider=none),
-// LLM_TEMPERATURE (default 0.2) and LLM_MAX_TOKENS (default 2048).
 func ConfigFromEnv() (Config, error) {
 	cfg := Config{
 		Provider:       strings.ToLower(strings.TrimSpace(os.Getenv("LLM_PROVIDER"))),
@@ -144,7 +128,6 @@ func ConfigFromEnv() (Config, error) {
 	return cfg, nil
 }
 
-// ValidateEnv checks the provider is known and its API key env var is set.
 func ValidateEnv(provider string) error {
 	_, err := apiKey(provider)
 	return err
@@ -162,7 +145,6 @@ func apiKey(provider string) (string, error) {
 	return k, nil
 }
 
-// New returns the client for cfg.Provider.
 func New(cfg Config) (LLMClient, error) {
 	cfg.Provider = strings.ToLower(strings.TrimSpace(cfg.Provider))
 	key, err := apiKey(cfg.Provider)

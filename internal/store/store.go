@@ -1,6 +1,3 @@
-// Package store persists Genie conversations, messages and tool executions.
-// Postgres (store_postgres.go) is the default; the in-memory store is a
-// fallback when no database is configured.
 package store
 
 import (
@@ -12,17 +9,14 @@ import (
 	"time"
 )
 
-// Message is one persisted chat turn.
 type Message struct {
-	Role      string          `json:"role"`
-	Content   string          `json:"content"`
-	ToolCalls json.RawMessage `json:"toolCalls,omitempty"`
-	CreatedAt time.Time       `json:"createdAt"`
-	// DurationMs is the server time to produce an assistant reply (0 for user messages).
-	DurationMs int64 `json:"durationMs,omitempty"`
+	Role       string          `json:"role"`
+	Content    string          `json:"content"`
+	ToolCalls  json.RawMessage `json:"toolCalls,omitempty"`
+	CreatedAt  time.Time       `json:"createdAt"`
+	DurationMs int64           `json:"durationMs,omitempty"`
 }
 
-// Turn is one analytics row per /chat turn (see genie_turns).
 type Turn struct {
 	ID           string          `json:"id"`
 	CreatedAt    time.Time       `json:"createdAt"`
@@ -31,35 +25,33 @@ type Turn struct {
 	UserID       string          `json:"userId,omitempty"`
 	UserName     string          `json:"userName,omitempty"`
 	UserEmail    string          `json:"userEmail,omitempty"`
-	Message      string          `json:"message"` // PAN-masked
+	Message      string          `json:"message"` // PAN-masked before it is stored
 	Reply        string          `json:"reply"`
 	Cards        json.RawMessage `json:"cards,omitempty"`
 	Intent       string          `json:"intent,omitempty"`
 	ScenarioID   string          `json:"scenarioId,omitempty"`
-	Source       string          `json:"source,omitempty"` // llm | keyword | rule
+	Source       string          `json:"source,omitempty"`
 	Confidence   float64         `json:"confidence,omitempty"`
 	Slots        json.RawMessage `json:"slots,omitempty"`
-	Tools        json.RawMessage `json:"tools,omitempty"` // [{name,status,error,durationMs}]
+	Tools        json.RawMessage `json:"tools,omitempty"`
 	LLMModel     string          `json:"llmModel,omitempty"`
 	LLMFailed    bool            `json:"llmFailed,omitempty"`
 	DurationMs   int64           `json:"durationMs"`
 	ErrorCode    string          `json:"errorCode,omitempty"`
 	ErrorMessage string          `json:"errorMessage,omitempty"`
-	Feedback     *string         `json:"feedback,omitempty"` // for later (thumbs up/down, comment)
+	Feedback     *string         `json:"feedback,omitempty"`
 }
 
-// TurnFilter selects turns for export.
-// PropertyID and UserID are both required. A zero property id is not "all properties".
+// Property id 0 is not every property. From and To zero means unbounded.
 type TurnFilter struct {
-	From, To   time.Time // zero = open
-	PropertyID int       // required, > 0
-	UserID     string    // required
-	SessionID  string    // optional
+	From, To   time.Time
+	PropertyID int
+	UserID     string
+	SessionID  string
 	Limit      int
 }
 
-// ValidateScope rejects a missing user or a missing/zero property.
-// Callers must not treat property id 0 as every property.
+// Property id 0 is not every property.
 func ValidateScope(propertyID int, userID string) error {
 	if propertyID <= 0 {
 		return fmt.Errorf("propertyId is required")
@@ -70,7 +62,6 @@ func ValidateScope(propertyID int, userID string) error {
 	return nil
 }
 
-// ToolExecution is an audit row for a tool call.
 type ToolExecution struct {
 	SessionID string
 	ToolName  string
@@ -81,51 +72,36 @@ type ToolExecution struct {
 	Result    json.RawMessage
 }
 
-// Event is a redacted analytics event (Phase 1 audit = analytics only):
-// kind is "intent", "denied", "unsupported" or "pci_block".
+// Redacted. Kind is intent, denied, unsupported, or pci_block.
 type Event struct {
 	SessionID  string          `json:"sessionId"`
 	Kind       string          `json:"kind"`
 	Intent     string          `json:"intent,omitempty"`
 	ScenarioID string          `json:"scenarioId,omitempty"`
 	PropertyID int             `json:"propertyId,omitempty"`
-	Message    string          `json:"message,omitempty"` // redacted user text (unsupported asks only)
+	Message    string          `json:"message,omitempty"` // redacted; unsupported asks only
 	Detail     json.RawMessage `json:"detail,omitempty"`
 	CreatedAt  time.Time       `json:"createdAt"`
 }
 
-// Store is implemented by the memory and Postgres backends.
 type Store interface {
-	// AppendMessages appends msgs to sessionID's conversation, which is bound to
-	// propertyID: a new conversation is started if the property differs.
+	// A different property starts a new conversation.
 	AppendMessages(ctx context.Context, sessionID, userID string, propertyID int, msgs ...Message) error
-	// ReplaceTurnMessages overwrites the user question and assistant reply for
-	// turnID. replaced is false when that turn is not in this conversation.
 	ReplaceTurnMessages(ctx context.Context, sessionID, userID string, propertyID int, turnID string, userMsg, assistant Message) (replaced bool, err error)
-	// UpdateTurn writes the latest reply onto an existing analytics row and
-	// counts the retry. A missing turn returns an error.
 	UpdateTurn(ctx context.Context, turnID string, t Turn) error
-	// History returns the last limit messages (oldest first) for this user and property.
-	// A conversation with a null or different user_id is not returned.
-	// limit<=0 means all. Missing or unowned conversation returns an error.
+	// A null or different user_id is not returned.
 	History(ctx context.Context, sessionID, userID string, propertyID, limit int) ([]Message, error)
 	LogToolExecution(ctx context.Context, e ToolExecution) error
 	LogEvent(ctx context.Context, e Event) error
-	// Events returns recent events of a kind ("" = all), newest last, for this
-	// user's sessions at this property. Events with an empty session id are omitted.
+	// Events with an empty session id are omitted.
 	Events(ctx context.Context, kind, userID string, propertyID, limit int) ([]Event, error)
-	// LogTurn stores one analytics row per chat turn and returns the new turn id.
 	LogTurn(ctx context.Context, t Turn) (turnID string, err error)
-	// UpdateTurnFeedback sets feedback when the turn belongs to this user and property.
+	// Only when the turn belongs to this user and property.
 	UpdateTurnFeedback(ctx context.Context, turnID, sessionID, userID string, propertyID int, feedback string) error
-	// Turns returns turns matching f, oldest first.
 	Turns(ctx context.Context, f TurnFilter) ([]Turn, error)
 	Close() error
 }
 
-// PostgresDSN builds a DSN the way asi-reservation-service does
-// (host/port/user/password/dbname/sslmode from POSTGRES_*), falling back to
-// DATABASE_URL. Returns "" when neither is configured.
 func PostgresDSN() string {
 	host := os.Getenv("POSTGRES_HOST")
 	if host != "" && os.Getenv("POSTGRES_USER") != "" {

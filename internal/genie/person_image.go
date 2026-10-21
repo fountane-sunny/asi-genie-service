@@ -8,8 +8,6 @@ import (
 	"asi-genie-poc/internal/cards"
 )
 
-// recordImage reads a profile photo from a user or guest record.
-// Property users expose avatarURL; the signed-in user exposes image.
 func recordImage(m map[string]any) string {
 	return strings.TrimSpace(str(m, "avatarURL", "avatarUrl", "image", "imageUrl", "photoUrl", "profileImage"))
 }
@@ -19,10 +17,7 @@ type personPhoto struct {
 	image string
 }
 
-// attachPersonImages copies profile photos from the raw reads onto cards.
-// present_answer keeps labels and values, so a photo URL never reaches the panel
-// unless we attach it here. A card with no photo stays empty and the panel
-// shows the person's initials.
+// present_answer keeps labels, not photo URLs, so the photo is attached here.
 func attachPersonImages(cs []cards.Card, reads []readResult) {
 	people := peopleFromReads(reads)
 	for i := range cs {
@@ -81,8 +76,6 @@ func isNameLabel(label string) bool {
 	}
 }
 
-// liftImageRow moves a photo URL out of a visible field so the card header
-// can show it and the row list does not print the raw address.
 func liftImageRow(c *cards.Card) {
 	if c.Image != "" || len(c.Rows) == 0 {
 		return
@@ -119,8 +112,6 @@ func isImageValue(v string) bool {
 	return strings.Contains(s, "/") || strings.Contains(s, ".")
 }
 
-// stripPhotoColumns keeps a photo URL off the grid and on row["image"],
-// which the panel draws as an avatar instead of a text cell.
 func stripPhotoColumns(t *cards.TableData) {
 	if t == nil {
 		return
@@ -206,8 +197,7 @@ func personLabels(m map[string]any) []string {
 	return names
 }
 
-// photoFor returns a photo only when exactly one person matches the labels.
-// Two staff with the same name stay initials rather than showing the wrong photo.
+// Two people with the same name stay initials rather than showing the wrong photo.
 func photoFor(labels []string, people []personPhoto) (string, bool) {
 	var hit string
 	for _, p := range people {
@@ -245,8 +235,7 @@ func namesMatch(label, name string) bool {
 	if h == n {
 		return true
 	}
-	// The card title is often the question ("Who is Sunny Sahsi?"), so the
-	// person's name has to appear as a whole phrase inside it.
+	// The card title is often the question, so the name must match as a whole phrase inside it.
 	return strings.Contains(" "+h+" ", " "+n+" ")
 }
 

@@ -11,8 +11,6 @@ import (
 	"asi-genie-poc/toolregistry/generated"
 )
 
-// reportExportSlugs maps a catalog component key to the path slug of its export API
-// when the two names differ.
 var reportExportSlugs = map[string][]string{
 	"daily-reservation-sheet": {"daily-reservations"},
 	"guest-segmentation":      {"segmentation"},
@@ -23,7 +21,6 @@ var reportExportSlugs = map[string][]string{
 	"room-status-change":      {"room-status-changes"},
 }
 
-// listExports are screens that export PDF/Excel but are not rows in the report catalog.
 var listExports = []struct {
 	title string
 	hints []string
@@ -46,13 +43,8 @@ type downloadCommand struct {
 	end    string
 }
 
-// applyDownloadIntent sends "download/export … pdf|excel" to download_report
-// instead of a navigation card. A duration chip is a full command, so it does
-// not depend on the previous turn's intent.
 func (e *Engine) applyDownloadIntent(it intents.Intent, info IntentInfo, slots Slots, message string) (intents.Intent, IntentInfo, Slots) {
-	// A folio/registration/other-charges document is a reservation action
-	// (download_folio / email_folio), not a report export. applyFolioIntent
-	// steers those after this runs.
+	// Folio documents are reservation actions, not report exports.
 	if messageWantsFolioAction(message) {
 		return it, info, slots
 	}
@@ -260,8 +252,7 @@ func exportDownload(tool generated.ToolMeta, title, format, propertyID, start, e
 	}, true
 }
 
-// clientExportPath strips the service prefix so the browser can append the path
-// to RESERVATION_SERVER_URL (/api/v1) or SERVER_URL (/v1).
+// Drop the service prefix; the browser appends this path to a base that already includes /api/v1 or /v1.
 func clientExportPath(tool generated.ToolMeta) (service, path string) {
 	p := tool.Path
 	switch tool.Service {

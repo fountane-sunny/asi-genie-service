@@ -16,17 +16,12 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// plannerTool is a core read with hand-written guidance for the model. The
-// planner may also use any other allowed read (see plannerSystem); the core
-// index only adds better wording for the most common questions.
 type plannerTool struct {
 	Name  string
-	Label string // shown in the panel while the read runs
-	Use   string // one line for the model: what it returns and which params matter
+	Label string
+	Use   string
 }
 
-// plannerIndex is the core of the read surface. Every name is a generated
-// registry GET that passes IsAllowedReadTool (see planner_test.go).
 var plannerIndex = []plannerTool{
 	{"config_get_properties_id_basic_details", "Checking property details", "property name, working date, timezone, currency"},
 	{"auth_get_current_user", "Checking your profile", "the signed-in user (\"who am I\")"},
@@ -98,8 +93,6 @@ var toolMetaByName = func() map[string]generated.ToolMeta {
 	return m
 }()
 
-// ToolLabel is the panel label for a read ("Checking rooms"). Reads outside
-// the core index get one from their spec summary.
 func ToolLabel(name string) string {
 	if t, ok := plannerByName[name]; ok {
 		return t.Label
@@ -112,8 +105,6 @@ func ToolLabel(name string) string {
 	return defaultToolLabel
 }
 
-// labelFromDescription turns "Get daily collection by payment type report"
-// into "daily collection by payment type report".
 func labelFromDescription(desc string) string {
 	words := strings.Fields(desc)
 	for len(words) > 0 {
@@ -137,12 +128,7 @@ func labelFromDescription(desc string) string {
 	return strings.ToLower(s[:1]) + s[1:]
 }
 
-// queryHint lists a read's query params for the model ("date*, status");
-// * marks required. A comma-separated filter param shows its full value set
-// ("paymentMethods=creditCard|debitCard|...") because the server defaults it
-// to every value (see fillEnumDefaults); naming it here lets the model narrow
-// it when the user asks for a subset. propertyId is omitted because the
-// server always sets it.
+// propertyId is omitted because the server always sets it.
 func queryHint(t generated.ToolMeta) string {
 	var parts []string
 	for _, q := range t.Query {
@@ -191,7 +177,7 @@ type readResult struct {
 	Tool   string          `json:"tool"`
 	Status string          `json:"status"`
 	Error  string          `json:"error,omitempty"`
-	Detail string          `json:"detail,omitempty"` // API validation message, so a follow-up round can fix params
+	Detail string          `json:"detail,omitempty"`
 	Data   json.RawMessage `json:"data,omitempty"`
 }
 
@@ -231,11 +217,6 @@ func planToolDef() genillm.Tool {
 	}
 }
 
-// plannerReads renders the whole allowed read surface in three groups: the
-// core index, the reads that best match this question (with params), and
-// every other allowed read by name. Nothing allowed is hidden from the model,
-// so a report missing from the core is picked by name instead of being
-// swapped for the closest core read.
 func (rc *reqCtx) plannerReads() (core, matched, others string) {
 	var c, m strings.Builder
 	shown := map[string]bool{}
@@ -277,7 +258,7 @@ func oneLineDesc(s string) string {
 	return s
 }
 
-// A greeting is the whole message: "Hi", "Good morning", "Hello genie, how are you?"
+// The whole message must be the greeting.
 var greetingRe = regexp.MustCompile(`(?i)^\s*(?:good\s+(morning|afternoon|evening|night)|hi+|hey+|hello+|howdy|yo|namaste)(?:\s+there)?(?:\s+genie)?(?:\s*,?\s*how\s+are\s+you)?[?!.\s]*$`)
 
 func isGreeting(message string) bool {
@@ -305,8 +286,6 @@ func firstName(fullName string) string {
 	return fields[0]
 }
 
-// greetingHour prefers the browser clock. A missing or out-of-range hour
-// falls back to the server clock.
 func greetingHour(rc *reqCtx) int {
 	if rc.req.LocalHour != nil {
 		h := *rc.req.LocalHour
@@ -317,8 +296,6 @@ func greetingHour(rc *reqCtx) int {
 	return time.Now().Hour()
 }
 
-// greetingContext gives the model the name and time of day for a hello, and
-// nothing for any other message. The sentence itself is still written by the model.
 func (rc *reqCtx) greetingContext() string {
 	if !isGreeting(rc.req.Message) {
 		return ""
@@ -377,26 +354,38 @@ Show a name, never a raw database id, wherever the JSON has a name for it (selec
 Follow the shape the user asked for: a chart request gets a chart, a table request gets a table. Room status rows include color and isPreset; mention that a status is preset only when that field is true, and do not add a fixed explanation about presets.
 Do not mention tools, APIs, JSON or endpoints.`
 
-// routerOwnsTurn keeps turns the planner can't produce (file exports, guest
-// card links, answers to a pending clarify card) on the intent router.
+const suggestionAnswerHint = `
+Also set suggestions to 2 or 3 next requests the user can send. Tapping one sends that message and Genie performs it. Only property reads (arrivals, a balance, a guest, a report) or email, print, or download of a folio already named in the results. Copy names and reservation numbers. Do not suggest payments, refunds, check-in, or creating a reservation. If the answer says a folio was already sent, do not suggest sending it again.`
+
+func answerPrompt() string {
+	if !suggestionsEnabled() {
+		return answerSystem
+	}
+	return answerSystem + suggestionAnswerHint
+}
+
 func (rc *reqCtx) routerOwnsTurn() bool {
 	m := rc.req.Message
 	if _, ok := parseStructuredDownload(m); ok || messageWantsFileExport(m) {
 		return true
 	}
-	// Folio documents (download or email) are a reservation action, not a
-	// generic data read: the planner has no download/confirm card and no
-	// write tool, so these always go to the dedicated handlers.
+	// Folio download and email are not data reads: the planner has no confirm card or write tool.
 	if messageWantsFolioAction(m) {
 		return true
 	}
 	if rc.isBareFolioPrintFollowUp() {
 		return true
 	}
-	// A confirmation reply has no folio keyword. Keep it out of the planner
-	// so hEmailFolio can apply the explicit yes/no safety check and send it.
-	if _, ok := decodeEmailFolioPending(rc.sess.LastEntity); ok {
-		return true
+	// A confirm reply has no folio keyword. Restore the saved send so the planner cannot refuse it.
+	if isEmailFolioConfirmReply(m) && rc.restoreEmailFolioEntity() {
+		if _, ok := decodeEmailFolioPending(rc.sess.LastEntity); ok {
+			return true
+		}
+	}
+	if isEmailFolioConfirmReply(m) {
+		if _, ok := emailConfirmFromHistory(rc.req.History); ok {
+			return true
+		}
 	}
 	if _, ok := decodeEmailFolioSent(rc.sess.LastEntity); ok && messageAsksFolioEmailStatus(m) {
 		return true
@@ -407,10 +396,6 @@ func (rc *reqCtx) routerOwnsTurn() bool {
 	return rc.pendingClarifyIntentFromHistory() != "" && !looksLikeNewQuestion(m)
 }
 
-// planAndAnswer is the model-first path: the model picks reads, the server
-// runs them with the user's token, and the model writes the answer from that
-// data. It returns false when the planner call fails, so Handle falls back to
-// the intent router.
 func (e *Engine) planAndAnswer(rc *reqCtx) bool {
 	msgs := appendUserTurn(rc.recentTurns(), rc.req.Message)
 	var results []readResult
@@ -420,12 +405,11 @@ func (e *Engine) planAndAnswer(rc *reqCtx) bool {
 			return round > 0 && e.answerFromReads(rc, results)
 		}
 		if plan.Action == planActionRefuse {
-			// A hotel term is in scope even when the model files it with trivia.
+			// A hotel term stays in scope even when the model files it as trivia.
 			if read, ok := hotelConceptRead(rc.req.Message, rc.bizDate); ok {
 				plan = readPlan{Action: planActionRead, Reads: []plannedRead{read}}
 			} else if guide, ok := createGuideByID[plan.Entity]; ok && guide.matches(firstNonEmpty(plan.WriteKind, writeKindCreate)) {
-				// A verified ASI screen beats a guessed path; a navigate card
-				// makes it one tap away.
+				// A verified ASI screen beats a path the model guesses.
 				writeKind := firstNonEmpty(plan.WriteKind, writeKindCreate)
 				rc.setIntent(IntentInfo{ID: "unsupported", Handler: "planner", Source: "rule"})
 				rc.add(cards.Navigate("unsupported", guide.title(writeKind), guide.link(writeKind, rc.pid)))
@@ -435,8 +419,7 @@ func (e *Engine) planAndAnswer(rc *reqCtx) bool {
 				return e.explainHotelConcept(rc)
 			} else {
 				rc.setIntent(IntentInfo{ID: "unsupported", Handler: "planner", Source: "llm"})
-				// The model's message is written for this question; the constant
-				// is only the fallback for an empty one.
+				// The constant is only the fallback when the model sent an empty message.
 				rc.text(firstNonEmpty(strings.TrimSpace(plan.Message), scopeRefusal))
 				return true
 			}
@@ -491,8 +474,6 @@ func (e *Engine) plan(rc *reqCtx, msgs []genillm.Message) (readPlan, bool) {
 	return readPlan{}, false
 }
 
-// runReads executes allowed reads in parallel. The property id is always
-// forced to the caller's active property, whatever the model asked for.
 func (rc *reqCtx) runReads(reads []plannedRead) []readResult {
 	if len(reads) > maxPlannedReads {
 		reads = reads[:maxPlannedReads]
@@ -513,8 +494,7 @@ func (rc *reqCtx) runReads(reads []plannedRead) []readResult {
 
 func (rc *reqCtx) runRead(r plannedRead) readResult {
 	res := readResult{Tool: r.Tool}
-	// e.Tools holds only IsAllowedReadTool GETs, so writes and sensitive reads
-	// can never run, whatever name the model sends.
+	// e.Tools holds only allowed GETs, so a model-chosen write or sensitive read cannot run.
 	t, ok := rc.e.Tools[r.Tool]
 	if !ok {
 		slog.Warn("genie planner asked for unavailable tool", "tool", r.Tool, "propertyId", rc.pid)
@@ -548,8 +528,7 @@ func (rc *reqCtx) runRead(r plannedRead) readResult {
 	fillRequiredDates(t, qv, rc.bizDate)
 	fillEnumDefaults(t, qv)
 	if missing := missingRequiredQuery(t, qv); len(missing) > 0 {
-		// Reported back instead of sent: the API would only 400, and the
-		// follow-up round can supply the value.
+		// Don't send a call that would 400; the follow-up round can supply the missing param.
 		slog.Warn("genie planned read missing required params", "tool", r.Tool, "missing", missing, "propertyId", rc.pid)
 		res.Status, res.Error = "error", "missing_parameter"
 		res.Detail = "required query params not set: " + strings.Join(missing, ", ")
@@ -582,8 +561,6 @@ func hasQueryParam(t generated.ToolMeta, name string) bool {
 	return false
 }
 
-// fillRequiredDates sets required date params the model left out: a missing
-// start/end copies its partner, otherwise the business date ("today" in ASI).
 // Optional dates stay unset so the API keeps its own default range.
 func fillRequiredDates(t generated.ToolMeta, qv url.Values, bizDate string) {
 	partner := map[string]string{"startDate": "endDate", "endDate": "startDate", "fromDate": "toDate", "toDate": "fromDate"}
@@ -606,13 +583,7 @@ func isDateParam(name string) bool {
 	return n == "date" || strings.HasSuffix(n, "date")
 }
 
-// fillEnumDefaults defaults an unset comma-separated filter param (AllValues,
-// from the swagger "Comma-separated ... filter (A, B, C)" convention) to
-// every known value. Several reports treat that param missing as "match
-// nothing" rather than "don't filter" (e.g. Daily Collection by Payment Type
-// returns all-zero totals with no paymentMethods set), so a plain "show me
-// the report" must send every value explicitly to see the real data. A param
-// the model did set — even to one value, for "only cash" — is left alone.
+// An unset comma-separated filter is sent as every value. Several reports treat a missing param as match-nothing.
 func fillEnumDefaults(t generated.ToolMeta, qv url.Values) {
 	for _, q := range t.Query {
 		if len(q.AllValues) == 0 || qv.Get(q.Name) != "" {
@@ -632,9 +603,7 @@ func missingRequiredQuery(t generated.ToolMeta, qv url.Values) []string {
 	return missing
 }
 
-// clientErrorDetail keeps the API's message for 400/422 responses (bad or
-// missing params) so the planner can correct itself. Card numbers are masked
-// and other statuses return "" so server internals never reach the model.
+// Card numbers are masked. Only 400/422 details are returned so other statuses never reach the model.
 func clientErrorDetail(err error) string {
 	if err == nil {
 		return ""
@@ -654,7 +623,6 @@ func clientErrorDetail(err error) string {
 	return detail
 }
 
-// needsParamFix is true when a read failed on params the model can correct.
 func needsParamFix(batch []readResult) bool {
 	for _, r := range batch {
 		if r.Status == "error" && r.Detail != "" {
@@ -664,8 +632,6 @@ func needsParamFix(batch []readResult) bool {
 	return false
 }
 
-// answerFromReads writes the reply from the read results. The model may only
-// call present_answer, which shapes the data into cards; it cannot read more.
 func (e *Engine) answerFromReads(rc *reqCtx, results []readResult) bool {
 	rc.setIntent(IntentInfo{ID: "agent", Handler: "planner", Source: "llm"})
 	if allDenied(results) {
@@ -684,7 +650,7 @@ func (e *Engine) answerFromReads(rc *reqCtx, results []readResult) bool {
 		return false
 	}
 	ctx, cancel := rc.llmCtx()
-	res, err := e.LLM.SendMessage(ctx, answerSystem, appendUserTurn(rc.recentTurns(), fmt.Sprintf(
+	res, err := e.LLM.SendMessage(ctx, answerPrompt(), appendUserTurn(rc.recentTurns(), fmt.Sprintf(
 		"Business date: %s\nQuestion: %s\nRead results: %s", rc.bizDate, rc.req.Message, payload)), []genillm.Tool{presentToolDef()})
 	cancel()
 	if err != nil {
@@ -703,7 +669,7 @@ func (e *Engine) answerFromReads(rc *reqCtx, results []readResult) bool {
 			break
 		}
 		if rc.present(a) {
-			// The model copies labels, not photo URLs. Pull avatarURL/image off the same reads.
+			// The model copies labels, not photo URLs.
 			attachPersonImages(rc.resp.Cards, results)
 			return true
 		}

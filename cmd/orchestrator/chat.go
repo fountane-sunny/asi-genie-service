@@ -24,7 +24,6 @@ import (
 
 const chatTimeout = 120 * time.Second
 
-// userToken extracts the caller's ASI token: X-Token, then Authorization: Bearer, then the token cookie.
 func userToken(r *http.Request) string {
 	if t := strings.TrimSpace(r.Header.Get("X-Token")); t != "" {
 		return t
@@ -41,8 +40,7 @@ func userToken(r *http.Request) string {
 	return ""
 }
 
-// requestPropertyID reads the property the caller claims to be asking about.
-// Zero means it was omitted. It is never treated as "every property".
+// Zero means the property was omitted. It is never every property.
 func requestPropertyID(r *http.Request) int {
 	if v, err := strconv.Atoi(strings.TrimSpace(r.URL.Query().Get("propertyId"))); err == nil && v > 0 {
 		return v
@@ -67,8 +65,6 @@ func authFailure(err error) (int, string) {
 	}
 }
 
-// gate requires a JWT and a property id, then checks that the token's user
-// belongs to that property. ok is false when a response was already written.
 func (a *api) gate(w http.ResponseWriter, r *http.Request, propertyID int) (genie.Caller, bool) {
 	if userToken(r) == "" {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Sign in to use Genie."})
@@ -92,7 +88,6 @@ type api struct {
 	store  store.Store
 }
 
-// POST /chat
 func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	var req genie.Request
@@ -113,7 +108,7 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusUnauthorized, "Sign in to use Genie.")
 		return
 	}
-	// Genie is property-specific: no group chat, no chat without a property.
+	// No group chat, and no chat without a property.
 	if req.GroupID != 0 || r.Header.Get("X-Group-Id") != "" {
 		fail(http.StatusBadRequest, "Genie works per property. Open a property to chat - group chat isn't supported.")
 		return
@@ -139,8 +134,6 @@ func (a *api) chat(w http.ResponseWriter, r *http.Request) {
 	logChat(r, req, http.StatusOK, resp, "", time.Since(start))
 }
 
-// POST /chat/stream uses the same authorization and engine path as /chat,
-// then serializes the completed deterministic result as SSE UI events.
 func (a *api) chatStream(w http.ResponseWriter, r *http.Request) {
 	var req genie.Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Message) == "" {
@@ -212,7 +205,6 @@ func writeSSEError(w http.ResponseWriter, status int, message string) {
 	writeSSE(w, "error", map[string]string{"error": message})
 }
 
-// logChat prints the "── CHAT ▶ POST /chat" block.
 func logChat(r *http.Request, req genie.Request, status int, resp *genie.Response, errMsg string, d time.Duration) {
 	msg, _ := logx.MaskPAN(req.Message)
 	fields := []logx.Field{
@@ -245,8 +237,7 @@ func logChat(r *http.Request, req genie.Request, status int, resp *genie.Respons
 	logx.Block("CHAT", r.Method+" "+r.URL.Path, fmt.Sprintf("HTTP %d", status), d, status < 400, fields...)
 }
 
-// GET /analytics/turns?from=2026-10-01&to=2026-10-13&propertyId=12&limit=1000&format=csv
-// from/to: RFC 3339 or YYYY-MM-DD (to is exclusive). JSON by default, CSV with format=csv.
+// to is exclusive.
 func (a *api) turns(w http.ResponseWriter, r *http.Request) {
 	pid := requestPropertyID(r)
 	caller, ok := a.gate(w, r, pid)
@@ -304,7 +295,6 @@ type feedbackRequest struct {
 	Comment   string `json:"comment,omitempty"`
 }
 
-// POST /feedback — persist thumbs up/down on a chat turn (genie_turns.feedback).
 func (a *api) feedback(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
@@ -349,7 +339,6 @@ func (a *api) feedback(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// GET /conversations/{sessionId}
 func (a *api) history(w http.ResponseWriter, r *http.Request) {
 	pid := requestPropertyID(r)
 	caller, ok := a.gate(w, r, pid)
@@ -380,12 +369,10 @@ func (a *api) history(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"sessionId": id, "messages": msgs, "feedbackByTurnId": feedbackByTurn})
 }
 
-// GET /intents - the Phase 1 capability registry (from the scenario catalogue).
 func (a *api) listIntents(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"count": len(intents.All()), "intents": intents.All()})
 }
 
-// GET /events?kind=unsupported&limit=100 - captured requests / denials (redacted analytics).
 func (a *api) events(w http.ResponseWriter, r *http.Request) {
 	pid := requestPropertyID(r)
 	caller, ok := a.gate(w, r, pid)
@@ -404,7 +391,6 @@ func (a *api) events(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"events": ev})
 }
 
-// withCORS allows the local Next.js dev server (GENIE_CORS_ORIGIN overrides).
 func withCORS(next http.Handler) http.Handler {
 	origin := os.Getenv("GENIE_CORS_ORIGIN")
 	if origin == "" {
@@ -434,9 +420,8 @@ func (s *statusRecorder) WriteHeader(code int) {
 	s.ResponseWriter.WriteHeader(code)
 }
 
-// Flush keeps SSE working. The logging wrapper sits in front of every
-// response; without Flush, /chat/stream writes nothing, the browser treats
-// that as a failed stream, and it posts /chat — saving the same turn twice.
+// statusRecorder hides http.Flusher. Without this, /chat/stream never flushes,
+// the browser retries POST /chat, and the same turn is saved twice.
 func (s *statusRecorder) Flush() {
 	if f, ok := s.ResponseWriter.(http.Flusher); ok {
 		f.Flush()
@@ -450,9 +435,9 @@ func withLogging(next http.Handler) http.Handler {
 		next.ServeHTTP(rec, r)
 		switch {
 		case r.URL.Path == "/health" || r.URL.Path == "/v1/genie/healthcheck" || r.Method == http.MethodOptions:
-			// quiet
+			// health and CORS preflight are not logged
 		case r.URL.Path == "/chat":
-			// logged as a block by logChat
+			// already logged by logChat
 		default:
 			logx.Line("%s %s %d %s", r.Method, r.URL.Path, rec.status, time.Since(start).Round(time.Millisecond))
 		}

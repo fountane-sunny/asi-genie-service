@@ -10,11 +10,8 @@ import (
 	"asi-genie-poc/internal/intents"
 )
 
-// nightAuditSettingsTool is the config read behind the Night Audit settings tab.
-// Its selectedReportIds are catalog ids; the tab shows names, and so does chat.
 const nightAuditSettingsTool = "config_get_properties_id_night_audit_settings"
 
-// reportCatalogItem mirrors reservation GET /reports/catalog (canonical report list).
 type reportCatalogItem struct {
 	ID           int
 	Name         string
@@ -50,7 +47,6 @@ func normalizeReportPhrase(phrase string) string {
 	return strings.TrimSpace(p)
 }
 
-// scoreReportPhrase ranks user wording against one catalog row (higher is better).
 func scoreReportPhrase(phrase string, item reportCatalogItem) int {
 	if phrase == "" {
 		return 0
@@ -107,8 +103,6 @@ type reportCatalogMatch struct {
 	score int
 }
 
-// matchReportInCatalog resolves phrasing against the live reservation catalog.
-// When scores tie at the top, returns candidates for disambiguation.
 func matchReportInCatalog(catalog []reportCatalogItem, phrase string) (*reportCatalogItem, []reportCatalogItem) {
 	if len(catalog) == 0 || strings.TrimSpace(phrase) == "" {
 		return nil, nil
@@ -123,7 +117,6 @@ func matchReportInCatalog(catalog []reportCatalogItem, phrase string) (*reportCa
 	if len(ranked) == 0 {
 		return nil, nil
 	}
-	// Stable sort by score desc, then name asc for deterministic product behavior.
 	for i := 0; i < len(ranked); i++ {
 		for j := i + 1; j < len(ranked); j++ {
 			if ranked[j].score > ranked[i].score ||
@@ -150,9 +143,7 @@ func matchReportInCatalog(catalog []reportCatalogItem, phrase string) (*reportCa
 	return &top.item, nil
 }
 
-// nameNightAuditReports swaps selectedReportIds for selectedReports (catalog
-// names) before the answer is written. An id the catalog does not know is
-// dropped, so the chat never prints a bare report number.
+// Unknown catalog ids are dropped so chat never prints a bare report number.
 func (rc *reqCtx) nameNightAuditReports(raw json.RawMessage) json.RawMessage {
 	var doc map[string]any
 	if err := json.Unmarshal(raw, &doc); err != nil {
@@ -176,8 +167,6 @@ func (rc *reqCtx) nameNightAuditReports(raw json.RawMessage) json.RawMessage {
 	return out
 }
 
-// applyReportNames replaces selectedReportIds with the catalog names, in the
-// same order. Unknown ids are omitted.
 func applyReportNames(doc map[string]any, catalog []reportCatalogItem, propertyID int) {
 	ids := intList(doc["selectedReportIds"])
 	if ids == nil {
@@ -236,7 +225,6 @@ func reportDeepLinkParams(item reportCatalogItem, rc *reqCtx, s Slots) map[strin
 	return params
 }
 
-// messageRequestsSpecificReport is true when the user names a report, not just "open reports".
 func messageRequestsSpecificReport(text string) bool {
 	lower := strings.ToLower(strings.TrimSpace(text))
 	if lower == "" || !strings.Contains(lower, "report") {

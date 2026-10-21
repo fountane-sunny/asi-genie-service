@@ -9,8 +9,6 @@ import (
 	"asi-genie-poc/internal/intents"
 )
 
-// hCurrentUser answers "who am I?" from the signed-in user, then the property
-// user row for phone, role, and last login when the auth payload omits them.
 func hCurrentUser(rc *reqCtx, it intents.Intent, s Slots) error {
 	v, err := rc.get("auth_get_current_user", nil, nil)
 	if err != nil {
@@ -33,7 +31,6 @@ func hCurrentUser(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
-// hListRooms lists rooms, or only vacant rooms when the question asks for availability.
 func hListRooms(rc *reqCtx, it intents.Intent, s Slots) error {
 	v, err := rc.get("config_get_room_space_statuses", nil, q("propertyId", rc.pidStr(), "pageSize", "100"))
 	if err != nil {
@@ -90,8 +87,6 @@ func hListRooms(rc *reqCtx, it intents.Intent, s Slots) error {
 	return nil
 }
 
-// renderPropertyUser searches staff when a guest lookup finds nobody.
-// It returns false when there is no matching user.
 func (rc *reqCtx) renderPropertyUser(it intents.Intent, name string) (bool, error) {
 	v, err := rc.get("config_get_properties_id_users", map[string]string{"id": rc.pidStr()}, q("searchKey", name, "pageSize", "10"))
 	if err != nil {

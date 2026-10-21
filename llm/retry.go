@@ -9,12 +9,6 @@ import (
 	"time"
 )
 
-// Retry policy for transient provider errors (429/500/502/503/504/529,
-// UNAVAILABLE, RESOURCE_EXHAUSTED, DEADLINE_EXCEEDED, overloaded, a timed-out
-// attempt): up to retryAttempts tries with exponential backoff (1s, 2s, ...).
-// Each attempt has its own timeout (LLM_ATTEMPT_TIMEOUT); the whole thing stays
-// inside the caller's context (LLM_TIMEOUT). Then LLM_FALLBACK_MODEL, if set,
-// gets the same treatment with whatever time is left.
 const retryAttempts = 3
 
 var retryBase = time.Second
@@ -26,7 +20,6 @@ type retryClient struct {
 	provider             string
 }
 
-// try runs one provider call with a fresh per-attempt deadline and logs it.
 func (c *retryClient) try(ctx context.Context, cl LLMClient, model string, attempt int, systemPrompt string, messages []Message, tools []Tool) (Response, error) {
 	actx, cancel := ctx, context.CancelFunc(func() {})
 	if c.attempt > 0 {
@@ -67,7 +60,7 @@ func logCall(provider, model string, attempt int, system string, messages []Mess
 		}
 		for _, tc := range resp.ToolCalls {
 			f := logx.B("tool call "+tc.Name, tc.Arguments)
-			f.Force = true // the parsed intent/slots are short and always useful
+			f.Force = true // intent and slots stay visible when bodies are off
 			fields = append(fields, f)
 		}
 		fields = append(fields, logx.F("tokens", fmt.Sprintf("in=%d out=%d", resp.Usage.InputTokens, resp.Usage.OutputTokens)))

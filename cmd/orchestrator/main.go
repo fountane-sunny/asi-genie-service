@@ -1,4 +1,3 @@
-// Package main starts the ASI Genie orchestrator (Phase 1: read-only, deterministic).
 package main
 
 import (
@@ -31,7 +30,6 @@ func main() {
 		port = "8090"
 	}
 
-	// Startup check: fail fast if the selected provider's API key env var is missing.
 	llmCfg, err := genillm.ConfigFromEnv()
 	if err != nil {
 		log.Fatal(err)
