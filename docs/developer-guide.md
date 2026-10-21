@@ -1,4 +1,4 @@
-# ASI Genie — developer & lead guide
+# ASI Genie — developer
 
 ## 1. In one paragraph
 
