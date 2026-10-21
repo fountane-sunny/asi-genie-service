@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"math/rand/v2"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1393,20 +1395,15 @@ func hGuide(rc *reqCtx, it intents.Intent, s Slots) error {
 	return rc.e.guideFallback(rc, it)
 }
 
+const capabilitySuggestionCount = 7
+
+// A sample question that only works for a made-up guest, room, or booking, or that asks for a write.
+var undoableExample = regexp.MustCompile(`(?i)(#\s*\d+|\b\d{3,}\b|\b(smiths?|johnsons?|maria|sharma|patel|jones|rodriguez|abc corp)\b|\b(book|check in|check out|move|post a|cancel|refund)\b)`)
+
 func hCapabilities(rc *reqCtx, it intents.Intent, s Slots) error {
-	var items []cards.ListItem
-	total := 0
-	for _, x := range intents.All() {
-		if x.Priority != "P0" || len(x.Examples) == 0 {
-			continue
-		}
-		total++
-		if len(items) < 12 {
-			items = append(items, cards.ListItem{ID: x.ID, Title: x.Examples[0], Subtitle: x.Module})
-		}
-	}
-	rc.add(cards.Card{Type: cards.TypeList, Intent: it.ID, Title: "Things I can help with", Items: items, Total: total})
-	rc.text("Here's what I can do. I answer questions and open screens - I don't make changes yet.")
+	items := capabilitySuggestions(capabilitySuggestionCount)
+	rc.add(cards.Card{Type: cards.TypeList, Intent: it.ID, Title: "Things I can help with", Items: items, Total: len(items)})
+	rc.text("Here are a few things I can do right now.")
 	for i, x := range items {
 		if i >= 3 {
 			break
@@ -1414,6 +1411,42 @@ func hCapabilities(rc *reqCtx, it intents.Intent, s Slots) error {
 		rc.chips(x.Title)
 	}
 	return nil
+}
+
+// A fresh sample each time, drawn from catalogue questions Genie can answer for any property.
+func capabilitySuggestions(n int) []cards.ListItem {
+	var pool []cards.ListItem
+	for _, it := range intents.All() {
+		if !capabilityIsDoable(it) {
+			continue
+		}
+		for _, example := range it.Examples {
+			example = strings.TrimSpace(example)
+			if example == "" || undoableExample.MatchString(example) {
+				continue
+			}
+			pool = append(pool, cards.ListItem{ID: it.ID, Title: example, Subtitle: it.Module})
+		}
+	}
+	rand.Shuffle(len(pool), func(i, j int) {
+		pool[i], pool[j] = pool[j], pool[i]
+	})
+	if n > len(pool) {
+		n = len(pool)
+	}
+	return pool[:n]
+}
+
+func capabilityIsDoable(it intents.Intent) bool {
+	if it.ID == "capabilities" || strings.Contains(it.Category, "Action") {
+		return false
+	}
+	switch it.ResponseType {
+	case intents.RTData, intents.RTList, intents.RTComparison, intents.RTChecklist:
+		return true
+	default:
+		return false
+	}
 }
 
 func hNavigate(rc *reqCtx, it intents.Intent, s Slots) error {
