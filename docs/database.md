@@ -109,7 +109,7 @@ Cards are **not** stored on `messages` rows; full turn detail (including cards) 
 | `detail` | jsonb | Extra structured payload |
 | `created_at` | timestamptz | |
 
-Query: `GET /events?kind=unsupported` (also `denied`, `intent`, `pci_block`).
+Written on each turn. There is no HTTP route that reads this table.
 
 ### `genie_turns`
 

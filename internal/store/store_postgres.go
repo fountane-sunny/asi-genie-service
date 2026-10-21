@@ -311,51 +311,6 @@ func (p *pg) LogEvent(ctx context.Context, e Event) error {
 	return p.db.WithContext(ctx).Create(&row).Error
 }
 
-func (p *pg) Events(ctx context.Context, kind, userID string, propertyID, limit int) ([]Event, error) {
-	if err := ValidateScope(propertyID, userID); err != nil {
-		return nil, err
-	}
-	if limit <= 0 {
-		limit = 100
-	}
-	var sessionIDs []string
-	err := p.db.WithContext(ctx).Model(&Conversation{}).
-		Where("user_id = ? AND property_id = ? AND session_id <> ''", userID, propertyID).
-		Pluck("session_id", &sessionIDs).Error
-	if err != nil {
-		return nil, err
-	}
-	if len(sessionIDs) == 0 {
-		return []Event{}, nil
-	}
-	q := p.db.WithContext(ctx).
-		Where("property_id = ? AND session_id IN ? AND session_id <> ''", propertyID, sessionIDs).
-		Order("created_at DESC").Limit(limit)
-	if kind != "" {
-		q = q.Where("kind = ?", kind)
-	}
-	var rows []GenieEvent
-	if err := q.Find(&rows).Error; err != nil {
-		return nil, err
-	}
-	out := make([]Event, 0, len(rows))
-	deref := func(s *string) string {
-		if s == nil {
-			return ""
-		}
-		return *s
-	}
-	for i := len(rows) - 1; i >= 0; i-- {
-		r := rows[i]
-		ev := Event{SessionID: deref(r.SessionID), Kind: r.Kind, Intent: deref(r.Intent), ScenarioID: deref(r.ScenarioID), Message: deref(r.Message), Detail: r.Detail, CreatedAt: r.CreatedAt}
-		if r.PropertyID != nil {
-			ev.PropertyID = *r.PropertyID
-		}
-		out = append(out, ev)
-	}
-	return out, nil
-}
-
 func (p *pg) LogTurn(ctx context.Context, t Turn) (string, error) {
 	row := GenieTurn{SessionID: t.SessionID, PropertyID: t.PropertyID, UserID: strPtr(t.UserID), UserName: strPtr(t.UserName),
 		UserEmail: strPtr(t.UserEmail), Message: t.Message, Reply: t.Reply, Cards: nilIfEmpty(t.Cards), Intent: strPtr(t.Intent),

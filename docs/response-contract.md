@@ -92,12 +92,10 @@ Chip      { label: string; message: string }
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /health`, `GET /v1/genie/healthcheck` | status, provider, store (`postgres`), read-tool count, intent count |
+| `GET /health` | status, provider, store (`postgres`), read-tool count, intent count |
 | `GET /conversations/{sessionId}` | `{ sessionId, messages: [{ role, content, toolCalls, createdAt, durationMs }], feedbackByTurnId }` — assistant `toolCalls` JSON holds `{ turnId, intent, cards, toolCalls, notice, citations, chips }` |
 | `POST /feedback` | `{ turnId, sessionId, rating: "thumbs_up"|"thumbs_down", comment? }` → updates `genie_turns.feedback` |
-| `GET /intents` | the Phase 1 capability registry (from Scenarios.csv) |
 | `GET /analytics/turns?from=&to=&propertyId=&limit=&format=csv` | one row per chat turn (Postgres `genie_turns`): createdAt, sessionId, propertyId, user id/name/email (auth current-user, cached 10 min per token), PAN-masked message, reply, cards, intent, scenarioId, source (llm/keyword/rule), confidence, slots, tools (name/status/error code/durationMs), llmModel, llmFailed, durationMs, errorCode/errorMessage (masked), feedback (null for now). JSON by default; `format=csv` downloads a CSV. `from`/`to` are YYYY-MM-DD or RFC 3339 (`to` exclusive) |
-| `GET /events?kind=unsupported\|denied\|intent\|pci_block&limit=100` | redacted analytics: captured unsupported asks, denials |
 
 All endpoints except health require a user token (`401` without one).
 

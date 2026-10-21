@@ -93,8 +93,6 @@ type Store interface {
 	History(ctx context.Context, sessionID, userID string, propertyID, limit int) ([]Message, error)
 	LogToolExecution(ctx context.Context, e ToolExecution) error
 	LogEvent(ctx context.Context, e Event) error
-	// Events with an empty session id are omitted.
-	Events(ctx context.Context, kind, userID string, propertyID, limit int) ([]Event, error)
 	LogTurn(ctx context.Context, t Turn) (turnID string, err error)
 	// Only when the turn belongs to this user and property.
 	UpdateTurnFeedback(ctx context.Context, turnID, sessionID, userID string, propertyID int, feedback string) error

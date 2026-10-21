@@ -18,7 +18,6 @@ import (
 	"gorm.io/gorm"
 
 	"asi-genie-poc/internal/genie"
-	"asi-genie-poc/internal/intents"
 	"asi-genie-poc/internal/store"
 )
 
@@ -369,28 +368,6 @@ func (a *api) history(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"sessionId": id, "messages": msgs, "feedbackByTurnId": feedbackByTurn})
 }
 
-func (a *api) listIntents(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"count": len(intents.All()), "intents": intents.All()})
-}
-
-func (a *api) events(w http.ResponseWriter, r *http.Request) {
-	pid := requestPropertyID(r)
-	caller, ok := a.gate(w, r, pid)
-	if !ok {
-		return
-	}
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	ev, err := a.store.Events(r.Context(), r.URL.Query().Get("kind"), caller.UserID, pid, limit)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "couldn't read events"})
-		return
-	}
-	if ev == nil {
-		ev = []store.Event{}
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"events": ev})
-}
-
 func withCORS(next http.Handler) http.Handler {
 	origin := os.Getenv("GENIE_CORS_ORIGIN")
 	if origin == "" {
@@ -434,7 +411,7 @@ func withLogging(next http.Handler) http.Handler {
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
 		switch {
-		case r.URL.Path == "/health" || r.URL.Path == "/v1/genie/healthcheck" || r.Method == http.MethodOptions:
+		case r.URL.Path == "/health" || r.Method == http.MethodOptions:
 			// health and CORS preflight are not logged
 		case r.URL.Path == "/chat":
 			// already logged by logChat

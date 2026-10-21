@@ -67,10 +67,8 @@ func TestScopedRoutesRequireTokenAndProperty(t *testing.T) {
 	}{
 		{name: "history no token", method: http.MethodGet, path: "/conversations/web-p1-abc", want: http.StatusUnauthorized},
 		{name: "turns no token", method: http.MethodGet, path: "/analytics/turns", want: http.StatusUnauthorized},
-		{name: "events no token", method: http.MethodGet, path: "/events", want: http.StatusUnauthorized},
 		{name: "feedback no token", method: http.MethodPost, path: "/feedback", body: `{"turnId":"t","rating":"thumbs_up"}`, want: http.StatusUnauthorized},
 		{name: "turns no property", method: http.MethodGet, path: "/analytics/turns", token: "test-token", want: http.StatusBadRequest},
-		{name: "events no property", method: http.MethodGet, path: "/events", token: "test-token", want: http.StatusBadRequest},
 		{name: "history no property", method: http.MethodGet, path: "/conversations/web-p1-abc", token: "test-token", want: http.StatusBadRequest},
 		{name: "feedback no property", method: http.MethodPost, path: "/feedback", body: `{"turnId":"t","rating":"thumbs_up"}`, token: "test-token", want: http.StatusBadRequest},
 	}
@@ -94,8 +92,6 @@ func TestScopedRoutesRequireTokenAndProperty(t *testing.T) {
 				a.history(rec, req)
 			case tc.path == "/analytics/turns":
 				a.turns(rec, req)
-			case tc.path == "/events":
-				a.events(rec, req)
 			default:
 				a.feedback(rec, req)
 			}

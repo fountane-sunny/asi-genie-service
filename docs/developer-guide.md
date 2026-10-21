@@ -220,10 +220,8 @@ All endpoints except health need a user token (`X-Token`, `Authorization: Bearer
 | `POST` | `/chat/stream` | Same turn as SSE events |
 | `GET` | `/conversations/{sessionId}` | Stored history |
 | `POST` | `/feedback` | Thumbs up/down on a turn |
-| `GET` | `/intents` | Capability catalogue |
 | `GET` | `/analytics/turns` | Turn export (JSON or `format=csv`) |
-| `GET` | `/events?kind=` | `intent`, `denied`, `unsupported`, `pci_block` |
-| `GET` | `/health`, `/v1/genie/healthcheck` | Liveness + tool/intent counts |
+| `GET` | `/health` | Liveness + tool/intent counts |
 
 Full request/response shapes: [response-contract.md](./response-contract.md).
 

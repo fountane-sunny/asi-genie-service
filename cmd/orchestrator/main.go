@@ -76,14 +76,11 @@ func main() {
 			"readTools": len(engine.Tools), "intents": len(intents.All()),
 		})
 	}
-	mux.HandleFunc("GET /v1/genie/healthcheck", health)
 	mux.HandleFunc("GET /health", health)
 	mux.HandleFunc("POST /chat", a.chat)
 	mux.HandleFunc("POST /chat/stream", a.chatStream)
 	mux.HandleFunc("POST /feedback", a.feedback)
 	mux.HandleFunc("GET /conversations/{sessionId}", a.history)
-	mux.HandleFunc("GET /intents", a.listIntents)
-	mux.HandleFunc("GET /events", a.events)
 	mux.HandleFunc("GET /analytics/turns", a.turns)
 
 	srv := &http.Server{
