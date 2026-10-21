@@ -10,7 +10,7 @@ Go service behind **ASI Genie**, the chat assistant in the hotel PMS. It reads A
 |-----|-----|----------|
 | [docs/genie-for-everyone.md](docs/genie-for-everyone.md) | Everyone (ops, support, product, QA) | What Genie does, what to ask, what it won't do, safety, error messages |
 | [docs/developer-guide.md](docs/developer-guide.md) | Developers | Architecture, flow diagrams, code map, local setup, config, common changes |
-| [docs/response-contract.md](docs/response-contract.md) | Frontend / API consumers | `/chat`, `/chat/stream` and card shapes |
+| [docs/response-contract.md](docs/response-contract.md) | Frontend / API consumers | `/chat/stream` and card shapes |
 | [docs/database.md](docs/database.md) | Developers | Postgres tables and what is stored |
 
 ## Quick start

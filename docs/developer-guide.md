@@ -19,7 +19,7 @@
 
 ```mermaid
 flowchart LR
-  FE["asi-frontend<br/>Genie panel"] -->|"POST /chat/stream (or /chat)<br/>X-Token + propertyId"| API
+  FE["asi-frontend<br/>Genie panel"] -->|"POST /chat/stream<br/>X-Token + propertyId"| API
 
   subgraph GENIE["asi-genie-service"]
     API["cmd/orchestrator<br/>HTTP + auth gate"] --> ENG["internal/genie<br/>Engine"]
@@ -39,7 +39,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  A["POST /chat or /chat/stream"] --> B{"Token and propertyId present?<br/>User allowed on property?"}
+  A["POST /chat/stream"] --> B{"Token and propertyId present?<br/>User allowed on property?"}
   B -- no --> B1["401 / 403 / 400"]
   B -- yes --> C{"Card number in message?"}
   C -- yes --> C1["Mask it, denied card (pci_block)"]
@@ -111,13 +111,13 @@ Used when there is no LLM (`LLM_PROVIDER=none`), the planner failed, the user as
 
 ### 4.5 Streaming
 
-`POST /chat/stream` runs the same auth and engine as `/chat`, then sends the finished result as Server-Sent Events: `tool_start` / `tool_end` per read (with a label like "Checking revenue"), `text_delta`, one `card` per card, `chips`, `done`. The frontend uses `/chat/stream` first and falls back to `/chat` if no event arrives.
+`POST /chat/stream` is the only chat endpoint. After the turn finishes it sends Server-Sent Events: `tool_start` / `tool_end` per read (with a label like "Checking revenue"), `text_delta`, one `card` per card, `chips`, `done`. Auth and engine failures are an `error` event with the HTTP status.
 
 ### 4.6 Access control (RBAC)
 
 Genie does not keep a permission matrix. ASI is the authority. There are two checks.
 
-**Property membership, before the turn.** `Authorize` (`authz.go`) runs on `/chat`, `/chat/stream`, history, feedback, and analytics. It calls auth current-user and `GET /permissions` with the user's token (cached 10 minutes per token). The request `propertyId` must appear in that payload.
+**Property membership, before the turn.** `Authorize` (`authz.go`) runs on `/chat/stream`, history, feedback, and analytics. It calls auth current-user and `GET /permissions` with the user's token (cached 10 minutes per token). The request `propertyId` must appear in that payload.
 
 | Result | HTTP |
 |--------|------|
@@ -199,9 +199,9 @@ The binary does not read `.env` by itself; `make run` sources it.
 **Try a turn:**
 
 ```bash
-curl -s -X POST localhost:8090/chat \
+curl -N -X POST localhost:8090/chat/stream \
   -H 'Content-Type: application/json' -H 'X-Token: YOUR_JWT' \
-  -d '{"message":"Who arrives today?","propertyId":1}' | jq
+  -d '{"message":"Who arrives today?","propertyId":1}'
 ```
 
 ## 7. Configuration
@@ -239,8 +239,7 @@ All endpoints except health need a user token (`X-Token`, `Authorization: Bearer
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/chat` | One Genie turn (JSON) |
-| `POST` | `/chat/stream` | Same turn as SSE events |
+| `POST` | `/chat/stream` | One Genie turn, as SSE events |
 | `GET` | `/conversations/{sessionId}` | Stored history |
 | `POST` | `/feedback` | Thumbs up/down on a turn |
 | `GET` | `/analytics/turns` | Turn export (JSON or `format=csv`) |

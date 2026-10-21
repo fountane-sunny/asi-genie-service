@@ -87,52 +87,6 @@ type api struct {
 	store  store.Store
 }
 
-func (a *api) chat(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-	var req genie.Request
-	fail := func(status int, msg string) {
-		writeJSON(w, status, map[string]string{"error": msg})
-		logChat(r, req, status, nil, msg, time.Since(start))
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Message) == "" {
-		fail(http.StatusBadRequest, "message is required")
-		return
-	}
-	if req.PropertyID == 0 {
-		if v, err := strconv.Atoi(r.Header.Get("X-Property-Id")); err == nil {
-			req.PropertyID = v
-		}
-	}
-	if userToken(r) == "" {
-		fail(http.StatusUnauthorized, "Sign in to use Genie.")
-		return
-	}
-	// No group chat, and no chat without a property.
-	if req.GroupID != 0 || r.Header.Get("X-Group-Id") != "" {
-		fail(http.StatusBadRequest, "Genie works per property. Open a property to chat - group chat isn't supported.")
-		return
-	}
-	if req.PropertyID <= 0 {
-		fail(http.StatusBadRequest, "propertyId is required. Open a property to chat with Genie.")
-		return
-	}
-	ctx, cancel := context.WithTimeout(r.Context(), chatTimeout)
-	defer cancel()
-	if _, err := a.engine.Authorize(ctx, userToken(r), req.PropertyID); err != nil {
-		status, msg := authFailure(err)
-		fail(status, msg)
-		return
-	}
-	resp, err := a.engine.Handle(ctx, userToken(r), req)
-	if err != nil {
-		log.Printf("chat: %v", err)
-		fail(http.StatusBadGateway, "Genie couldn't answer right now.")
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
-	logChat(r, req, http.StatusOK, resp, "", time.Since(start))
-}
-
 func (a *api) chatStream(w http.ResponseWriter, r *http.Request) {
 	var req genie.Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Message) == "" {
@@ -202,38 +156,6 @@ func writeSSEError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.WriteHeader(status)
 	writeSSE(w, "error", map[string]string{"error": message})
-}
-
-func logChat(r *http.Request, req genie.Request, status int, resp *genie.Response, errMsg string, d time.Duration) {
-	msg, _ := logx.MaskPAN(req.Message)
-	fields := []logx.Field{
-		logx.F("session", req.SessionID),
-		logx.F("property", req.PropertyID),
-		logx.F("token", map[bool]string{true: "present", false: "missing"}[userToken(r) != ""]),
-		logx.F("message", logx.Trunc(msg, 500)),
-	}
-	if errMsg != "" {
-		fields = append(fields, logx.F("error", errMsg))
-	}
-	if resp != nil {
-		if it := resp.Intent; it != nil {
-			fields = append(fields, logx.F("intent", fmt.Sprintf("%s (%s, %s, conf %.2f)", it.ID, it.Source, it.Handler, it.Confidence)))
-		}
-		var cs []string
-		for _, c := range resp.Cards {
-			t := string(c.Type)
-			if c.Title != "" {
-				t += " \"" + c.Title + "\""
-			}
-			cs = append(cs, t)
-		}
-		fields = append(fields,
-			logx.F("cards", strings.Join(cs, ", ")),
-			logx.F("reply", logx.Trunc(resp.Text, 300)),
-			logx.B("response", resp),
-		)
-	}
-	logx.Block("CHAT", r.Method+" "+r.URL.Path, fmt.Sprintf("HTTP %d", status), d, status < 400, fields...)
 }
 
 // to is exclusive.
@@ -397,8 +319,7 @@ func (s *statusRecorder) WriteHeader(code int) {
 	s.ResponseWriter.WriteHeader(code)
 }
 
-// statusRecorder hides http.Flusher. Without this, /chat/stream never flushes,
-// the browser retries POST /chat, and the same turn is saved twice.
+// statusRecorder hides http.Flusher. Forward Flush so /chat/stream can write each event.
 func (s *statusRecorder) Flush() {
 	if f, ok := s.ResponseWriter.(http.Flusher); ok {
 		f.Flush()
@@ -413,8 +334,6 @@ func withLogging(next http.Handler) http.Handler {
 		switch {
 		case r.URL.Path == "/health" || r.Method == http.MethodOptions:
 			// health and CORS preflight are not logged
-		case r.URL.Path == "/chat":
-			// already logged by logChat
 		default:
 			logx.Line("%s %s %d %s", r.Method, r.URL.Path, rec.status, time.Since(start).Round(time.Millisecond))
 		}

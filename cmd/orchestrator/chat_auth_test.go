@@ -31,24 +31,24 @@ func TestLoggingWrapperPreservesFlush(t *testing.T) {
 	}
 }
 
-func TestChatRequiresToken(t *testing.T) {
+func TestChatStreamRequiresToken(t *testing.T) {
 	t.Parallel()
 	body := strings.NewReader(`{"message":"who arrives today?","propertyId":12}`)
-	req := httptest.NewRequest(http.MethodPost, "/chat", body)
+	req := httptest.NewRequest(http.MethodPost, "/chat/stream", body)
 	rec := httptest.NewRecorder()
-	(&api{}).chat(rec, req)
+	(&api{}).chatStream(rec, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, body %s", rec.Code, rec.Body.String())
 	}
 }
 
-func TestChatRequiresProperty(t *testing.T) {
+func TestChatStreamRequiresProperty(t *testing.T) {
 	t.Parallel()
 	body := strings.NewReader(`{"message":"who arrives today?"}`)
-	req := httptest.NewRequest(http.MethodPost, "/chat", body)
+	req := httptest.NewRequest(http.MethodPost, "/chat/stream", body)
 	req.Header.Set("X-Token", "test-token")
 	rec := httptest.NewRecorder()
-	(&api{}).chat(rec, req)
+	(&api{}).chatStream(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, body %s", rec.Code, rec.Body.String())
 	}

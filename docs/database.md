@@ -54,7 +54,7 @@ erDiagram
 | `messages` | `MessageRow` | User and assistant turns for that conversation |
 | `tool_executions` | `ToolExecutionRow` | Audit log of each ASI tool HTTP call |
 | `genie_events` | `GenieEvent` | Redacted events: intent, denied, unsupported, pci_block |
-| `genie_turns` | `GenieTurn` | One analytics row per `POST /chat` (export via `/analytics/turns`) |
+| `genie_turns` | `GenieTurn` | One analytics row per `POST /chat/stream` (export via `/analytics/turns`) |
 
 ### `conversations`
 
@@ -132,7 +132,7 @@ One row per successful or failed chat turn (written in `engine.persist`).
 | `tools` | jsonb | Tool call summary (name, status, duration) |
 | `llm_model` | text, nullable | |
 | `llm_failed` | bool | A planner or classifier LLM call failed; the turn fell back to keyword routing |
-| `duration_ms` | bigint | Total `/chat` duration |
+| `duration_ms` | bigint | Total `/chat/stream` duration |
 | `error_code`, `error_message` | text, nullable | When handler failed |
 | `feedback` | text, nullable | `thumbs_up`, `thumbs_down`, or `thumbs_down: comment` via `POST /feedback` |
 

@@ -3,18 +3,16 @@
 Types live in `internal/cards` (cards) and `internal/genie/engine.go` (request/response). Persistence: [database.md](./database.md).
 One contract serves the web panel, ⌘K bar and mobile sheet. Phase 1 is read-only: no card ever triggers a write.
 
-## `POST /chat`
+## `POST /chat/stream`
 
-Headers: `X-Token` (or `Authorization: Bearer`, or `token` cookie) — the user's own ASI token, forwarded to every ASI read. **Required**: missing → `401 {"error":"Sign in to use Genie."}`. `X-Property-Id` (same as body `propertyId`; one of them is required).
+The only chat endpoint. Headers: `X-Token` (or `Authorization: Bearer`, or `token` cookie) — the user's own ASI token, forwarded to every ASI read. **Required**: missing → `401` and an `error` event `{"error":"Sign in to use Genie."}`. `X-Property-Id` (same as body `propertyId`; one of them is required).
 
 ```json
 { "sessionId": "web-…", "message": "Who arrives today?", "propertyId": 12, "businessDate": "2026-10-12", "localHour": 9, "screen": "/property/12/dashboard" }
 ```
-`propertyId` is **required** (Genie is property-specific; no group chat). Missing → `400 {"error":"propertyId is required. Open a property to chat with Genie."}`; `groupId`/`X-Group-Id` → `400` too. Before the turn runs, Genie checks the property is in the user's auth `/permissions`: auth rejects the token → `401`, property not in the list → `403 {"error":"You don't have access to this property."}`. A session is bound to its property: a different property starts a new conversation. Optional: `businessDate` (without it Genie reads the night-audit working date), `localHour` (0–23 on the user's clock, used for the greeting's time of day), `screen`. The frontend scopes `sessionId` per property (`web-p<propertyId>-…`) and shows the chat only on `/property/<id>/…` pages.
+`propertyId` is **required** (Genie is property-specific; no group chat). Missing or a `groupId`/`X-Group-Id` → `400` and `{"error":"propertyId is required."}`. Before the turn runs, Genie checks the property is in the user's auth `/permissions`: auth rejects the token → `401`, property not in the list → `403 {"error":"You don't have access to this property."}`. A session is bound to its property: a different property starts a new conversation. Optional: `businessDate` (without it Genie reads the night-audit working date), `localHour` (0–23 on the user's clock, used for the greeting's time of day), `screen`. The frontend scopes `sessionId` per property (`web-p<propertyId>-…`) and shows the chat only on `/property/<id>/…` pages.
 
-## `POST /chat/stream`
-
-Same body, headers, auth checks and engine as `/chat`. The finished turn is sent as Server-Sent Events, in this order:
+The finished turn is sent as Server-Sent Events, in this order:
 
 | Event | Data |
 |-------|------|
@@ -24,11 +22,14 @@ Same body, headers, auth checks and engine as `/chat`. The finished turn is sent
 | `card` | one `Card` per event |
 | `chips` | `Chip[]` (only when there are chips) |
 | `done` | `{ turnId, sessionId }` |
-| `error` | `{ error }` — auth/validation failure (with the same HTTP status as `/chat`) or engine failure |
+| `error` | `{ error }` — auth/validation failure (with the HTTP status) or engine failure |
 
-The web client calls `/chat/stream` first and falls back to `/chat` only when no SSE event arrives.
+The web client posts only to `/chat/stream`.
 
-### Response
+### Turn fields
+
+The engine builds this object. `/chat/stream` sends it as the events above (`text` as `text_delta`, each card as `card`, chips as `chips`, `turnId` and `sessionId` as `done`). It is not returned as one JSON body.
+
 ```json
 {
   "sessionId": "web-…",
@@ -99,4 +100,4 @@ Chip      { label: string; message: string }
 
 All endpoints except health require a user token (`401` without one).
 
-Errors: `400 {"error":"message is required"}`, `400` for a missing propertyId or a group, `401` no/invalid token, `403` property not in the user's permissions, `502` when the engine fails. Inside a turn, failures never surface raw errors: they become an `error` card (codes above). When every planned read fails because ASI is down, the reply is one `error` card ("I couldn't reach ASI just now. Please try again in a moment.") instead of a model-written answer.
+Errors on `/chat/stream` are an `error` event and the HTTP status: `400` when `message` or `propertyId` is missing (a group id counts as a missing property), `401` no/invalid token, `403` property not in the user's permissions, `502` when the engine fails. Inside a turn, failures never surface raw errors: they become an `error` card (codes above). When every planned read fails because ASI is down, the reply is one `error` card ("I couldn't reach ASI just now. Please try again in a moment.") instead of a model-written answer.
